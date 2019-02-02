@@ -13,21 +13,21 @@ from setuptools import find_packages, setup, Command
 
 # Package meta-data.
 NAME = 'compositionDE'
-DESCRIPTION = 'statistical test to identify compositional data.'
+DESCRIPTION = 'statistical test to identify compositional changes in count data.'
 URL = 'https://github.com/theislab/compositionalDE'
 EMAIL = 'benjamin.schubert@helmholtz-muenchen.de'
 AUTHOR = 'Benjamin Schubert'
 REQUIRES_PYTHON = '==3.6.0'
-VERSION = "0.0.1alpha"
+VERSION = "0.0.1"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "numpy", "tf-nightly", "tfp-nightly"
+    "numpy", "scipy", "tf-nightly", "tfp-nightly", "arviz"
 ]
 
 # What packages are optional?
 EXTRAS = {
-     'visualization': ['arviz'],
+#     'visualization': ['arviz'],
 }
 
 # The rest you shouldn't have to touch too much :)
