@@ -3,12 +3,17 @@ This filw defines multiple models
 for statistical analysis of compositional changes
 
 
-:author: Benjamin Schubert
+:authors: Benjamin Schubert
 """
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow_probability import edward2 as ed
+from tensorflow_probability.python.edward2 import interception
+from tensorflow_probability.python.edward2.program_transformations import _get_function_inputs
+
+from util.Result import MCMCResult, MAPResult
+
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
@@ -23,8 +28,8 @@ class CompositionDE:
     def __init__(self, X, y, n_total, Z=None, dtype=tf.float32):
         """
 
-        :param X: Numpy Design NxD matrix of confounder of interest
-        :param Z: Numpy Design NxB matrix of irrelevant confounder (for correction)
+        :param X: Numpy Design NxD matrix of independent variables of interest
+        :param Z: Numpy Design NxB matrix of confounders
         :param y: Numpy NxK Matrix of dependent variables
         :param n_total: Numpy Nx1 Vector of total observed counts
         """
@@ -115,6 +120,7 @@ class CompositionDE:
         :param n_chains: number of MCMC chains (current supports only sampling from one chain)
         :return: dict of parameters
         """
+        # TODO: Add support for multi-chain sampling (currently Jan 30th 2019 not supported for Edward2 models)
         N,D = self.X.shape
         K = self.y.shape[1]
         dtype = self.dtype
@@ -165,6 +171,7 @@ class CompositionDE:
             )
 
         # HMC transition kernel
+
         kernel = tfp.mcmc.TransformedTransitionKernel(
             tfp.mcmc.HamiltonianMonteCarlo(
                 target_log_prob_fn=target_log_prob_fn,
@@ -173,6 +180,13 @@ class CompositionDE:
                 num_leapfrog_steps=n_leapfrog,
                 state_gradients_are_stopped=True),
             bijector=unconstraining_bijectors)
+
+        # kernel = tfp.mcmc.HamiltonianMonteCarlo(
+        #         target_log_prob_fn=target_log_prob_fn,
+        #         step_size=step_size,
+        #         step_size_update_fn=tfp.mcmc.make_simple_step_size_update_policy(int(0.8*n_burn)),
+        #         num_leapfrog_steps=n_leapfrog,
+        #         state_gradients_are_stopped=True)
 
         # Define the chain states
         states, kernel_results = tfp.mcmc.sample_chain(
@@ -188,10 +202,10 @@ class CompositionDE:
         with tf.Session() as sess:
             sess.run(init_g)
             states = sess.run([*states])
-        params = dict(zip(param_names, states))
-        return params
 
-    def find_MAP(self, n_iterations=30000, optimizer=tf.train.AdamOptimizer(learning_rate=0.001)):
+        return MCMCResult(int(N), dict(zip(param_names, states)))
+
+    def find_MAP(self, n_iterations=3000, optimizer=tf.train.AdamOptimizer(learning_rate=0.01)):
         """
         Returns the MAP estimate of the model
         :param n_iterations: Max number of gradient steps
@@ -209,7 +223,7 @@ class CompositionDE:
         beta_size = [D, K]
         sigma_beta_size = [K]
         nu_size = [D]
-        loss_history = []
+        loss_history = [np.inf]
 
         param_names = ["alpha", "beta", "sigma_alpha", "sigma_beta", "nu"]
         params = [tf.Variable(tf.ones(alpha_size, dtype=dtype), name="alpha"),
@@ -244,22 +258,43 @@ class CompositionDE:
                 if t % 5 == 0 or t == n_iterations - 1:
                     state_ = sess.run([*params, loss])
                     loss_history.append(state_[-1])
-                    print("Iteration: {:>4}  Loss: {:.3f}".format(t,  state_[-1]))
+                    #if np.abs(state_[-1] - loss_history[-2]) < 10e-6:
+                    #    print("converged")
+                    #    break
+                    print("Iteration: {:>4}  Loss: {:.3f}: Diff:{:.3f}".format(t,  state_[-1],
+                                                                               np.abs(state_[-1] - loss_history[-2])))
 
-            #get final MAP estimats
-            params = {param_name:sess.run(param) for param_name, param in zip(param_names, params)}
-        return params, np.array(loss_history)
+            # get final MAP estimats
+            paramsMAP = {param_name:sess.run(param) for param_name, param in zip(param_names, params)
+                         if not (param_name.startswith("sigma") or param_name.startswith("nu"))}
+
+            # calculate observed Fischer information matrix and approximate sd of parameters
+            hessians = tf.hessians(loss, [param for param_name, param in zip(param_names, params)
+                                          if not (param_name.startswith("sigma") or param_name.startswith("nu"))])
+            sds = {}
+            for param_name, hessian in zip(param_names, hessians):
+                # get hessian of parameters at MAP
+                if len(hessian.shape)>2:
+                    # TODO: not sure this is correct for Beta matrix parameters.
+                    # TODO: All variance components have nan
+                    hessian = tf.reshape(hessian, [hessian.shape[0]*hessian.shape[1], -1])
+                FIM = tf.linalg.inv(hessian)
+                sd = tf.math.sqrt(tf.diag_part(FIM))
+                sds["sd_{}".format(param_name)] = sess.run(sd)
+
+        return MAPResult(int(N), {"params":paramsMAP, "sds":sds})
 
 
 if __name__ == "__main__":
     from scipy.special import softmax
     import numpy as np
     import arviz as az
+    import pandas as pd
 
     # Settings
-    D = 4  # number of dimensions
+    D = 2  # number of dimensions
     N = 100  # number of datapoints to generate
-    K = 5
+    K = 10
     n_total = [1000]*N
 
     noise_std_true = 1.0
@@ -277,9 +312,14 @@ if __name__ == "__main__":
     # Initialize model
     model = CompositionDE(x, y, n_total)
     #params = model.sample()
-    params, loss_history = model.find_MAP()
+    #print(params)
+    params = model.find_MAP()
+
+    pd.set_option('display.max_columns', None)
 
     print(params)
+    #print(params.raw_params)
+
 
 
     #dataset = az.convert_to_inference_data(params)
