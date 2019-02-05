@@ -5,6 +5,8 @@ for statistical analysis of compositional changes
 
 :authors: Benjamin Schubert
 """
+import time
+
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -13,6 +15,7 @@ from tensorflow_probability.python.edward2 import interception
 from tensorflow_probability.python.edward2.program_transformations import _get_function_inputs
 
 from util.Result import MCMCResult, MAPResult
+from util.Simulation import generate_simple_data
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -67,7 +70,7 @@ class CompositionDE:
                 B = Z.shape[1]
                 sigma_gamma = ed.HalfCauchy(tf.zeros([B], dtype=dtype), tf.ones([B], dtype=dtype)*5, name="sigma_gamma")
                 gamma = ed.Normal(loc=tf.zeros([B], dtype=dtype), scale=sigma_gamma, name="gamma")
-                concentration_ = tf.exp(alpha + tf.matmul(X, beta) + tf.matmul(X, gamma))
+                concentration_ = tf.exp(alpha + tf.matmul(X, beta) + tf.matmul(Z, gamma))
             else:
                 concentration_ = tf.exp(alpha + tf.matmul(X, beta))
 
@@ -205,14 +208,13 @@ class CompositionDE:
 
         return MCMCResult(int(N), dict(zip(param_names, states)))
 
-    def find_MAP(self, n_iterations=3000, optimizer=tf.train.AdamOptimizer(learning_rate=0.01)):
+    def find_MAP(self, n_iterations=1000000, optimizer=tf.train.AdamOptimizer(learning_rate=0.01)):
         """
         Returns the MAP estimate of the model
         :param n_iterations: Max number of gradient steps
         :param optimizer: Tensorflow Optimizer class
         :return: dict of point estimate parameters
         """
-
         N,D = self.X.shape
         K = self.y.shape[1]
         dtype = self.dtype
@@ -226,11 +228,11 @@ class CompositionDE:
         loss_history = [np.inf]
 
         param_names = ["alpha", "beta", "sigma_alpha", "sigma_beta", "nu"]
-        params = [tf.Variable(tf.ones(alpha_size, dtype=dtype), name="alpha"),
-                tf.Variable(tf.ones(beta_size, dtype=dtype), name="beta"),
-                tf.Variable(tf.ones(sigma_alpha_size, dtype=dtype), name="sigma_alpha", constraint=tfb.Softplus()),
-                tf.Variable(tf.ones(sigma_beta_size, dtype=dtype), name="sigma_beta", constraint=tfb.Softplus()),
-                tf.Variable(tf.ones(nu_size, dtype=dtype), name="nu", constraint=tfb.Softplus()),
+        params = [tf.get_variable("alpha", alpha_size, dtype=dtype),
+                tf.get_variable("beta", beta_size, dtype=dtype),
+                tf.nn.softplus(tf.get_variable("sigma_alpha", sigma_alpha_size, dtype=dtype)),
+                tf.nn.softplus(tf.get_variable("sigma_beta", sigma_beta_size, dtype=dtype)),
+                tf.nn.softplus(tf.get_variable("nu", nu_size, dtype=dtype)),
                 ]
         if self.global_confounder:
             B = self.Z.shape[1]
@@ -238,9 +240,8 @@ class CompositionDE:
             sigma_gamma_size = [B]
             param_names = [*param_names, "gamma", "sigma_gamma"]
             params = [*params,
-                    tf.Variable(tf.ones(gamma_size, dtype=dtype), name="gamma"),
-                    tf.Variable(tf.ones(sigma_gamma_size, dtype=dtype),
-                                name="init_sigma_gamma", constraint=tfb.Softplus()),
+                    tf.get_variable("gamma", gamma_size, dtype=dtype),
+                    tf.nn.softplus(tf.get_variable("sigma_gamma", sigma_gamma_size, dtype=dtype)),
                     ]
 
         loss = -target_log_prob_fn(*params)
@@ -248,21 +249,24 @@ class CompositionDE:
 
         # Initialize any created variables for preconditions
         init = tf.global_variables_initializer()
-
+        start = time.time()
         with tf.Session() as sess:
             sess.run(init)
 
             for t in range(n_iterations):
-                sess.run(train_op)
+                _, loss_value = sess.run([train_op, loss])
+                duration = time.time() - start
+                if t > 0:
+                    if np.abs(loss_value - loss_history[-1]) < 1e-5:
+                        print("converged")
+                        break
+                if t % 1000 == 0:
+                    print("Step: {:>3d} Loss: {:.3f} ({:.3f} sec)".format(t,
+                                                                          loss_value,
+                                                                          duration))
 
-                if t % 5 == 0 or t == n_iterations - 1:
-                    state_ = sess.run([*params, loss])
-                    loss_history.append(state_[-1])
-                    #if np.abs(state_[-1] - loss_history[-2]) < 10e-6:
-                    #    print("converged")
-                    #    break
-                    print("Iteration: {:>4}  Loss: {:.3f}: Diff:{:.3f}".format(t,  state_[-1],
-                                                                               np.abs(state_[-1] - loss_history[-2])))
+
+                loss_history.append(loss_value)
 
             # get final MAP estimats
             paramsMAP = {param_name:sess.run(param) for param_name, param in zip(param_names, params)
@@ -282,6 +286,7 @@ class CompositionDE:
                 sd = tf.math.sqrt(tf.diag_part(FIM))
                 sds["sd_{}".format(param_name)] = sess.run(sd)
 
+        tf.reset_default_graph()
         return MAPResult(int(N), {"params":paramsMAP, "sds":sds})
 
 
@@ -291,31 +296,19 @@ if __name__ == "__main__":
     import arviz as az
     import pandas as pd
 
-    # Settings
-    D = 2  # number of dimensions
-    N = 100  # number of datapoints to generate
-    K = 10
-    n_total = [1000]*N
+    pd.options.display.float_format = '{:10,.3f}'.format
+    pd.set_option('display.max_columns', None)
 
-    noise_std_true = 1.0
-
-    # Generate data
-    b_true = np.random.randn(K).astype(np.float32)  # bias (alpha)
-    w_true = np.random.randn(D, K).astype(np.float32)  # weights (beta)
-    x = np.random.randn(N, D).astype(np.float32)
-    noise = noise_std_true * np.random.randn(N, 1).astype(np.float32)
-    concentration = softmax(np.matmul(x, w_true) + b_true + noise)
-    y = np.zeros([N, K], dtype=np.float32)
-    for i in range(N):
-        y[i, :] = np.random.multinomial(n_total[i], concentration[i, :])
-
+    X,y, Z, n_total,m_idx, k_idx = generate_simple_data(n=500, m=2, k=5, m_r=1, k_r=2)
+    print("m-idx", m_idx)
+    print("k-idx", k_idx)
     # Initialize model
-    model = CompositionDE(x, y, n_total)
+    model = CompositionDE(X, y, n_total)
     #params = model.sample()
     #print(params)
     params = model.find_MAP()
 
-    pd.set_option('display.max_columns', None)
+
 
     print(params)
     #print(params.raw_params)
