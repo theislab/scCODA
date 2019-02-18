@@ -14,8 +14,8 @@ from tensorflow_probability import edward2 as ed
 from tensorflow_probability.python.edward2 import interception
 from tensorflow_probability.python.edward2.program_transformations import _get_function_inputs
 
-from util.Result import MCMCResult, MAPResult
-from util.Simulation import generate_simple_data
+from util.result import MCMCResult, MAPResult
+from util.simulation import generate_simple_data
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
