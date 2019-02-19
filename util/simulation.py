@@ -179,12 +179,12 @@ def run_simulator(model, data_generator, inference_method="MAP", alpha=0.05, itr
 
 
 if __name__ == "__main__":
-    from model.model import CompositionDE
+    from model.model import CompositionDEOld
     from scipy.special import softmax
     #simulator = lambda : generate_simple_data(n=100, m=1, k=5, m_r=1, k_r=2)
 
     X,y,Z,n_total,_,_ = scRNA_realistic_data(n=10)
-    m = CompositionDE(X, y, n_total, Z=Z)
+    m = CompositionDEOld(X, y, n_total, Z=Z)
     r = m.find_MAP().summary(varnames=["alpha"])
     t = np.exp(r["mean"])
     print(t/t.sum())
