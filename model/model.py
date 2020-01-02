@@ -10,7 +10,7 @@ import time
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow_probability import edward2 as ed
+from tensorflow_probability.experimental import edward2 as ed
 from tensorflow_probability.python.edward2 import interception
 from tensorflow_probability.python.edward2.program_transformations import _get_function_inputs
 
