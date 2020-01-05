@@ -1,8 +1,13 @@
-# # Toolbox for simulating compositional data from ScRNA-seq
-# This toolbox provides data generation and modelling solutions for compositional data with different specifications.
-# This data might e.g. come from scRNA-seq experiments.
-# For scenarios 1-4, we first generate composition parameters (b_true, w_true) and a covariance matrix (x) from some input specifications.
-# We then build a concentration vector for each sample (row of x) that sums up to 1. From there, we can calculate each row of the cell count matrix (y) via a multinomial distribution
+""""
+Toolbox for simulating compositional data from ScRNA-seq
+
+This toolbox provides data generation and modelling solutions for compositional data with different specifications.
+This data might e.g. come from scRNA-seq experiments.
+For scenarios 1-4, we first generate composition parameters (b_true, w_true) and a covariance matrix (x) from some input specifications.
+We then build a concentration vector for each sample (row of x) that sums up to 1. From there, we can calculate each row of the cell count matrix (y) via a multinomial distribution
+
+:authors: Johannes Ostner
+"""
 
 # TODO: Extensive introduction into data format
 
