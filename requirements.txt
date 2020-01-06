@@ -6,7 +6,4 @@ matplotlib
 tensorflow>=2.0
 tensorflow-probability>=0.8.0
 arviz
-pickle
 scipy
-ast
-time
