@@ -16,7 +16,7 @@ pd.set_option('display.max_columns', None)
 from util import compositional_analysis_generation_toolbox as gen
 from model import dirichlet_models as mod
 from util import result_classes as res
-#from prototyping import multi_parameter_sampling as mult
+from util import multi_parameter_sampling as mult
 
 #%%
 # Artificial data
@@ -24,13 +24,13 @@ from util import result_classes as res
 n = 9
 
 cases = 1
-K = 15
+K = 5
 n_samples = [n, n]
 n_total = np.full(shape=[2*n], fill_value=1000)
 print(n_total)
 
 x, y, b_true, w_true = gen.generate_case_control(cases, K, n_total[0], n_samples,
-                                                 w_true=np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]]),
+                                                 w_true=np.array([[1, 0, 0, 0, 0]]),
                                                  b_true=np.log(np.repeat(0.2, K)).tolist())
 
 print(w_true)
@@ -120,10 +120,10 @@ for x in [1]:
 num_results = [5e3+100]
 
 p = mult.Multi_param_simulation(cases, K, n_total, n_samples, b_true, w_true, num_results,
-                                model=mod.dir_mult_logit_normal_noncentered_model_new, method="MCMC")
+                                model=mod.compositional_model_no_baseline)
 
 p_2 = mult.Multi_param_simulation(cases, K, n_total, n_samples, b_true, w_true, num_results,
-                                model=mod.dir_mult_logit_normal_noncentered_model_baseline_new, method="MCMC")
+                                model=mod.compositional_model_baseline)
 
 #%%
 
@@ -163,7 +163,7 @@ for x in [0.3, 0.5, 1]:
 #%%
 
 p = mult.Multi_param_simulation_multi_model(cases, K, n_total, n_samples, b_true, w_true, num_results,
-                                models=[mod.dir_mult_logit_normal_noncentered_model_new, mod.dir_mult_logit_normal_noncentered_model_baseline_new])
+                                models=[mod.compositional_model_no_baseline, mod.compositional_model_no_baseline])
 
 p.simulate()
 
@@ -175,32 +175,6 @@ for i in range(9):
     for m in p.results.keys():
         print(p.results[m][i])
 
-#%%
-
-for n in range(10):
-
-    n=n+1
-    print(n)
-    cases = 1
-    K = 5
-    n_samples = [n, n]
-    n_total = np.full(shape=[2*n], fill_value=1000)
-    w = np.zeros(K).tolist()
-    w[0] = 0.3
-
-    x, y, b_true, w_true = gen.generate_case_control(cases, K, n_total[0], n_samples,
-                                                     w_true=[w],
-                                                     b_true=np.log(np.repeat(0.2, K)).tolist(),
-                                                     sigma=0.05*np.identity(K))
-
-    y_cont = y[:n]
-    y_case = y[n:]
-
-    print(np.mean(y_cont, axis=0))
-    print(np.mean(y_case, axis=0))
-
-    print(np.std(y_cont/1000, axis=0))
-    print(np.std(y_case/1000, axis=0))
 
 
 

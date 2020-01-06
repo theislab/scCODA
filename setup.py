@@ -17,12 +17,14 @@ DESCRIPTION = 'statistical test to identify compositional changes in count data.
 URL = 'https://github.com/theislab/compositionalDE'
 EMAIL = 'benjamin.schubert@helmholtz-muenchen.de'
 AUTHOR = 'Benjamin Schubert'
-REQUIRES_PYTHON = '==3.6.0'
+REQUIRES_PYTHON = '==3.7.0'
 VERSION = "0.0.1"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "numpy", "scipy", "tf-nightly", "tfp-nightly", "arviz"
+    "numpy", "scipy", "tensorflow", "tensorflow-probability",
+    "arviz", "seaborn", "pandas", "pickle", "ast", "matplotlib",
+    "time"
 ]
 
 # What packages are optional?
