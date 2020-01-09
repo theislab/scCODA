@@ -85,7 +85,7 @@ class CompositionalModel:
         # Samples after burn-in
         states_burnin = []
         acceptances = accept[0].numpy()
-        accepted = acceptances[acceptances is True]
+        accepted = acceptances[acceptances == True]
         for s in samples:
             states_burnin.append(s[n_burnin:])
 
@@ -116,7 +116,7 @@ class NoBaselineModel(CompositionalModel):
     without specification of a baseline cell type
     """
 
-    def __init__(self, covariate_matrix, data_matrix, sample_counts):
+    def __init__(self, covariate_matrix, data_matrix):
         """
         Constructor of model class
         :param covariate_matrix: numpy array [NxD] - covariate matrix
@@ -128,17 +128,18 @@ class NoBaselineModel(CompositionalModel):
         dtype = tf.float32
         self.x = tf.cast(covariate_matrix, dtype)
         self.y = tf.cast(data_matrix, dtype)
+        sample_counts = np.sum(data_matrix, axis=1)
         self.n_total = tf.cast(sample_counts, dtype)
 
         # Get dimensions of data
-        N, D = x.shape
-        K = y.shape[1]
+        N, D = self.x.shape
+        K = self.y.shape[1]
 
         # Check input data
-        if N != y.shape[0]:
-            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(x.shape[0], y.shape[0]))
-        if N != len(n_total):
-            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(x.shape[0], len(n_total)))
+        if N != self.y.shape[0]:
+            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(self.x.shape[0], self.y.shape[0]))
+        if N != len(self.n_total):
+            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
 
         def define_model(x, n_total, K):
             """
@@ -233,31 +234,31 @@ class BaselineModel(CompositionalModel):
     with specification of a baseline cell type
     """
 
-    def __init__(self, covariate_matrix, data_matrix, sample_counts, baseline_index=0):
+    def __init__(self, covariate_matrix, data_matrix, baseline_index=0):
 
         """
         Constructor of model class
         :param covariate_matrix: numpy array [NxD] - covariate matrix
         :param data_matrix: numpy array [NxK] - cell count matrix
-        :param sample_counts: numpy array [N] - number of cells per sample
         :param baseline_index: index of cell type that is used as a reference (baseline)
         """
 
         dtype = tf.float32
         self.x = tf.cast(covariate_matrix, dtype)
         self.y = tf.cast(data_matrix, dtype)
+        sample_counts = np.sum(data_matrix, axis=1)
         self.n_total = tf.cast(sample_counts, dtype)
         self.baseline_index = baseline_index
 
         # Get dimensions of data
-        N, D = x.shape
-        K = y.shape[1]
+        N, D = self.x.shape
+        K = self.y.shape[1]
 
         # Check input data
-        if N != y.shape[0]:
-            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(x.shape[0], y.shape[0]))
-        if N != len(n_total):
-            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(x.shape[0], len(n_total)))
+        if N != self.y.shape[0]:
+            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(self.x.shape[0], self.y.shape[0]))
+        if N != len(self.n_total):
+            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
 
         def define_model(x, n_total, K):
             """
