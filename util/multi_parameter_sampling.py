@@ -84,8 +84,11 @@ class Multi_param_simulation:
 
         for c, k, nt, ns, b, w, nr in self.l:
             # generate data set
-            x_temp, y_temp, b_temp, w_temp = gen.generate_case_control(cases=c, K=k, n_total=nt, n_samples=ns,
+            temp_data = gen.generate_case_control(cases=c, K=k, n_total=nt, n_samples=ns,
                                                                        b_true=b, w_true=w)
+
+            x_temp = temp_data.obs.values
+            y_temp = temp_data.X
 
             # Save parameter set
             s = [c, k, nt, ns, b, w, nr]
@@ -288,8 +291,11 @@ class Multi_param_simulation_multi_model:
         # For each parameter combination:
         for c, k, nt, ns, b, w, nr in self.l:
             # Generate dataset
-            x_temp, y_temp, b_temp, w_temp = gen.generate_case_control(cases=c, K=k, n_total=nt, n_samples=ns,
+            temp_data = gen.generate_case_control(cases=c, K=k, n_total=nt, n_samples=ns,
                                                                        b_true=b, w_true=w, sigma=np.identity(k) * 0.01)
+
+            x_temp = temp_data.obs.values
+            y_temp = temp_data.X
 
             # Write parameter combination
             s = [c, k, nt, ns, b, w, nr]

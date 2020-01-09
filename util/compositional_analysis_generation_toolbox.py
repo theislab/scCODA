@@ -19,6 +19,8 @@ from __future__ import print_function
 
 import matplotlib.pyplot as plt
 import numpy as np
+import anndata as ad
+import pandas as pd
 
 import tensorflow_probability as tfp
 import warnings
@@ -54,10 +56,7 @@ def generate_normal_uncorrelated (N, D, K, n_total, noise_std_true):
     :param n_total: Number of individual cells per sample
     :param noise_std_true: noise level. 0: No noise
 
-    :return: b_true: bias coefficients
-    w_true: weight cefficients
-    x: Data set that can be used for simulation
-    y: Corresponding compositional data
+    :return: Anndata object
     """
 
     # Generate random composition parameters
@@ -74,8 +73,13 @@ def generate_normal_uncorrelated (N, D, K, n_total, noise_std_true):
         # Concentration should sum to 1 for each sample
         concentration = softmax(x[i,:].T@w_true + b_true + noise[i,:]).astype(np.float32)
         y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float32)
-        
-    return b_true, w_true, x, y
+
+    x_names = ["x_" + str(n) for n in range(x.shape[1])]
+    x_df = pd.DataFrame(x, columns=x_names)
+
+    data = ad.AnnData(X=y, obs=x_df, uns={"b_true": b_true, "w_true": w_true})
+
+    return data
 
 
 # ## Scenario 2: Correlated covariates
@@ -93,10 +97,7 @@ def generate_normal_correlated (N, D, K, n_total, noise_std_true, covariate_mean
     :param noise_std_true: noise level. 0: No noise
     :param covariate_mean: Mean of each covariate
     :param covariate_var: Variance matrix for all covaraiates
-    :return: b_true: bias coefficients
-    w_true: weight cefficients
-    x: Data set that can be used for simulation
-    y: Corresponding compositional data
+    :return: Anndata object
     """
 
     # Generate randomized covariate covariance matrix if none is specified
@@ -123,8 +124,13 @@ def generate_normal_correlated (N, D, K, n_total, noise_std_true, covariate_mean
         # Concentration should sum to 1 for each sample
         concentration = softmax(x[i, :].T @ w_true + b_true + noise[i, :]).astype(np.float32)
         y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float32)
-        
-    return b_true, w_true, x, y
+
+    x_names = ["x_" + str(n) for n in range(x.shape[1])]
+    x_df = pd.DataFrame(x, columns=x_names)
+
+    data = ad.AnnData(X=y, obs=x_df, uns={"b_true": b_true, "w_true": w_true})
+
+    return data
 
 
 # ## Scenario 3: Correlated cell types
@@ -140,10 +146,7 @@ def generate_normal_xy_correlated (N, D, K, n_total, noise_std_true=1, covariate
         :param covariate_mean: Mean of each covariate
         :param covariate_var: Variance matrix for all covaraiates
         :param sigma: correlation matrix for cell types - array[K,K]
-        :return: b_true: bias coefficients
-        w_true: weight cefficients
-        x: Data set that can be used for simulation
-        y: Corresponding compositional data
+        :return: Anndata object
         """
 
     # Generate randomized covariate covariance matrix if none is specified
@@ -171,8 +174,13 @@ def generate_normal_xy_correlated (N, D, K, n_total, noise_std_true=1, covariate
         alpha = np.random.multivariate_normal(mean = x[i,:].T@w_true + b_true, cov = sigma*noise[i,:]).astype(np.float32)
         concentration = softmax(alpha).astype(np.float32)
         y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float32)
-        
-    return b_true, w_true, x, y
+
+    x_names = ["x_" + str(n) for n in range(x.shape[1])]
+    x_df = pd.DataFrame(x, columns=x_names)
+
+    data = ad.AnnData(X=y, obs=x_df, uns={"b_true": b_true, "w_true": w_true})
+
+    return data
 
 
 # ## Scenario 4: Sparse true parameters
@@ -223,10 +231,7 @@ def generate_sparse_xy_correlated (N, D, K, n_total, noise_std_true=1,
     :param sigma: correlation matrix for cell types - array[K,K]
     :param b_true: bias coefficients
     :param w_true: Effect matrix
-    :return: b_true: bias coefficients
-        w_true: weight cefficients
-        x: Data set that can be used for simulation
-        y: Corresponding compositional data
+    :return: Anndata object
     """
 
     # Generate randomized covariate covariance matrix if none is specified
@@ -261,8 +266,13 @@ def generate_sparse_xy_correlated (N, D, K, n_total, noise_std_true=1,
             np.float32)
         concentration = softmax(alpha).astype(np.float32)
         y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float32)
-        
-    return b_true, w_true, x, y
+
+    x_names = ["x_" + str(n) for n in range(x.shape[1])]
+    x_df = pd.DataFrame(x, columns=x_names)
+
+    data = ad.AnnData(X=y, obs=x_df, uns={"b_true": b_true, "w_true": w_true})
+
+    return data
 
 
 # ## Scenario 5: Uniform/Skewed cell composition
@@ -287,7 +297,7 @@ def generate_case_control (cases = 1, K = 5, n_total = 1000, n_samples = [5,5], 
     :param sigma: correlation matrix for cell types - array[K,K]
     :param b_true: bias coefficients
     :param w_true: Effect matrix
-    :return:
+    :return: Anndata object
     """
 
     # Uniform intercepts if none are specifed
@@ -331,7 +341,12 @@ def generate_case_control (cases = 1, K = 5, n_total = 1000, n_samples = [5,5], 
     x=x.astype(np.float32)
     y=y.astype(np.float32)
 
-    return x, y, b_true, w_true
+    x_names = ["x_" + str(n) for n in range(x.shape[1])]
+    x_df = pd.DataFrame(x, columns=x_names)
+
+    data = ad.AnnData(X=y, obs=x_df, uns={"b_true": b_true, "w_true": w_true})
+
+    return data
 
 #%%
 
