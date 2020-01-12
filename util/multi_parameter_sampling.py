@@ -38,7 +38,7 @@ class Multi_param_simulation:
 
 
     def __init__(self, cases=[1], K=[5], n_total=[1000], n_samples=[[5,5]],
-                 b_true=[None], w_true=[None], num_results=[10e3], model=mod.compositional_model_no_baseline):
+                 b_true=[None], w_true=[None], num_results=[10e3], model=mod.NoBaselineModel):
 
         """
         constructor. Simulated Parameters are passed to the constructor as lists, except the type of model, which is fixed for all simulations.
@@ -246,7 +246,7 @@ class Multi_param_simulation_multi_model:
     """
 
     def __init__(self, cases=[1], K=[5], n_total=[1000], n_samples=[[5,5]],
-                 b_true=[None], w_true=[None], num_results=[10e3], models=[mod.compositional_model_no_baseline]):
+                 b_true=[None], w_true=[None], num_results=[10e3], models=[mod.NoBaselineModel]):
 
         """
         Constructor - This class provides a framework for running an instance of multi_param_simulation with more than one model.

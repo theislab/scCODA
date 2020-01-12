@@ -13,6 +13,7 @@ import scipy.stats as st
 import matplotlib.pyplot as plt
 from abc import ABCMeta, abstractmethod
 
+
 class AResult(metaclass=ABCMeta):
     """
     Abstract Result class defining the result interface
@@ -104,14 +105,13 @@ class MCMCResult(AResult):
     Result class for MCMC samples
     """
 
-    def __init__(self, N, params, y_hat, y, spike_slab=False):
+    def __init__(self, N, params, y_hat, y, baseline):
         """
         Init function
         :param N: The sample size
         :param params: the trace of the parameters
         :param y_hat: cell count matrix calculated by the model
         :param y: true (observed) cell count matrix
-        :param spike_slab: boolean - indicates whether the model uss a spike-and-slab prior
         """
         self.N = N
         self.y_hat = y_hat
@@ -129,33 +129,34 @@ class MCMCResult(AResult):
         self.params["Pr(>|z|)"] = 2 * (1 - st.norm(loc=0, scale=1).cdf(self.params["z"]))
 
         # For sipke-and-slab prior: Select significant effects via inclusion probability
-        if spike_slab == True:
-            #self.params.loc[self.params.index.str.match("beta"), ["z", "Pr(>|z|)"]] = np.NaN
+        beta_raw = self.__raw_params["beta"]
+        beta_inc_prob = []
+        beta_nonzero_mean = []
 
-            beta_raw = self.__raw_params["beta"]
-            beta_inc_prob = []
-            beta_nonzero_mean = []
+        for j in range(beta_raw.shape[1]):
+            for i in range(beta_raw.shape[2]):
+                beta_i_raw = beta_raw[:, j, i]
+                beta_i_raw_nonzero = np.where(np.abs(beta_i_raw) > 1e-3)[0]
+                prob = beta_i_raw_nonzero.shape[0]/beta_i_raw.shape[0]
+                beta_inc_prob.append(prob)
+                beta_nonzero_mean.append(beta_i_raw[beta_i_raw_nonzero].mean())
 
-            for j in range(beta_raw.shape[1]):
-                for i in range(beta_raw.shape[2]):
-                    beta_i_raw = beta_raw[:,j,i]
-                    beta_i_raw_nonzero = np.where(np.abs(beta_i_raw) > 1e-3)[0]
-                    prob = beta_i_raw_nonzero.shape[0]/beta_i_raw.shape[0]
-                    beta_inc_prob.append(prob)
-                    beta_nonzero_mean.append(beta_i_raw[beta_i_raw_nonzero].mean())
+        self.params["inclusion_prob"] = np.NaN
+        self.params.loc[self.params.index.str.match(r"beta\["), "inclusion_prob"] = beta_inc_prob
+        self.params["mean_nonzero"] = np.NaN
+        self.params.loc[self.params.index.str.match(r"beta\["), "mean_nonzero"] = beta_nonzero_mean
 
-            self.params["inclusion_prob"] = np.NaN
-            self.params.loc[self.params.index.str.match("beta\["), "inclusion_prob"] = beta_inc_prob
-            self.params["mean_nonzero"] = np.NaN
-            self.params.loc[self.params.index.str.match("beta\["), "mean_nonzero"] = beta_nonzero_mean
-
-            self.params["final_parameter"] = np.where(np.isnan(self.params["mean_nonzero"]),
-                                                      self.params["mean"],
-                                                      np.where(self.params["inclusion_prob"] > 1-1/np.sqrt(beta_raw.shape[2]),
-                                                               self.params["mean_nonzero"],
-                                                               0))
+        if baseline is None:
+            threshold_factor = 0.87
         else:
-            self.params["final_parameter"] = np.where(self.params["Pr(>|z|)"]>0.05, 0, self.params["mean"])
+            threshold_factor = 0.98
+
+        self.params["final_parameter"] = np.where(np.isnan(self.params["mean_nonzero"]),
+                                                  self.params["mean"],
+                                                  np.where(self.params["inclusion_prob"]
+                                                           > 1-threshold_factor/np.sqrt(beta_raw.shape[2]),
+                                                           self.params["mean_nonzero"],
+                                                           0))
 
     def summary(self, varnames=None):
         """
@@ -176,10 +177,11 @@ class MCMCResult(AResult):
         """
         az.plot_trace(self.arviz_params)
         plt.show()
-        #az.plot_posterior(self.arviz_params, ref_val=0, color='#87ceeb')
-        #plt.show()
-        #az.plot_autocorr(self.arviz_params, max_lag=self.arviz_params.posterior.sizes['draw'])
-        #plt.show()
+
+        # az.plot_posterior(self.arviz_params, ref_val=0, color='#87ceeb')
+        # plt.show()
+        # az.plot_autocorr(self.arviz_params, max_lag=self.arviz_params.posterior.sizes['draw'])
+        # plt.show()
 
     def __transform_data_to_inference_data(self):
         """
@@ -187,10 +189,9 @@ class MCMCResult(AResult):
         :return: arvis.InferenceData
         """
         return az.convert_to_inference_data(
-            {var_name: var[np.newaxis] for var_name, var in self.__raw_params.items() if "concentration" not in var_name})
+            {var_name: var[np.newaxis] for var_name,
+                                           var in self.__raw_params.items() if "concentration" not in var_name})
 
     @property
     def raw_params(self):
         return self.__raw_params
-
-
