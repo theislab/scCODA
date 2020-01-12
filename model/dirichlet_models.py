@@ -104,8 +104,12 @@ class CompositionalModel:
         states_burnin = self.get_chains_after_burnin(states, kernel_results, n_burnin)
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
-        return res.MCMCResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
-                              y_hat, self.y.numpy(), spike_slab=True)
+        if self.baseline_index is None:
+            return res.MCMCResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
+                                  y_hat, self.y.numpy(), baseline=False)
+        else:
+            return res.MCMCResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
+                                  y_hat, self.y.numpy(), baseline=True)
 
 
 class NoBaselineModel(CompositionalModel):
@@ -130,6 +134,7 @@ class NoBaselineModel(CompositionalModel):
         self.y = tf.cast(data_matrix, dtype)
         sample_counts = np.sum(data_matrix, axis=1)
         self.n_total = tf.cast(sample_counts, dtype)
+        self.baseline_index = None
 
         # Get dimensions of data
         N, D = self.x.shape
@@ -199,12 +204,16 @@ class NoBaselineModel(CompositionalModel):
         beta_size = [D, K]
 
         # MCMC starting values
-        self.params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha'),
+        self.params = [tf.zeros(alpha_size, name='init_alpha', dtype=dtype),
+                       # tf.random.normal(alpha_size, 0, 1, name='init_alpha'),
                        tf.zeros(1, name="init_mu_b", dtype=dtype),
                        tf.ones(1, name="init_sigma_b", dtype=dtype),
-                       tf.random.normal(beta_size, 0, 1, name='init_b_offset'),
+                       tf.zeros([D, K], name='init_b_offset', dtype=dtype),
+                       # tf.random.normal(beta_size, 0, 1, name='init_b_offset'),
                        tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
                        ]
+
+        print(self.target_log_prob_fn(self.params[0], self.params[1], self.params[2], self.params[3], self.params[4]))
 
         self.vars = [tf.Variable(v, trainable=True) for v in self.params]
 
@@ -360,3 +369,428 @@ class BaselineModel(CompositionalModel):
 
         return ed.DirichletMultinomial(self.n_total,
                                        concentration=tf.exp(tf.matmul(self.x, betas_final) + alphas_final)).numpy()
+
+
+class NoBaselineModelNoEdward(CompositionalModel):
+
+    """"
+    implements statistical model and
+    test statistics for compositional differential change analysis
+    without specification of a baseline cell type
+    """
+
+    def __init__(self, covariate_matrix, data_matrix):
+        """
+        Constructor of model class
+        :param covariate_matrix: numpy array [NxD] - covariate matrix
+        :param data_matrix: numpy array [NxK] - cell count matrix
+        :param sample_counts: numpy array [N] - number of cells per sample
+        :param dtype: data type for all numbers (for tensorflow)
+        """
+
+        dtype = tf.float32
+        self.x = tf.cast(covariate_matrix, dtype)
+        self.y = tf.cast(data_matrix, dtype)
+        sample_counts = np.sum(data_matrix, axis=1)
+        self.n_total = tf.cast(sample_counts, dtype)
+        self.baseline_index = None
+
+        # Get dimensions of data
+        N, D = self.x.shape
+        K = self.y.shape[1]
+
+        # Check input data
+        if N != self.y.shape[0]:
+            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(self.x.shape[0], self.y.shape[0]))
+        if N != len(self.n_total):
+            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
+
+        alpha_size = [1, K]
+        beta_size = [D, K]
+
+        self.model_struct = tfd.JointDistributionNamed(dict(
+            alpha=tfd.Independent(
+                tfd.Normal(
+                    loc=tf.zeros(alpha_size),
+                    scale=tf.ones(alpha_size) * 5,
+                    name="alpha"),
+                reinterpreted_batch_ndims=2),
+
+            mu_b=tfd.Normal(loc=tf.zeros(1, dtype=dtype), scale=tf.ones(1, dtype=dtype), name="mu_b"),
+            sigma_b=tfd.HalfCauchy(tf.zeros(1, dtype=dtype), tf.ones(1, dtype=dtype), name="sigma_b"),
+
+            b_offset=tfd.Independent(
+                tfd.Normal(
+                    loc=tf.zeros(beta_size, dtype=dtype),
+                    scale=tf.ones(beta_size, dtype=dtype),
+                    name="b_offset"),
+                reinterpreted_batch_ndims=2),
+
+            b_raw=lambda mu_b, sigma_b, b_offset: tfd.Independent(
+                tfd.Deterministic(
+                    mu_b[..., tf.newaxis]
+                    + sigma_b[..., tf.newaxis]
+                    * b_offset,
+                    name="b_raw"),
+                reinterpreted_batch_ndims=2),
+
+            # Spike-and-slab
+            sigma_ind_raw=tfd.Independent(
+                tfd.Normal(
+                    loc=tf.zeros(shape=beta_size, dtype=dtype),
+                    scale=tf.ones(shape=beta_size, dtype=dtype),
+                    name='sigma_ind_raw'),
+                reinterpreted_batch_ndims=2),
+
+            ind=lambda sigma_ind_raw: tfd.Independent(
+                tfd.Deterministic(
+                    tf.exp(sigma_ind_raw*50) / (1 + tf.exp(sigma_ind_raw*50)),
+                    name="ind"),
+                reinterpreted_batch_ndims=2),
+
+            # Betas
+            beta=lambda ind, b_raw: tfd.Independent(
+                tfd.Deterministic(
+                    ind*b_raw, name="beta"),
+                reinterpreted_batch_ndims=2),
+
+            # concentration
+            #concentration_=lambda alpha, beta:
+            #tfd.Independent(
+             #   tfd.Deterministic(
+             #   tf.exp(alpha + tf.matmul(tf.cast(x, dtype), beta)),
+             #   name="concentration_"),
+             #   reinterpreted_batch_ndims=1),
+
+            # Cell count prediction via DirMult
+            predictions=lambda alpha, beta: tfd.Independent(
+                tfd.DirichletMultinomial(
+                    total_count=tf.cast(n_total, dtype),
+                    concentration=tf.exp(alpha + tf.matmul(tf.cast(x, dtype), beta)),
+                    name="predictions"),
+                reinterpreted_batch_ndims=1)
+
+        ))
+
+        # Joint posterior distribution
+        self.target_log_prob_fn = lambda alpha_, mu_b_, sigma_b_, b_offset_, sigma_ind_raw_:\
+            self.model_struct.joint_log_prob((alpha_, mu_b_, sigma_b_, b_offset_, sigma_ind_raw_, self.y))[0]
+
+        # MCMC starting values
+        self.params = dict(mu_a=tf.zeros(alpha_size, name='init_alpha'),
+                           mu_b=tf.zeros(1, name="init_mu_b", dtype=dtype),
+                           sigma_b=tf.ones(1, name="init_sigma_b", dtype=dtype),
+                           b_offset=tf.zeros(beta_size, name='init_b_offset'),
+                           b_raw=tf.zeros(beta_size, name='init_b_raw'),
+                           sigma_ind_raw=tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
+                           ind=tf.ones(beta_size, name='init_ind', dtype=dtype)*0.5,
+                           beta=tf.zeros(beta_size, name='init_beta'),
+                           predictions=y
+                           )
+        print(self.model_struct.log_prob(self.params)[0])
+
+        self.vars = [tf.Variable(v, trainable=True) for v in self.params]
+
+    # Calculate predicted cell counts (for analysis purposes)
+    def get_y_hat(self, states_burnin, num_results, n_burnin):
+        alphas_final = states_burnin[0].numpy().mean(axis=0)
+
+        ind_raw = states_burnin[4].numpy() * 50
+        ind = np.exp(ind_raw) / (1 + np.exp(ind_raw))
+
+        b_raw = np.array([states_burnin[1].numpy()[i] + (states_burnin[2].numpy()[i] * states_burnin[3].numpy()[i])
+                          for i in range(num_results - n_burnin)])
+
+        betas = ind * b_raw
+        betas_final = betas.mean(axis=0)
+
+        states_burnin.append(betas)
+
+        return tfd.DirichletMultinomial(self.n_total,
+                                        concentration=tf.exp(tf.matmul(self.x, betas_final) + alphas_final)).numpy()
+
+
+#%%
+# Testing
+from util import compositional_analysis_generation_toolbox as gen
+
+n = 2
+
+cases = 1
+K = 5
+n_samples = [n, n]
+n_total = np.full(shape=[2*n], fill_value=1000)
+
+data = gen.generate_case_control(cases, K, n_total[0], n_samples,
+                                 w_true=np.array([[1, 0, 0, 0, 0]]),
+                                 b_true=np.log(np.repeat(0.2, K)).tolist())
+
+x = data.obs.values
+y = data.X
+print(x)
+print(y)
+
+#%%
+# Testing
+from util import compositional_analysis_generation_toolbox as gen
+
+n = 2
+
+cases = 2
+K = 3
+n_samples = [n, n, n, n]
+n_total = np.full(shape=[2*n], fill_value=1000)
+
+data = gen.generate_case_control(cases, K, n_total[0], n_samples,
+                                 w_true=np.array([[1, 0, 0], [0, 1, 0]]),
+                                 b_true=np.log(np.repeat(0.2, K)).tolist())
+
+x = data.obs.values
+y = data.X
+print(x)
+print(y)
+#%%
+
+model = NoBaselineModelNoEdward(x, y)
+params_mcmc = model.sample(num_results=int(12), n_burnin=10)
+print(params_mcmc)
+
+#%%
+model_2 = NoBaselineModel(x, y)
+params_mcmc_2 = model_2.sample(num_results=int(12), n_burnin=10)
+print(params_mcmc_2)
+
+
+#%%
+D = x.shape[1]
+K = y.shape[1]
+N = y.shape[0]
+dtype = tf.float32
+beta_size = [D,K]
+alpha_size = [1,K]
+#tf.random.set_seed(5678)
+
+test_model = tfd.JointDistributionNamed(dict(
+    alpha=tfd.Independent(
+        tfd.Normal(
+            loc=tf.zeros(alpha_size),
+            scale=tf.ones(alpha_size) * 5,
+            name="alpha"),
+        reinterpreted_batch_ndims=2),
+
+    mu_b=tfd.Normal(loc=tf.zeros(1, dtype=dtype), scale=tf.ones(1, dtype=dtype), name="mu_b"),
+    sigma_b=tfd.HalfCauchy(tf.zeros(1, dtype=dtype), tf.ones(1, dtype=dtype), name="sigma_b"),
+
+    b_offset=tfd.Independent(
+        tfd.Normal(
+            loc=tf.zeros([D, K], dtype=dtype),
+            scale=tf.ones([D, K], dtype=dtype),
+            name="b_offset"),
+        reinterpreted_batch_ndims=2),
+
+    b_raw=lambda mu_b, sigma_b, b_offset: tfd.Independent(
+        tfd.Deterministic(
+            mu_b[..., tf.newaxis]
+            + sigma_b[..., tf.newaxis]
+            * b_offset,
+            name="b_raw"),
+        reinterpreted_batch_ndims=2),
+
+    # Spike-and-slab
+    sigma_ind_raw=tfd.Independent(
+        tfd.Normal(
+            loc=tf.zeros(shape=[D, K], dtype=dtype),
+            scale=tf.ones(shape=[D, K], dtype=dtype),
+            name='sigma_ind_raw'),
+        reinterpreted_batch_ndims=2),
+
+    ind=lambda sigma_ind_raw: tfd.Independent(
+        tfd.Deterministic(
+            tf.exp(sigma_ind_raw*50) / (1 + tf.exp(sigma_ind_raw*50)),
+            name="ind"),
+        reinterpreted_batch_ndims=2),
+
+    # Betas
+    beta=lambda ind, b_raw: tfd.Independent(
+        tfd.Deterministic(
+            ind*b_raw, name="beta"),
+        reinterpreted_batch_ndims=2),
+
+    # concentration
+    #concentration_=lambda alpha, beta:
+    #tfd.Independent(
+     #   tfd.Deterministic(
+     #   tf.exp(alpha + tf.matmul(tf.cast(x, dtype), beta)),
+     #   name="concentration_"),
+     #   reinterpreted_batch_ndims=1),
+
+    # Cell count prediction via DirMult
+    predictions=lambda alpha, beta: tfd.Independent(
+        tfd.DirichletMultinomial(
+            total_count=tf.cast(n_total, dtype),
+            concentration=tf.exp(alpha + tf.matmul(tf.cast(x, dtype), beta)),
+            name="predictions"),
+        reinterpreted_batch_ndims=1)
+
+))
+
+params = dict(mu_a=tf.zeros(alpha_size, name='init_alpha'),
+              mu_b=tf.zeros(1, name="init_mu_b", dtype=dtype),
+              sigma_b=tf.ones(1, name="init_sigma_b", dtype=dtype),
+              b_offset=tf.zeros(beta_size, name='init_b_offset'),
+              b_raw=tf.zeros(beta_size, name='init_b_raw'),
+              sigma_ind_raw=tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
+              ind=tf.ones(beta_size, name='init_ind', dtype=dtype)*0.5,
+              beta=tf.zeros(beta_size, name='init_beta'),
+              predictions=tf.zeros(beta_size, name='y')
+              )
+
+#%%
+print(test_model.sample(seed=1234))
+print(test_model.log_prob(params))
+
+#%%
+alpha = tf.zeros(alpha_size)
+beta = tf.zeros(beta_size)
+conc = tf.exp(alpha + tf.matmul(x, beta))
+print(conc)
+
+#%%
+conc_2 = tfd.Independent(tfd.Deterministic(conc), reinterpreted_batch_ndims=0)
+print(conc_2)
+
+#%%
+dm = tfd.Independent(tfd.DirichletMultinomial(tf.cast(n_total, dtype), conc), reinterpreted_batch_ndims=2)
+dm2 = tfd.DirichletMultinomial(tf.cast(n_total, dtype), conc)
+print(dm.batch_shape)
+print(dm.sample())
+
+#%%
+import matplotlib.pyplot as plt
+
+num_schools = 8  # number of schools
+treatment_effects = np.array(
+    [28, 8, -3, 7, -1, 1, 18, 12], dtype=np.float32)  # treatment effects
+treatment_stddevs = np.array(
+    [15, 10, 16, 11, 9, 11, 10, 18], dtype=np.float32)  # treatment SE
+
+#%%
+
+model_seq = tfd.JointDistributionSequential([
+  tfd.Normal(loc=0., scale=10., name="avg_effect"),  # `mu` above
+  tfd.Normal(loc=5., scale=1., name="avg_stddev"),  # `log(tau)` above
+  tfd.Normal(loc=tf.zeros(num_schools),
+                             scale=tf.ones(num_schools),
+                             name="school_effects_standard"),  # `theta_prime`
+
+  lambda school_effects_standard, avg_stddev, avg_effect: (
+      tfd.Independent(tfd.Normal(loc=(avg_effect[..., tf.newaxis] +
+                                      tf.exp(avg_stddev[..., tf.newaxis]) *
+                                      school_effects_standard),  # `theta` above
+                                 scale=treatment_stddevs,
+                      name="treatment_effects"),  # `y` above
+                      reinterpreted_batch_ndims=0))
+])
+
+def target_log_prob_fn(avg_effect, avg_stddev, school_effects_standard):
+  """Unnormalized target density as a function of states."""
+  return model_seq.log_prob((
+      avg_effect, avg_stddev, school_effects_standard, treatment_effects))
+
+print(model_seq.log_prob((tf.zeros([], name='init_avg_effect'),
+                     tf.zeros([], name='init_avg_stddev'),
+                     tf.ones([num_schools], name='init_school_effects_standard'),
+                     treatment_effects
+      )))
+
+#%%
+model_named = tfd.JointDistributionNamed(dict(
+  avg_effect=tfd.Normal(loc=0., scale=10., name="avg_effect"),  # `mu` above
+  avg_stddev=tfd.Normal(loc=5., scale=1., name="avg_stddev"),  # `log(tau)` above
+  school_effects_standard=tfd.Independent(tfd.Normal(loc=tf.zeros(beta_size),
+                             scale=tf.ones(beta_size),
+                             name="school_effects_standard"),  # `theta_prime`
+                  reinterpreted_batch_ndims=2),
+  y=lambda school_effects_standard, avg_stddev, avg_effect: (
+      tfd.Independent(tfd.Normal(loc=(avg_effect[..., tf.newaxis] +
+                                      tf.exp(avg_stddev[..., tf.newaxis]) *
+                                      school_effects_standard),  # `theta` above
+                                 scale=tf.ones(beta_size)),
+                      name="treatment_effects",  # `y` above
+                      reinterpreted_batch_ndims=2))
+))
+
+def target_log_prob_fn_named(avg_effect, avg_stddev, school_effects_standard):
+  """Unnormalized target density as a function of states."""
+  return model_named.log_prob((
+      avg_effect, avg_stddev, school_effects_standard, treatment_effects))
+
+print(model_named.log_prob(dict(avg_effect=tf.zeros([], name='init_avg_effect'),
+                     avg_stddev=tf.zeros([], name='init_avg_stddev'),
+                     school_effects_standard=tf.ones(beta_size, name='init_school_effects_standard'),
+                     y=tf.ones(beta_size, name='y')
+      )))
+#print(model_named.sample())
+
+#%%
+avg_effect=tfd.Normal(loc=0., scale=10., name="avg_effect")  # `mu` above
+avg_stddev=tfd.Normal(loc=5., scale=1., name="avg_stddev")  # `log(tau)` above
+school_effects_standard=tfd.Independent(tfd.Normal(loc=tf.zeros(beta_size),
+                         scale=tf.ones(beta_size),
+                         name="school_effects_standard"),  # `theta_prime`
+              reinterpreted_batch_ndims=1)
+
+print(avg_effect)
+
+treatment_effects = tfd.Independent(tfd.Normal(loc=(avg_effect[..., tf.newaxis] +
+                                      tf.exp(avg_stddev[..., tf.newaxis]) *
+                                      school_effects_standard),  # `theta` above
+                                 scale=treatment_stddevs,
+                      name="treatment_effects"),  # `y` above
+                      reinterpreted_batch_ndims=1)
+
+print(treatment_effects)
+
+#%%
+alpha=tfd.Independent(tfd.Normal(loc=tf.zeros([K]), scale=tf.ones([K]) * 5, name="alpha"),
+                      reinterpreted_batch_ndims=1)
+print(alpha)
+
+mu_b=tfd.Normal(loc=tf.zeros(1, dtype=dtype), scale=tf.ones(1, dtype=dtype), name="mu_b")
+print(mu_b)
+sigma_b=tfd.HalfCauchy(tf.zeros(1, dtype=dtype), tf.ones(1, dtype=dtype), name="sigma_b")
+print(sigma_b)
+b_offset=tfd.Independent(tfd.Normal(loc=tf.zeros([D, K], dtype=dtype),
+                                    scale=tf.ones([D, K], dtype=dtype),
+                                    name="b_offset"),
+                         reinterpreted_batch_ndims=2)
+print(b_offset)
+
+b_raw=lambda mu_b, sigma_b, b_offset: tfd.Independent(tfd.Deterministic(mu_b + sigma_b * b_offset, name="b_raw"),
+                                                      reinterpreted_batch_ndims=1)
+print(b_raw)
+
+# Spike-and-slab
+sigma_ind_raw=tfd.Normal(loc=tf.zeros(shape=[D, K], dtype=dtype),
+           scale=tf.ones(shape=[D, K], dtype=dtype),
+           name='sigma_ind_raw')
+ind=lambda sigma_ind_raw: tfd.Independent(tfd.Deterministic(tf.exp(sigma_ind_raw*50) / (1 + tf.exp(sigma_ind_raw*50)),
+                                            name="ind"),
+                                          reinterpreted_batch_ndims=1)
+# Betas
+beta=lambda ind, b_raw: tfd.Independent(tfd.Deterministic(ind*b_raw, name="beta"),
+                                        reinterpreted_batch_ndims=1),
+
+# concentration
+concentration_=lambda alpha, beta:\
+    tfd.Independent(
+        tfd.Deterministic(
+        tf.exp(alpha + tf.matmul(tf.cast(x, dtype), beta)),
+        name="concentration_"),
+        reinterpreted_batch_ndims=0)
+
+# Cell count prediction via DirMult
+predictions=lambda concentration_: tfd.Independent(tfd.DirichletMultinomial(tf.cast(n_total, dtype),
+                                                                            concentration=concentration_,
+                                                                            name="predictions"),
+                                                   reinterpreted_batch_ndims=1)
