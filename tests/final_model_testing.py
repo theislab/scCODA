@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import importlib
 
 from util import compositional_analysis_generation_toolbox as gen
 from util import comp_ana as mod
@@ -41,14 +42,22 @@ print(data.obs)
 #%%
 
 model = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
-params_mcmc = model.sample(num_results=int(2e4), n_burnin=5000)
+
+#%%
+params_mcmc = model.sample_hmc(num_results=int(1e4), n_burnin=5000)
 print(params_mcmc)
+
+#%%
+importlib.reload(mod)
+
+params_nuts = model.sample_nuts(num_results=int(1e4), n_burnin=5000)
+print(params_nuts)
 
 #%%
 
 model_2 = mod.CompositionalAnalysis(data, "x_0", baseline_index=K)
 
-params_mcmc_2 = model_2.sample(n_burnin=5000, num_results=int(2e4))
+params_mcmc_2 = model_2.sample_hmc(n_burnin=5000, num_results=int(2e4))
 print(params_mcmc_2)
 
 #%%
@@ -94,11 +103,11 @@ plt.show()
 #%%
 
 model_salm = mod.compositional_model_baseline(x, salm.values, n_total, baseline_index=3)
-salm_mcmc = model_salm.sample(n_burnin=5000, num_results=int(2e4))
+salm_mcmc = model_salm.sample_hmc(n_burnin=5000, num_results=int(2e4))
 print(salm_mcmc)
 #%%
 model_salm_2 = mod.compositional_model_no_baseline(x, salm.values, n_total)
-salm_mcmc_2 = model_salm_2.sample(n_burnin=5000, num_results=int(2e4))
+salm_mcmc_2 = model_salm_2.sample_hmc(n_burnin=5000, num_results=int(2e4))
 print(salm_mcmc_2)
 
 
