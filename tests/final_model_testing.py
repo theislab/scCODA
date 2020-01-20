@@ -40,12 +40,19 @@ print(data.X)
 print(data.obs)
 
 #%%
+importlib.reload(mod)
+importlib.reload(res)
+importlib.reload(gen)
 
 model = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
 
 #%%
-params_mcmc = model.sample_hmc(num_results=int(1e4), n_burnin=5000)
-print(params_mcmc)
+params_mcmc = model.sample_hmc(num_results=int(1000), n_burnin=500)
+
+#%%
+a, b = params_mcmc.summary()
+print(a)
+print(b)
 
 #%%
 importlib.reload(mod)

@@ -14,36 +14,68 @@ import matplotlib.pyplot as plt
 from abc import ABCMeta, abstractmethod
 
 
-class AResult(metaclass=ABCMeta):
+class CompAnaResult(metaclass=ABCMeta):
     """
     Abstract Result class defining the result interface
     """
 
-    @abstractmethod
-    def summary(self, varnames=None):
+    def __init__(self, N, params, y_hat, y, baseline):
         """
-        Summarizes the results returning
-        estimates, CI/HDI, and test statistics
-        as pandas dataframe
-        :param varnames: a list of string specifying the variables to summarize
-        :return: A Pandas dataframe
+        Init function
+        :param N: The sample size
+        :param params: the trace of the parameters
+        :param y_hat: cell count matrix calculated by the model
+        :param y: true (observed) cell count matrix
         """
-        raise NotImplementedError
+        self.N = N
+        self.y_hat = y_hat
+        self.y = y
+
+        self.__raw_params = params
+
+        # Setup arviz plot compatibility
+        self.arviz_params = self.__transform_data_to_inference_data()
+        df = az.summary(self.arviz_params)
+
+        # Select relevant params
+        self.params = df[df.index.str.match("|".join(["alpha", "beta"]))]
+
+        # For sipke-and-slab prior: Select significant effects via inclusion probability
+        beta_raw = self.__raw_params["beta"]
+        beta_inc_prob = []
+        beta_nonzero_mean = []
+
+        for j in range(beta_raw.shape[1]):
+            for i in range(beta_raw.shape[2]):
+                beta_i_raw = beta_raw[:, j, i]
+                beta_i_raw_nonzero = np.where(np.abs(beta_i_raw) > 1e-3)[0]
+                prob = beta_i_raw_nonzero.shape[0]/beta_i_raw.shape[0]
+                beta_inc_prob.append(prob)
+                beta_nonzero_mean.append(beta_i_raw[beta_i_raw_nonzero].mean())
+
+        self.params["inclusion_prob"] = np.NaN
+        self.params.loc[self.params.index.str.match(r"beta\["), "inclusion_prob"] = beta_inc_prob
+        self.params["mean_nonzero"] = np.NaN
+        self.params.loc[self.params.index.str.match(r"beta\["), "mean_nonzero"] = beta_nonzero_mean
+
+        # Inclusion prob threshold value
+        if baseline is None:
+            threshold_factor = 0.87
+        else:
+            threshold_factor = 0.98
+        threshold = 1-threshold_factor/np.sqrt(beta_raw.shape[2])
+
+        self.params["final_parameter"] = np.where(np.isnan(self.params["mean_nonzero"]),
+                                                  self.params["mean"],
+                                                  np.where(self.params["inclusion_prob"] > threshold,
+                                                           self.params["mean_nonzero"],
+                                                           0))
 
     def __str__(self):
         return str(self.summary())
 
     def __repr__(self):
         return self.__str__()
-
-    @abstractmethod
-    def plot(self, varnames=None):
-        """
-        Plots a summary of all/specified inferred parameters
-        :param varnames: a list of string specifying the variables to plot
-        :return: a matplotlib derived figure
-        """
-        raise NotImplementedError
 
     def compare_to_truth(self, true_params, varnames=None):
         """
@@ -99,75 +131,45 @@ class AResult(metaclass=ABCMeta):
         ret['Cell Type'][0] = 'Total'
         return ret
 
-
-class MCMCResult(AResult):
-    """
-    Result class for MCMC samples
-    """
-
-    def __init__(self, N, params, y_hat, y, baseline):
-        """
-        Init function
-        :param N: The sample size
-        :param params: the trace of the parameters
-        :param y_hat: cell count matrix calculated by the model
-        :param y: true (observed) cell count matrix
-        """
-        self.N = N
-        self.y_hat = y_hat
-        self.y = y
-
-        self.__raw_params = params
-
-        # Setup arviz plot compatibility
-        self.arviz_params = self.__transform_data_to_inference_data()
-        df = az.summary(self.arviz_params)
-
-        # Calculate confidence intervals
-        self.params = df[df.index.str.match("|".join(["alpha", "beta", "gamma"]))]
-        self.params["z"] = (np.abs(np.divide(self.params["mean"], self.params["sd"]))).where(self.params["sd"]!=0, 1.000)
-        self.params["Pr(>|z|)"] = 2 * (1 - st.norm(loc=0, scale=1).cdf(self.params["z"]))
-
-        # For sipke-and-slab prior: Select significant effects via inclusion probability
-        beta_raw = self.__raw_params["beta"]
-        beta_inc_prob = []
-        beta_nonzero_mean = []
-
-        for j in range(beta_raw.shape[1]):
-            for i in range(beta_raw.shape[2]):
-                beta_i_raw = beta_raw[:, j, i]
-                beta_i_raw_nonzero = np.where(np.abs(beta_i_raw) > 1e-3)[0]
-                prob = beta_i_raw_nonzero.shape[0]/beta_i_raw.shape[0]
-                beta_inc_prob.append(prob)
-                beta_nonzero_mean.append(beta_i_raw[beta_i_raw_nonzero].mean())
-
-        self.params["inclusion_prob"] = np.NaN
-        self.params.loc[self.params.index.str.match(r"beta\["), "inclusion_prob"] = beta_inc_prob
-        self.params["mean_nonzero"] = np.NaN
-        self.params.loc[self.params.index.str.match(r"beta\["), "mean_nonzero"] = beta_nonzero_mean
-
-        if baseline is None:
-            threshold_factor = 0.87
-        else:
-            threshold_factor = 0.98
-
-        self.params["final_parameter"] = np.where(np.isnan(self.params["mean_nonzero"]),
-                                                  self.params["mean"],
-                                                  np.where(self.params["inclusion_prob"]
-                                                           > 1-threshold_factor/np.sqrt(beta_raw.shape[2]),
-                                                           self.params["mean_nonzero"],
-                                                           0))
-
     def summary(self, varnames=None):
-        """
-        Get model summary statistics
-        :param varnames: a list of string specifying the variables to plot
-        :return: a pandas DataFrame
-        """
+
         if varnames is None:
-            return self.params
+            summ_df = self.params
         else:
-            return self.params[self.params.index.str.contains("|".join(varnames))]
+            summ_df = self.params[self.params.index.str.contains("|".join(varnames))]
+
+        summ_df = summ_df.rename(columns=dict(zip(
+            summ_df.columns, ["Mean", "SD", "HPD 3%", "HPD 97%",
+                              "Inclusion Probability", "Mean (Non-zero)", "Final Parameter"]
+        )))
+
+        # Get intercept stats
+        alphas_df = summ_df.loc[summ_df.index.str.contains("alpha"), ["Final Parameter"]]
+        alphas_exp = np.exp(alphas_df)
+
+        y_bar = np.mean(np.sum(self.y, axis=1))
+        alpha_sample = (alphas_exp["Final Parameter"]
+                        / np.sum(alphas_exp["Final Parameter"])
+                        * y_bar).values
+        alphas_df["Expected Sample"] = alpha_sample
+
+        # Effect stats
+        betas_df = summ_df.loc[summ_df.index.str.contains("beta"), ["Final Parameter", "Inclusion Probability"]]
+
+        K = alphas_df.shape[0]
+        D = int(betas_df.shape[0]/K)
+
+        beta_mean = alphas_df["Final Parameter"].values
+        for d in range(D):
+            beta_d = betas_df["Final Parameter"].values[(d*K):((d+1)*K)]
+            beta_mean = beta_mean + beta_d
+        beta_mean = np.exp(beta_mean)
+
+        beta_sample = beta_mean / np.sum(beta_mean) * y_bar
+        betas_df["Expected Sample"] = beta_sample
+        betas_df["log2-fold change"] = np.log2(beta_sample/alpha_sample)
+
+        return alphas_df, betas_df
 
     def plot(self, varnames=None):
         """
@@ -175,7 +177,12 @@ class MCMCResult(AResult):
         :param varnames: a list of string specifying the variables to plot
         :return: traceplots of all model parameters
         """
-        az.plot_trace(self.arviz_params)
+        if varnames is None:
+            plot_df = self.params
+        else:
+            plot_df = self.params[self.params.index.str.contains("|".join(varnames))]
+
+        az.plot_trace(plot_df)
         plt.show()
 
         # az.plot_posterior(self.arviz_params, ref_val=0, color='#87ceeb')
@@ -189,9 +196,11 @@ class MCMCResult(AResult):
         :return: arvis.InferenceData
         """
         return az.convert_to_inference_data(
-            {var_name: var[np.newaxis] for var_name,
-                                           var in self.__raw_params.items() if "concentration" not in var_name})
+            {var_name: var[np.newaxis] for var_name, var in self.__raw_params.items() if
+             "concentration" not in var_name
+             })
 
     @property
     def raw_params(self):
         return self.__raw_params
+

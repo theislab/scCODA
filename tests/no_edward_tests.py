@@ -7,6 +7,7 @@ import time
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+import importlib
 from tensorflow_probability.python.experimental import edward2 as ed
 
 from util import result_classes as res
@@ -36,9 +37,10 @@ print(x)
 print(y)
 
 #%%
+importlib.reload(mod)
 
 model = mod.NoBaselineModelNoEdward(x, y)
-params_mcmc = model.sample(num_results=int(12), n_burnin=10)
+params_mcmc = model.sample_hmc(num_results=int(12), n_burnin=10)
 print(params_mcmc)
 
 #%%
@@ -52,98 +54,233 @@ D = x.shape[1]
 K = y.shape[1]
 N = y.shape[0]
 dtype = tf.float32
-beta_size = [D,K]
-alpha_size = [1,K]
+beta_size = [D, K]
+alpha_size = [1, K]
 #tf.random.set_seed(5678)
 
-test_model = tfd.JointDistributionNamed(dict(
-    alpha_=tfd.Independent(
-        tfd.Normal(
-            loc=tf.zeros(alpha_size),
-            scale=tf.ones(alpha_size) * 5,
-            name="alpha"),
-        reinterpreted_batch_ndims=2),
-
-    mu_b=tfd.Independent(
+test_model = tfd.JointDistributionSequential([
+    tfd.Independent(
         tfd.Normal(loc=tf.zeros(1, dtype=dtype),
                    scale=tf.ones(1, dtype=dtype),
                    name="mu_b"),
         reinterpreted_batch_ndims=1),
 
-    sigma_b=tfd.Independent(
+    tfd.Independent(
         tfd.HalfCauchy(tf.zeros(1, dtype=dtype),
                        tf.ones(1, dtype=dtype),
                        name="sigma_b"),
         reinterpreted_batch_ndims=1),
 
-    b_offset=tfd.Independent(
+    tfd.Independent(
         tfd.Normal(
             loc=tf.zeros([D, K], dtype=dtype),
             scale=tf.ones([D, K], dtype=dtype),
             name="b_offset"),
         reinterpreted_batch_ndims=2),
 
-    b_raw=lambda mu_b, sigma_b, b_offset: tfd.Independent(
+    lambda mu_b, sigma_b, b_offset: tfd.Independent(
         tfd.Deterministic(
-            mu_b[..., tf.newaxis]
-            + sigma_b[..., tf.newaxis]
+            mu_b
+            + sigma_b
             * b_offset,
             name="b_raw"),
         reinterpreted_batch_ndims=2),
 
     # Spike-and-slab
-    sigma_ind_raw=tfd.Independent(
-        tfd.Normal(
+    tfd.Independent(
+        tfd.LogitNormal(
             loc=tf.zeros(shape=[D, K], dtype=dtype),
-            scale=tf.ones(shape=[D, K], dtype=dtype),
-            name='sigma_ind_raw'),
-        reinterpreted_batch_ndims=2),
-
-    ind=lambda sigma_ind_raw: tfd.Independent(
-        tfd.Deterministic(
-            tf.exp(sigma_ind_raw*50) / (1 + tf.exp(sigma_ind_raw*50)),
-            name="ind"),
+            scale=tf.ones(shape=[D, K], dtype=dtype)*50,
+            name='ind'),
         reinterpreted_batch_ndims=2),
 
     # Betas
-    beta_=lambda ind, b_raw: tfd.Independent(
+    lambda ind, b_raw: tfd.Independent(
         tfd.Deterministic(
             ind*b_raw,
             name="beta"),
         reinterpreted_batch_ndims=2),
 
+    tfd.Independent(
+        tfd.Normal(
+            loc=tf.zeros(alpha_size),
+            scale=tf.ones(alpha_size) * 5,
+            name="alpha"),
+        reinterpreted_batch_ndims=2),
+
     # concentration
-    concentration_=lambda alpha_, beta_: tfd.Independent(
+    lambda alpha, beta: tfd.Independent(
         tfd.Deterministic(
-            tf.exp(alpha_ + tf.matmul(tf.cast(x, dtype), beta_)),
+            tf.exp(alpha + tf.matmul(tf.cast(x, dtype), beta)),
             name="concentration_"),
         reinterpreted_batch_ndims=2),
 
     # Cell count prediction via DirMult
-    predictions=lambda concentration_: tfd.Independent(
+    lambda concentration_: tfd.Independent(
         tfd.DirichletMultinomial(
             total_count=tf.cast(n_total, dtype),
             concentration=concentration_,
             name="predictions"),
-        reinterpreted_batch_ndims=1)
+        reinterpreted_batch_ndims=1),
+])
 
-))
+init_mu_b = tf.zeros(1, name="init_mu_b", dtype=dtype)
+init_sigma_b = tf.ones(1, name="init_sigma_b", dtype=dtype)
+init_b_offset = tf.zeros(beta_size, name="init_b_offset", dtype=dtype)
+#init_b_offset = tf.random.normal(beta_size, 0, 1, name='init_b_offset', dtype=dtype)
+init_ind = tf.ones(beta_size, name='init_ind', dtype=dtype)*0.5
+init_alpha = tf.zeros(alpha_size, name="init_alpha", dtype=dtype)
+#init_alpha = tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype)
+init_b_raw = init_mu_b + init_sigma_b * init_b_offset
+init_beta = init_ind * init_b_raw
+init_conc = tf.exp(init_alpha + tf.matmul(tf.cast(x, dtype), init_beta))
+init_pred = tf.cast(y, dtype)
 
-params = dict(alpha_=tf.zeros(alpha_size, name='init_alpha', dtype=dtype),
-              mu_b=tf.zeros(1, name="init_mu_b", dtype=dtype),
-              sigma_b=tf.ones(1, name="init_sigma_b", dtype=dtype),
-              b_offset=tf.zeros(beta_size, name='init_b_offset', dtype=dtype),
-              #b_raw=tf.zeros(beta_size, name='init_b_raw'),
-              sigma_ind_raw=tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
-              #ind=tf.ones(beta_size, name='init_ind', dtype=dtype)*0.5,
-              #beta=tf.zeros(beta_size, name='init_beta'),
-              #predictions=tf.ones([N, K], name='init_predictions')
-              )
+
+params_lp = [init_mu_b,
+          init_sigma_b,
+          init_b_offset,
+          init_b_raw,
+          init_ind,
+          init_beta,
+          init_alpha,
+          init_conc,
+          init_pred
+          ]
+
+params = [init_mu_b,
+          init_sigma_b,
+          init_b_offset,
+          #init_b_raw,
+          init_ind,
+          #init_beta,
+          init_alpha,
+          #init_conc,
+          #init_pred
+          ]
 
 #%%
 test_sam = test_model.sample()
-print([x.shape for x in test_sam.values()])
-print(test_model.log_prob(params))
+print(test_sam)
+print(test_model.log_prob(params_lp))
+print(test_model.resolve_graph())
+
+#%%
+
+def target_log_prob_fn_2(mu_b_, sigma_b_, b_offset_, ind_, alpha_):
+    b_raw_ = mu_b_ + sigma_b_ * b_offset_
+    beta_ = ind_ * b_raw_
+    conc_ = tf.exp(alpha_ + tf.matmul(tf.cast(x, dtype), beta_))
+    return test_model.log_prob((mu_b_, sigma_b_, b_offset_, b_raw_, ind_, beta_, alpha_, conc_, tf.cast(y, dtype)))
+
+
+def target_log_prob_fn(mu_b_, sigma_b_, b_offset_, ind_, alpha_):
+    return test_model.log_prob((mu_b_, sigma_b_, b_offset_, ind_, alpha_, tf.cast(y, dtype)))
+
+num_results = 5000
+num_burnin_steps = 3000
+
+@tf.function
+def do_sampling_seq():
+  return tfp.mcmc.sample_chain(
+      num_results=num_results,
+      num_burnin_steps=num_burnin_steps,
+      current_state=params,
+      kernel=tfp.mcmc.HamiltonianMonteCarlo(
+          target_log_prob_fn=target_log_prob_fn_2,
+          step_size=0.4,
+          num_leapfrog_steps=3))
+
+states_seq, kernel_results_seq = do_sampling_seq()
+
+#%%
+print(states_seq)
+
+
+#%%
+
+def edward_model(x, n_total, K):
+    """
+    Model definition in Edward2
+    :param x: numpy array [NxD] - covariate matrix
+    :param n_total: numpy array [N] - number of cells per sample
+    :param K: Number of cell types
+    :return: none
+    """
+    N, D = x.shape
+
+    # normal prior on bias
+    alpha = ed.Normal(loc=tf.zeros([K]), scale=tf.ones([K]) * 5, name="alpha")
+
+    # Noncentered parametrization for raw slopes (before spike-and-slab)
+    mu_b = ed.Normal(loc=tf.zeros(1, dtype=dtype), scale=tf.ones(1, dtype=dtype), name="mu_b")
+    sigma_b = ed.HalfCauchy(tf.zeros(1, dtype=dtype), tf.ones(1, dtype=dtype), name="sigma_b")
+    b_offset = ed.Normal(loc=tf.zeros([D, K], dtype=dtype), scale=tf.ones([D, K], dtype=dtype), name="b_offset")
+
+    b_raw = mu_b + sigma_b * b_offset
+
+    # Spike-and-slab priors
+    sigma_ind_raw = ed.Normal(
+        loc=tf.zeros(shape=[D, K], dtype=dtype),
+        scale=tf.ones(shape=[D, K], dtype=dtype),
+        name='sigma_ind_raw')
+    ind_t = sigma_ind_raw * 50
+    ind = tf.exp(ind_t) / (1 + tf.exp(ind_t))
+
+    # Calculate betas
+    beta = ind * b_raw
+
+    # Concentration vector from intercepts, slopes
+    concentration_ = tf.exp(alpha + tf.matmul(x, beta))
+
+    # Cell count prediction via DirMult
+    predictions = ed.DirichletMultinomial(n_total, concentration=concentration_, name="predictions")
+    return predictions
+
+
+# Joint posterior distribution
+log_joint_ed = ed.make_log_joint_fn(edward_model)
+
+# Function to compute log posterior probability
+target_log_prob_fn_ed = lambda alpha_, mu_b_, sigma_b_, b_offset_, sigma_ind_raw_: \
+    log_joint_ed(x=tf.cast(x, dtype),
+                   n_total=tf.cast(n_total, dtype),
+                   K=K,
+                   predictions=tf.cast(y, dtype),
+                   alpha=alpha_,
+                   mu_b=mu_b_,
+                   sigma_b=sigma_b_,
+                   b_offset=b_offset_,
+                   sigma_ind_raw=sigma_ind_raw_,
+                   )
+
+alpha_size = [K]
+beta_size = [D, K]
+
+# MCMC starting values
+params_ed = [tf.zeros(alpha_size, name='init_alpha', dtype=dtype),
+             # tf.random.normal(alpha_size, 0, 1, name='init_alpha'),
+             tf.zeros(1, name="init_mu_b", dtype=dtype),
+             tf.ones(1, name="init_sigma_b", dtype=dtype),
+             tf.zeros(beta_size, name='init_b_offset', dtype=dtype),
+             # tf.random.normal(beta_size, 0, 1, name='init_b_offset'),
+             tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
+             ]
+
+print(target_log_prob_fn_ed(params_ed[0], params_ed[1], params_ed[2], params_ed[3], params_ed[4]))
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #%%
 import matplotlib.pyplot as plt
@@ -302,12 +439,11 @@ print(init_state)
 #%%
 # minimal example for github issue
 b = np.random.normal(0., 1.)
-print(b)
-#%%
 
 model_seq = tfd.JointDistributionSequential([
     tfd.Normal(loc=0., scale=1., name="a"),
-    lambda a_: tfd.Normal(loc=a_, scale=1., name="b")])
+    lambda a: tfd.Normal(loc=a, scale=1., name="b")
+])
 
 
 def target_log_prob_fn_seq(a):
@@ -348,6 +484,7 @@ def sample_mcmc(init, target_log_prob_fn):
 states_seq, kernel_results_seq = sample_mcmc(init_seq, target_log_prob_fn_seq)
 print(states_seq)
 
+#%%
 states_name, kernel_results_name = sample_mcmc(init_name, target_log_prob_fn_name)
 print(states_seq)
 
