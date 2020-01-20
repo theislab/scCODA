@@ -102,10 +102,10 @@ class CompositionalModel:
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
         if self.baseline_index is None:
-            return res.MCMCResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
+            return res.CompAnaResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
                                   y_hat, self.y.numpy(), baseline=False)
         else:
-            return res.MCMCResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
+            return res.CompAnaResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
                                   y_hat, self.y.numpy(), baseline=True)
 
     def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01):
@@ -144,10 +144,10 @@ class CompositionalModel:
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
         if self.baseline_index is None:
-            return res.MCMCResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
+            return res.CompAnaResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
                                   y_hat, self.y.numpy(), baseline=False)
         else:
-            return res.MCMCResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
+            return res.CompAnaResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
                                   y_hat, self.y.numpy(), baseline=True)
 
 
@@ -445,90 +445,87 @@ class NoBaselineModelNoEdward(CompositionalModel):
         alpha_size = [1, K]
         beta_size = [D, K]
 
-        self.model_struct = tfd.JointDistributionNamed(dict(
-            alpha_=tfd.Independent(
-                tfd.Normal(
-                    loc=tf.zeros(alpha_size),
-                    scale=tf.ones(alpha_size) * 5,
-                    name="alpha"),
-                reinterpreted_batch_ndims=2),
-
-            mu_b=tfd.Independent(
+        self.model_struct = tfd.JointDistributionSequential([
+            tfd.Independent(
                 tfd.Normal(loc=tf.zeros(1, dtype=dtype),
                            scale=tf.ones(1, dtype=dtype),
                            name="mu_b"),
                 reinterpreted_batch_ndims=1),
 
-            sigma_b=tfd.Independent(
+            tfd.Independent(
                 tfd.HalfCauchy(tf.zeros(1, dtype=dtype),
                                tf.ones(1, dtype=dtype),
                                name="sigma_b"),
                 reinterpreted_batch_ndims=1),
 
-            b_offset=tfd.Independent(
+            tfd.Independent(
                 tfd.Normal(
                     loc=tf.zeros([D, K], dtype=dtype),
                     scale=tf.ones([D, K], dtype=dtype),
                     name="b_offset"),
                 reinterpreted_batch_ndims=2),
 
-            b_raw=lambda mu_b, sigma_b, b_offset: tfd.Independent(
+            lambda mu_b, sigma_b, b_offset: tfd.Independent(
                 tfd.Deterministic(
-                    mu_b[..., tf.newaxis]
-                    + sigma_b[..., tf.newaxis]
+                    mu_b
+                    + sigma_b
                     * b_offset,
                     name="b_raw"),
                 reinterpreted_batch_ndims=2),
 
             # Spike-and-slab
-            sigma_ind_raw=tfd.Independent(
-                tfd.Normal(
+            tfd.Independent(
+                tfd.LogitNormal(
                     loc=tf.zeros(shape=[D, K], dtype=dtype),
-                    scale=tf.ones(shape=[D, K], dtype=dtype),
-                    name='sigma_ind_raw'),
-                reinterpreted_batch_ndims=2),
-
-            ind=lambda sigma_ind_raw: tfd.Independent(
-                tfd.Deterministic(
-                    tf.exp(sigma_ind_raw*50) / (1 + tf.exp(sigma_ind_raw*50)),
-                    name="ind"),
+                    scale=tf.ones(shape=[D, K], dtype=dtype)*50,
+                    name='ind'),
                 reinterpreted_batch_ndims=2),
 
             # Betas
-            beta_=lambda ind, b_raw: tfd.Independent(
+            lambda b_raw, ind: tfd.Independent(
                 tfd.Deterministic(
                     ind*b_raw,
                     name="beta"),
                 reinterpreted_batch_ndims=2),
 
+            tfd.Independent(
+                tfd.Normal(
+                    loc=tf.zeros(alpha_size),
+                    scale=tf.ones(alpha_size) * 5,
+                    name="alpha"),
+                reinterpreted_batch_ndims=2),
+
             # concentration
-            concentration_=lambda alpha_, beta_: tfd.Independent(
+            lambda beta, alpha: tfd.Independent(
                 tfd.Deterministic(
-                    tf.exp(alpha_ + tf.matmul(tf.cast(self.x, dtype), beta_)),
+                    tf.exp(alpha + tf.matmul(tf.cast(self.x, dtype), beta)),
                     name="concentration_"),
                 reinterpreted_batch_ndims=2),
 
             # Cell count prediction via DirMult
-            predictions=lambda concentration_: tfd.Independent(
+            lambda concentration_: tfd.Independent(
                 tfd.DirichletMultinomial(
                     total_count=tf.cast(self.n_total, dtype),
                     concentration=concentration_,
                     name="predictions"),
-                reinterpreted_batch_ndims=1)
-
-        ))
+                reinterpreted_batch_ndims=1),
+        ])
 
         # Joint posterior distribution
-        self.target_log_prob_fn = lambda alpha_, mu_b_, sigma_b_, b_offset_, sigma_ind_raw_:\
-            self.model_struct.log_prob((alpha_, mu_b_, sigma_b_, b_offset_, sigma_ind_raw_))
+        self.target_log_prob_fn = lambda mu_b_, sigma_b_, b_offset_, ind_, alpha_:\
+            self.model_struct.log_prob((mu_b_, sigma_b_, b_offset_, ind_, alpha_, self.y))
 
         # MCMC starting values
-        self.params = dict(alpha_=tf.zeros(alpha_size, name='init_alpha', dtype=dtype),
-                           mu_b=tf.zeros(1, name="init_mu_b", dtype=dtype),
-                           sigma_b=tf.ones(1, name="init_sigma_b", dtype=dtype),
-                           b_offset=tf.zeros(beta_size, name='init_b_offset', dtype=dtype),
-                           sigma_ind_raw=tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
-                           )
+        self.params = [tf.zeros(1, name="init_mu_b", dtype=dtype),
+                       tf.ones(1, name="init_sigma_b", dtype=dtype),
+                       tf.zeros(beta_size, name='init_b_offset', dtype=dtype),
+                       tf.zeros(beta_size, name='init_b_raw'),
+                       tf.ones(beta_size, name='init_ind', dtype=dtype)*0.5,
+                       tf.zeros(beta_size, name='init_beta'),
+                       tf.zeros(alpha_size, name='init_alpha', dtype=dtype),
+                       tf.ones([N, K], name="init_conc", dtype=dtype),
+                       tf.cast(self.y, dtype)
+                       ]
         print(self.model_struct.log_prob(self.params))
 
         self.vars = [tf.Variable(v, trainable=True) for v in self.params]
