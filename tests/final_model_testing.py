@@ -42,17 +42,15 @@ print(data.obs)
 #%%
 importlib.reload(mod)
 importlib.reload(res)
-importlib.reload(gen)
 
-model = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
-
-#%%
-params_mcmc = model.sample_hmc(num_results=int(1000), n_burnin=500)
+ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
 
 #%%
-a, b = params_mcmc.summary()
-print(a)
-print(b)
+params_mcmc = ana.sample(method="HMC", num_results=int(1000), n_burnin=500)
+
+#%%
+params_mcmc.summary(credible_interval=0.9)
+
 
 #%%
 importlib.reload(mod)
@@ -178,7 +176,7 @@ for x in [0.3, 0.5, 1]:
 #%%
 
 p = mult.Multi_param_simulation_multi_model(cases, K, n_total, n_samples, b_true, w_true, num_results,
-                                models=[mod.compositional_model_no_baseline, mod.compositional_model_no_baseline])
+                                            models=[mod.compositional_model_no_baseline, mod.compositional_model_no_baseline])
 
 p.simulate()
 

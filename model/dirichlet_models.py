@@ -101,12 +101,8 @@ class CompositionalModel:
         states_burnin = self.get_chains_after_burnin(states, kernel_results, n_burnin)
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
-        if self.baseline_index is None:
-            return res.CompAnaResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
-                                  y_hat, self.y.numpy(), baseline=False)
-        else:
-            return res.CompAnaResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
-                                  y_hat, self.y.numpy(), baseline=True)
+        return dict(zip(param_names, states_burnin)), y_hat
+
 
     def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01):
 
@@ -143,12 +139,7 @@ class CompositionalModel:
         states_burnin = self.get_chains_after_burnin(states, kernel_results, n_burnin)
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
-        if self.baseline_index is None:
-            return res.CompAnaResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
-                                  y_hat, self.y.numpy(), baseline=False)
-        else:
-            return res.CompAnaResult(int(self.x.shape[0]), dict(zip(param_names, states_burnin)),
-                                  y_hat, self.y.numpy(), baseline=True)
+        return dict(zip(param_names, states_burnin)), y_hat
 
 
 class NoBaselineModel(CompositionalModel):

@@ -79,11 +79,10 @@ test_model = tfd.JointDistributionSequential([
         reinterpreted_batch_ndims=2),
 
     lambda mu_b, sigma_b, b_offset: tfd.Independent(
-        tfd.Deterministic(
             mu_b
             + sigma_b
             * b_offset,
-            name="b_raw"),
+            name="b_raw",
         reinterpreted_batch_ndims=2),
 
     # Spike-and-slab
@@ -96,9 +95,8 @@ test_model = tfd.JointDistributionSequential([
 
     # Betas
     lambda ind, b_raw: tfd.Independent(
-        tfd.Deterministic(
             ind*b_raw,
-            name="beta"),
+            name="beta",
         reinterpreted_batch_ndims=2),
 
     tfd.Independent(
@@ -110,9 +108,8 @@ test_model = tfd.JointDistributionSequential([
 
     # concentration
     lambda alpha, beta: tfd.Independent(
-        tfd.Deterministic(
             tf.exp(alpha + tf.matmul(tf.cast(x, dtype), beta)),
-            name="concentration_"),
+            name="concentration_",
         reinterpreted_batch_ndims=2),
 
     # Cell count prediction via DirMult
@@ -162,7 +159,7 @@ params = [init_mu_b,
 #%%
 test_sam = test_model.sample()
 print(test_sam)
-print(test_model.log_prob(params_lp))
+print(test_model.log_prob(params))
 print(test_model.resolve_graph())
 
 #%%
