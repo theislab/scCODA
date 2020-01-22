@@ -19,18 +19,18 @@ class CompAnaResult(metaclass=ABCMeta):
     Abstract Result class defining the result interface
     """
 
-    def __init__(self, N, params, y_hat, y, baseline):
+    def __init__(self, params, y_hat, y, baseline, cell_types, covariate_names):
         """
         Init function
-        :param N: The sample size
         :param params: the trace of the parameters
         :param y_hat: cell count matrix calculated by the model
         :param y: true (observed) cell count matrix
         """
-        self.N = N
+
         self.y_hat = y_hat
         self.y = y
-
+        self.cell_types = cell_types
+        self.covariate_names = covariate_names
         self.__raw_params = params
 
         # Setup arviz plot compatibility
@@ -41,7 +41,10 @@ class CompAnaResult(metaclass=ABCMeta):
         self.params = df[df.index.str.match("|".join(["alpha", "beta"]))]
 
         # For sipke-and-slab prior: Select significant effects via inclusion probability
-        beta_raw = self.__raw_params["beta"]
+        self.params["inclusion_prob"] = np.NaN
+        self.params["mean_nonzero"] = np.NaN
+
+        beta_raw = params["beta"]
         beta_inc_prob = []
         beta_nonzero_mean = []
 
@@ -53,9 +56,7 @@ class CompAnaResult(metaclass=ABCMeta):
                 beta_inc_prob.append(prob)
                 beta_nonzero_mean.append(beta_i_raw[beta_i_raw_nonzero].mean())
 
-        self.params["inclusion_prob"] = np.NaN
         self.params.loc[self.params.index.str.match(r"beta\["), "inclusion_prob"] = beta_inc_prob
-        self.params["mean_nonzero"] = np.NaN
         self.params.loc[self.params.index.str.match(r"beta\["), "mean_nonzero"] = beta_nonzero_mean
 
         # Inclusion prob threshold value
@@ -70,12 +71,6 @@ class CompAnaResult(metaclass=ABCMeta):
                                                   np.where(self.params["inclusion_prob"] > threshold,
                                                            self.params["mean_nonzero"],
                                                            0))
-
-    def __str__(self):
-        return str(self.summary())
-
-    def __repr__(self):
-        return self.__str__()
 
     def compare_to_truth(self, true_params, varnames=None):
         """
@@ -131,20 +126,36 @@ class CompAnaResult(metaclass=ABCMeta):
         ret['Cell Type'][0] = 'Total'
         return ret
 
-    def summary(self, varnames=None):
+    def summary_prepare(self, varnames=None, credible_interval=0.94):
+
+        # names of confidence interval columns
+        hpd_lower = np.round((1-credible_interval)/2, 3)
+        hpd_higher = 1-hpd_lower
+        hpd_lower_str = "HPD "+str(hpd_lower*100)+"%"
+        hpd_higher_str = "HPD "+str(hpd_higher*100)+"%"
+
+        # custom confidence intervals
+        intervals = az.summary(self.arviz_params, credible_interval=credible_interval)
+        intervals = intervals.loc[intervals.index.str.match("|".join(["alpha", "beta"])),
+                                  intervals.columns.str.contains("hpd_")]
+        par = pd.concat([self.params.drop(columns=["hpd_3%", "hpd_97%"]),
+                         intervals],
+                        axis=1, join="inner")
 
         if varnames is None:
-            summ_df = self.params
+            summ_df = par
         else:
-            summ_df = self.params[self.params.index.str.contains("|".join(varnames))]
+            summ_df = par[par.index.str.contains("|".join(varnames))]
 
         summ_df = summ_df.rename(columns=dict(zip(
-            summ_df.columns, ["Mean", "SD", "HPD 3%", "HPD 97%",
-                              "Inclusion Probability", "Mean (Non-zero)", "Final Parameter"]
+            summ_df.columns, ["Mean", "SD",
+                              "Inclusion Probability", "Mean (Non-zero)", "Final Parameter",
+                              hpd_lower_str, hpd_higher_str]
         )))
 
         # Get intercept stats
-        alphas_df = summ_df.loc[summ_df.index.str.contains("alpha"), ["Final Parameter"]]
+        alphas_df = summ_df.loc[summ_df.index.str.contains("alpha"),
+                                ["Final Parameter", hpd_lower_str, hpd_higher_str]]
         alphas_exp = np.exp(alphas_df)
 
         y_bar = np.mean(np.sum(self.y, axis=1))
@@ -154,7 +165,8 @@ class CompAnaResult(metaclass=ABCMeta):
         alphas_df["Expected Sample"] = alpha_sample
 
         # Effect stats
-        betas_df = summ_df.loc[summ_df.index.str.contains("beta"), ["Final Parameter", "Inclusion Probability"]]
+        betas_df = summ_df.loc[summ_df.index.str.contains("beta"),
+                               ["Final Parameter", hpd_lower_str, hpd_higher_str, "Inclusion Probability"]]
 
         K = alphas_df.shape[0]
         D = int(betas_df.shape[0]/K)
@@ -169,7 +181,22 @@ class CompAnaResult(metaclass=ABCMeta):
         betas_df["Expected Sample"] = beta_sample
         betas_df["log2-fold change"] = np.log2(beta_sample/alpha_sample)
 
+        alphas_df.index = pd.Index(self.cell_types, name="Cell Type")
+        betas_df.index = pd.MultiIndex.from_product([self.covariate_names, self.cell_types],
+                                                    names=["Covariate", "Cell Type"])
+
         return alphas_df, betas_df
+
+    def summary(self, *args, **kwargs):
+        alphas, betas = self.summary_prepare(*args, **kwargs)
+
+        print("Compositional Analysis summary:")
+        print("Intercepts:")
+        print(alphas)
+        print("")
+        print("")
+        print("Effects:")
+        print(betas)
 
     def plot(self, varnames=None):
         """
@@ -203,4 +230,3 @@ class CompAnaResult(metaclass=ABCMeta):
     @property
     def raw_params(self):
         return self.__raw_params
-
