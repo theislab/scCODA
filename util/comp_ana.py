@@ -1,6 +1,7 @@
 import numpy as np
 import patsy as pt
 import pandas as pd
+import importlib
 
 from model import dirichlet_models as dm
 from util import result_classes as res
@@ -18,6 +19,7 @@ class CompositionalAnalysis:
         :param baseline_index: int - baseline index
         :return: A CompositionalModel object
         """
+        importlib.reload(dm)
 
         self.data = data
         self.cell_types = data.var.index.to_list()

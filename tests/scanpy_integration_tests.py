@@ -69,4 +69,7 @@ print(df.sum(axis=0).rename("n_cells").to_frame())
 data = ccd.from_scanpy_list([adata_ref, adata_ref, adata_ref],
                             cell_type_identifier="louvain",
                             covariate_key="cov")
+
+print(data.X)
 print(data.var)
+print(data.obs)

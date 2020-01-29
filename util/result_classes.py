@@ -35,10 +35,10 @@ class CompAnaResult(metaclass=ABCMeta):
 
         # Setup arviz plot compatibility
         self.arviz_params = self.__transform_data_to_inference_data()
-        df = az.summary(self.arviz_params)
+        df = az.summary(self.arviz_params, kind="stats")
 
         # Select relevant params
-        self.params = df[df.index.str.match("|".join(["alpha", "beta"]))]
+        self.params = df.loc[df.index.str.match("|".join(["alpha", "beta"]))]
 
         # For sipke-and-slab prior: Select significant effects via inclusion probability
         self.params["inclusion_prob"] = np.NaN
@@ -135,25 +135,26 @@ class CompAnaResult(metaclass=ABCMeta):
         hpd_higher_str = "HPD "+str(hpd_higher*100)+"%"
 
         # custom confidence intervals
-        intervals = az.summary(self.arviz_params, credible_interval=credible_interval)
+        intervals = az.summary(self.arviz_params, credible_interval=credible_interval, kind="stats")
         intervals = intervals.loc[intervals.index.str.match("|".join(["alpha", "beta"])),
                                   intervals.columns.str.contains("hpd_")]
         par = pd.concat([self.params.drop(columns=["hpd_3%", "hpd_97%"]),
                          intervals],
                         axis=1, join="inner")
 
+        # Complete DataFrame for summary
         if varnames is None:
             summ_df = par
         else:
             summ_df = par[par.index.str.contains("|".join(varnames))]
 
         summ_df = summ_df.rename(columns=dict(zip(
-            summ_df.columns, ["Mean", "SD",
-                              "Inclusion Probability", "Mean (Non-zero)", "Final Parameter",
-                              hpd_lower_str, hpd_higher_str]
+            summ_df.columns,
+            ["Mean", "SD", "Inclusion Probability", "Mean (Non-zero)",
+             "Final Parameter", hpd_lower_str, hpd_higher_str]
         )))
 
-        # Get intercept stats
+        # Get intercept data frame, add expected sample
         alphas_df = summ_df.loc[summ_df.index.str.contains("alpha"),
                                 ["Final Parameter", hpd_lower_str, hpd_higher_str, "SD"]]
         alphas_exp = np.exp(alphas_df)
@@ -164,15 +165,14 @@ class CompAnaResult(metaclass=ABCMeta):
                         * y_bar).values
         alphas_df["Expected Sample"] = alpha_sample
 
-        # Effect stats
+        # Effect data frame
         betas_df = summ_df.loc[summ_df.index.str.contains("beta"),
                                ["Final Parameter", hpd_lower_str, hpd_higher_str, "SD", "Inclusion Probability"]]
-
-        #print(betas_df)
 
         K = alphas_df.shape[0]
         D = int(betas_df.shape[0]/K)
 
+        # add expected sample, log-fold change for effects
         beta_mean = alphas_df["Final Parameter"].values
         beta_sample = []
         log_sample = []
@@ -185,10 +185,10 @@ class CompAnaResult(metaclass=ABCMeta):
             beta_sample = np.append(beta_sample, beta_d)
             log_sample = np.append(log_sample, np.log2(beta_d/alpha_sample))
 
-
         betas_df["Expected Sample"] = beta_sample
         betas_df["log2-fold change"] = log_sample
 
+        # Make nice indices
         alphas_df.index = pd.Index(self.cell_types, name="Cell Type")
         betas_df.index = pd.MultiIndex.from_product([self.covariate_names, self.cell_types],
                                                     names=["Covariate", "Cell Type"])
@@ -206,7 +206,7 @@ class CompAnaResult(metaclass=ABCMeta):
         print("Effects:")
         print(betas)
 
-    def plot(self, varnames=None):
+    def traceplots(self, varnames=None):
         """
         Traceplots
         :param varnames: a list of string specifying the variables to plot
@@ -217,18 +217,35 @@ class CompAnaResult(metaclass=ABCMeta):
         else:
             plot_df = self.params[self.params.index.str.contains("|".join(varnames))]
 
-        az.plot_trace(plot_df)
+        print(self.arviz_params)
+
+        az.plot_trace(self.arviz_params)
         plt.show()
 
-        # az.plot_posterior(self.arviz_params, ref_val=0, color='#87ceeb')
-        # plt.show()
-        # az.plot_autocorr(self.arviz_params, max_lag=self.arviz_params.posterior.sizes['draw'])
-        # plt.show()
+    def posterior_plots(self, varnames=None):
+
+        if varnames is None:
+            plot_df = self.params
+        else:
+            plot_df = self.params[self.params.index.str.contains("|".join(varnames))]
+
+        az.plot_posterior(self.arviz_params, ref_val=0, color='#87ceeb')
+        plt.show()
+
+    def plot_autocorr(self, varnames=None):
+
+        if varnames is None:
+            plot_df = self.params
+        else:
+            plot_df = self.params[self.params.index.str.contains("|".join(varnames))]
+
+        az.plot_autocorr(self.arviz_params, max_lag=self.arviz_params.posterior.sizes['draw'])
+        plt.show()
 
     def __transform_data_to_inference_data(self):
         """
         transforms the sampled data to InferenceData object used by arviz
-        :return: arvis.InferenceData
+        :return: arviz.InferenceData
         """
         return az.convert_to_inference_data(
             {var_name: var[np.newaxis] for var_name, var in self.__raw_params.items() if

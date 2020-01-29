@@ -170,7 +170,8 @@ class NoBaselineModel(CompositionalModel):
             raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
 
         # All parameters that are returned for analysis
-        self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw", "beta"]
+        self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw",
+                            "ind", "b_raw", "beta", "concentration", "prediction"]
 
         def define_model(x, n_total, K):
             """
@@ -243,21 +244,52 @@ class NoBaselineModel(CompositionalModel):
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, n_burnin):
-        alphas_final = states_burnin[0].numpy().mean(axis=0)
+        # TODO: Calculate all posteriors
+        N, D = self.x.shape
+        K = self.y.shape[1]
+
+        alphas = states_burnin[0].numpy()
+        alphas_final = alphas.mean(axis=0)
 
         ind_raw = states_burnin[4].numpy() * 50
-        ind = np.exp(ind_raw) / (1 + np.exp(ind_raw))
+        mu_b = states_burnin[1].numpy()
+        sigma_b = states_burnin[2].numpy()
+        b_offset = states_burnin[3].numpy()
 
-        b_raw = np.array([states_burnin[1].numpy()[i] + (states_burnin[2].numpy()[i] * states_burnin[3].numpy()[i])
-                          for i in range(num_results - n_burnin)])
+        inds = np.zeros([num_results - n_burnin, D, K])
+        beta_raws = np.zeros([num_results-n_burnin, D, K])
+        betas = np.zeros([num_results - n_burnin, D, K])
+        concentrations = np.zeros([num_results - n_burnin, N, K])
+        predictions = np.zeros([num_results - n_burnin, N, K])
 
-        betas = ind * b_raw
+        for i in range(num_results-n_burnin):
+            ir = ind_raw[i]
+            ind = np.exp(ir) / (1 + np.exp(ir))
+            inds[i, :, :] = ind
+
+            b_raw = mu_b[i] + sigma_b[i] * b_offset[i]
+            beta_raws[i, :, :] = b_raw
+
+            beta = ind * b_raw
+            betas[i, :, :] = beta
+
+            conc = np.exp(np.matmul(self.x, beta) + alphas[i])
+            concentrations[i, :, :] = conc
+
+            pred = ed.DirichletMultinomial(self.n_total, conc).numpy()
+            predictions[i, :, :] = pred
+
         betas_final = betas.mean(axis=0)
-
+        states_burnin.append(inds)
+        states_burnin.append(beta_raws)
         states_burnin.append(betas)
+        states_burnin.append(concentrations)
+        states_burnin.append(predictions)
 
         return ed.DirichletMultinomial(self.n_total,
-                                       concentration=tf.exp(tf.matmul(self.x, betas_final) + alphas_final)).numpy()
+                                       concentration=np.exp(np.matmul(self.x, betas_final)
+                                                            + alphas_final).astype(np.float32)
+                                       ).numpy()
 
 
 class BaselineModel(CompositionalModel):
@@ -370,6 +402,8 @@ class BaselineModel(CompositionalModel):
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, n_burnin):
+
+        # TODO: Calculate all posteriors
         alphas_final = states_burnin[0].numpy().mean(axis=0)
 
         ind_raw = states_burnin[4].numpy() * 50
