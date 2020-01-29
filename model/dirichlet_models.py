@@ -74,9 +74,6 @@ class CompositionalModel:
 
     def sample_hmc(self, num_results=int(10e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01):
 
-        # All parameters that are returned for analysis
-        param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw", "beta"]
-
         # (not in use atm)
         constraining_bijectors = [
             tfb.Identity(),
@@ -97,17 +94,14 @@ class CompositionalModel:
             inner_kernel=hmc_kernel, num_adaptation_steps=int(4000), target_accept_prob=0.9)
 
         states, kernel_results = self.sampling(num_results, n_burnin, hmc_kernel, self.params)
-
         states_burnin = self.get_chains_after_burnin(states, kernel_results, n_burnin)
+
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
-        return dict(zip(param_names, states_burnin)), y_hat
+        return dict(zip(self.param_names, states_burnin)), y_hat
 
 
     def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01):
-
-        # All parameters that are returned for analysis
-        param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw", "beta"]
 
         # (not in use atm)
         constraining_bijectors = [
@@ -135,11 +129,10 @@ class CompositionalModel:
         )
 
         states, kernel_results = self.sampling(num_results, n_burnin, nuts_kernel, self.params)
-
         states_burnin = self.get_chains_after_burnin(states, kernel_results, n_burnin)
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
-        return dict(zip(param_names, states_burnin)), y_hat
+        return dict(zip(self.param_names, states_burnin)), y_hat
 
 
 class NoBaselineModel(CompositionalModel):
@@ -175,6 +168,9 @@ class NoBaselineModel(CompositionalModel):
             raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(self.x.shape[0], self.y.shape[0]))
         if N != len(self.n_total):
             raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
+
+        # All parameters that are returned for analysis
+        self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw", "beta"]
 
         def define_model(x, n_total, K):
             """
@@ -296,6 +292,9 @@ class BaselineModel(CompositionalModel):
             raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(self.x.shape[0], self.y.shape[0]))
         if N != len(self.n_total):
             raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
+
+        # All parameters that are returned for analysis
+        self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw", "beta"]
 
         def define_model(x, n_total, K):
             """
@@ -433,6 +432,9 @@ class NoBaselineModelNoEdward(CompositionalModel):
         if N != len(self.n_total):
             raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
 
+        # All parameters that are returned for analysis
+        self.param_names = ["mu_b", "sigma_b", "b_offset", "ind_raw", "alpha", "beta"]
+
         alpha_size = [1, K]
         beta_size = [D, K]
 
@@ -456,27 +458,12 @@ class NoBaselineModelNoEdward(CompositionalModel):
                     name="b_offset"),
                 reinterpreted_batch_ndims=2),
 
-            lambda mu_b, sigma_b, b_offset: tfd.Independent(
-                tfd.Deterministic(
-                    mu_b
-                    + sigma_b
-                    * b_offset,
-                    name="b_raw"),
-                reinterpreted_batch_ndims=2),
-
             # Spike-and-slab
             tfd.Independent(
-                tfd.LogitNormal(
+                tfd.Normal(
                     loc=tf.zeros(shape=[D, K], dtype=dtype),
                     scale=tf.ones(shape=[D, K], dtype=dtype)*50,
-                    name='ind'),
-                reinterpreted_batch_ndims=2),
-
-            # Betas
-            lambda b_raw, ind: tfd.Independent(
-                tfd.Deterministic(
-                    ind*b_raw,
-                    name="beta"),
+                    name='ind_raw'),
                 reinterpreted_batch_ndims=2),
 
             tfd.Independent(
@@ -486,49 +473,41 @@ class NoBaselineModelNoEdward(CompositionalModel):
                     name="alpha"),
                 reinterpreted_batch_ndims=2),
 
-            # concentration
-            lambda beta, alpha: tfd.Independent(
-                tfd.Deterministic(
-                    tf.exp(alpha + tf.matmul(tf.cast(self.x, dtype), beta)),
-                    name="concentration_"),
-                reinterpreted_batch_ndims=2),
-
             # Cell count prediction via DirMult
-            lambda concentration_: tfd.Independent(
+            lambda alpha, ind_raw, b_offset, sigma_b, mu_b: tfd.Independent(
                 tfd.DirichletMultinomial(
                     total_count=tf.cast(self.n_total, dtype),
-                    concentration=concentration_,
+                    concentration=tf.exp(alpha
+                                         + tf.matmul(tf.cast(self.x, dtype),
+                                                     (1 / (1 + tf.exp(-ind_raw)))
+                                                     * (mu_b + sigma_b * b_offset)
+                                                     )),
                     name="predictions"),
                 reinterpreted_batch_ndims=1),
         ])
 
         # Joint posterior distribution
         self.target_log_prob_fn = lambda mu_b_, sigma_b_, b_offset_, ind_, alpha_:\
-            self.model_struct.log_prob((mu_b_, sigma_b_, b_offset_, ind_, alpha_, self.y))
+            self.model_struct.log_prob((mu_b_, sigma_b_, b_offset_, ind_, alpha_, tf.cast(self.y, dtype)))
 
         # MCMC starting values
         self.params = [tf.zeros(1, name="init_mu_b", dtype=dtype),
                        tf.ones(1, name="init_sigma_b", dtype=dtype),
                        tf.zeros(beta_size, name='init_b_offset', dtype=dtype),
-                       tf.zeros(beta_size, name='init_b_raw'),
-                       tf.ones(beta_size, name='init_ind', dtype=dtype)*0.5,
-                       tf.zeros(beta_size, name='init_beta'),
+                       tf.zeros(beta_size, name='init_ind_raw', dtype=dtype),
                        tf.zeros(alpha_size, name='init_alpha', dtype=dtype),
-                       tf.ones([N, K], name="init_conc", dtype=dtype),
-                       tf.cast(self.y, dtype)
                        ]
-        print(self.model_struct.log_prob(self.params))
 
         self.vars = [tf.Variable(v, trainable=True) for v in self.params]
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, n_burnin):
-        alphas_final = states_burnin[0].numpy().mean(axis=0)
+        alphas_final = states_burnin[4].numpy().mean(axis=0)
 
-        ind_raw = states_burnin[4].numpy() * 50
+        ind_raw = states_burnin[3].numpy() * 50
         ind = np.exp(ind_raw) / (1 + np.exp(ind_raw))
 
-        b_raw = np.array([states_burnin[1].numpy()[i] + (states_burnin[2].numpy()[i] * states_burnin[3].numpy()[i])
+        b_raw = np.array([states_burnin[0].numpy()[i] + (states_burnin[1].numpy()[i] * states_burnin[2].numpy()[i])
                           for i in range(num_results - n_burnin)])
 
         betas = ind * b_raw
@@ -537,6 +516,6 @@ class NoBaselineModelNoEdward(CompositionalModel):
         states_burnin.append(betas)
 
         return tfd.DirichletMultinomial(self.n_total,
-                                        concentration=tf.exp(tf.matmul(self.x, betas_final) + alphas_final)).numpy()
+                                        concentration=tf.exp(tf.matmul(self.x, betas_final) + alphas_final)).mean()
 
 

@@ -40,10 +40,29 @@ print(data.X)
 print(data.obs)
 
 #%%
+
+n = 3
+
+cases = 2
+K = 5
+n_samples = [n, n, n, n]
+n_total = np.full(shape=[4*n], fill_value=1000)
+
+data = gen.generate_case_control(cases, K, n_total[0], n_samples,
+                                 w_true=np.array([[1, 0, 0, 0, 0], [0, 1, 0, 0, 0]]),
+                                 b_true=np.log(np.repeat(0.2, K)).tolist())
+
+print(data.uns["w_true"])
+print(data.uns["b_true"])
+
+print(data.X)
+print(data.obs)
+
+#%%
 importlib.reload(mod)
 importlib.reload(res)
 
-ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
+ana = mod.CompositionalAnalysis(data, "x_0+x_1", baseline_index=None)
 
 #%%
 params_mcmc = ana.sample(method="HMC", num_results=int(1000), n_burnin=500)
