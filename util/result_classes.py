@@ -155,7 +155,7 @@ class CompAnaResult(metaclass=ABCMeta):
 
         # Get intercept stats
         alphas_df = summ_df.loc[summ_df.index.str.contains("alpha"),
-                                ["Final Parameter", hpd_lower_str, hpd_higher_str]]
+                                ["Final Parameter", hpd_lower_str, hpd_higher_str, "SD"]]
         alphas_exp = np.exp(alphas_df)
 
         y_bar = np.mean(np.sum(self.y, axis=1))
@@ -166,20 +166,28 @@ class CompAnaResult(metaclass=ABCMeta):
 
         # Effect stats
         betas_df = summ_df.loc[summ_df.index.str.contains("beta"),
-                               ["Final Parameter", hpd_lower_str, hpd_higher_str, "Inclusion Probability"]]
+                               ["Final Parameter", hpd_lower_str, hpd_higher_str, "SD", "Inclusion Probability"]]
+
+        #print(betas_df)
 
         K = alphas_df.shape[0]
         D = int(betas_df.shape[0]/K)
 
         beta_mean = alphas_df["Final Parameter"].values
+        beta_sample = []
+        log_sample = []
         for d in range(D):
             beta_d = betas_df["Final Parameter"].values[(d*K):((d+1)*K)]
-            beta_mean = beta_mean + beta_d
-        beta_mean = np.exp(beta_mean)
+            beta_d = beta_mean + beta_d
+            beta_d = np.exp(beta_d)
+            beta_d = beta_d / np.sum(beta_d) * y_bar
 
-        beta_sample = beta_mean / np.sum(beta_mean) * y_bar
+            beta_sample = np.append(beta_sample, beta_d)
+            log_sample = np.append(log_sample, np.log2(beta_d/alpha_sample))
+
+
         betas_df["Expected Sample"] = beta_sample
-        betas_df["log2-fold change"] = np.log2(beta_sample/alpha_sample)
+        betas_df["log2-fold change"] = log_sample
 
         alphas_df.index = pd.Index(self.cell_types, name="Cell Type")
         betas_df.index = pd.MultiIndex.from_product([self.covariate_names, self.cell_types],
