@@ -62,13 +62,17 @@ print(data.obs)
 importlib.reload(mod)
 importlib.reload(res)
 
-ana = mod.CompositionalAnalysis(data, "x_0+x_1", baseline_index=None)
+ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
 
 #%%
 params_mcmc = ana.sample(method="HMC", num_results=int(1000), n_burnin=500)
 
 #%%
 params_mcmc.summary(credible_interval=0.9)
+
+#%%
+
+params_mcmc.traceplots()
 
 
 #%%
