@@ -65,7 +65,7 @@ importlib.reload(res)
 ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
 
 #%%
-params_mcmc = ana.sample(method="HMC", num_results=int(1000), n_burnin=500)
+params_mcmc = ana.sample_hmc(num_results=int(1000), n_burnin=500)
 
 #%%
 params_mcmc.summary(credible_interval=0.9)

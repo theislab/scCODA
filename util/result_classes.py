@@ -14,12 +14,12 @@ import matplotlib.pyplot as plt
 from abc import ABCMeta, abstractmethod
 
 
-class CompAnaResult(metaclass=ABCMeta):
+class CompAnaResult:
     """
     Abstract Result class defining the result interface
     """
 
-    def __init__(self, params, y_hat, y, baseline, cell_types, covariate_names):
+    def __init__(self, params, y_hat, y, x, baseline, cell_types, covariate_names):
         """
         Init function
         :param params: the trace of the parameters
@@ -31,7 +31,8 @@ class CompAnaResult(metaclass=ABCMeta):
         self.y = y
         self.cell_types = cell_types
         self.covariate_names = covariate_names
-        self.__raw_params = params
+        self.raw_params = params
+        self.X = x
 
         # Setup arviz plot compatibility
         self.arviz_params = self.__transform_data_to_inference_data()
@@ -248,10 +249,29 @@ class CompAnaResult(metaclass=ABCMeta):
         :return: arviz.InferenceData
         """
         return az.convert_to_inference_data(
-            {var_name: var[np.newaxis] for var_name, var in self.__raw_params.items() if
+            {var_name: var[np.newaxis] for var_name, var in self.raw_params.items() if
              "concentration" not in var_name
              })
 
-    @property
-    def raw_params(self):
-        return self.__raw_params
+
+class ResultConverter(az.data.io_dict.DictConverter):
+
+    def to_result_data(self):
+        return CaResult(
+            **{
+                "posterior": self.posterior_to_xarray(),
+                "sample_stats": self.sample_stats_to_xarray(),
+                "posterior_predictive": self.posterior_predictive_to_xarray(),
+                "prior": self.prior_to_xarray(),
+                "sample_stats_prior": self.sample_stats_prior_to_xarray(),
+                "prior_predictive": self.prior_predictive_to_xarray(),
+                "observed_data": self.observed_data_to_xarray(),
+            }
+        )
+
+
+class CaResult(az.InferenceData):
+
+    def __init__(self, **kwargs):
+
+        super(self.__class__, self).__init__(**kwargs)
