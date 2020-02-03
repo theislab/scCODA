@@ -29,6 +29,34 @@ class CompositionalModel:
     Implements class framework for compositional data models
     """
 
+    def __init__(self, covariate_matrix, data_matrix, cell_types, covariate_names, *args, **kwargs):
+        """
+                Constructor of model class
+                :param covariate_matrix: numpy array [NxD] - covariate matrix
+                :param data_matrix: numpy array [NxK] - cell count matrix
+                :param sample_counts: numpy array [N] - number of cells per sample
+                :param dtype: data type for all numbers (for tensorflow)
+                """
+
+        dtype = tf.float32
+        self.x = tf.cast(covariate_matrix, dtype)
+        self.y = tf.cast(data_matrix, dtype)
+        sample_counts = np.sum(data_matrix, axis=1)
+        self.n_total = tf.cast(sample_counts, dtype)
+        self.cell_types = cell_types
+        self.covariate_names = covariate_names
+
+        # Get dimensions of data
+        self.N, self.D = self.x.shape
+        self.K = self.y.shape[1]
+
+        # Check input data
+        if self.N != self.y.shape[0]:
+            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(self.x.shape[0], self.y.shape[0]))
+        if self.N != len(self.n_total):
+            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
+
+
     def sampling(self, num_results, n_burnin, kernel, init_state):
         """
         HMC sampling of the model
@@ -44,7 +72,7 @@ class CompositionalModel:
                 num_burnin_steps=n_burnin_,
                 kernel=kernel_,
                 current_state=current_state_,
-                #tace_fn=lambda _, pkr: pkr
+                # tace_fn=lambda _, pkr: pkr
                 trace_fn=lambda _, pkr: [pkr.inner_results.inner_results.is_accepted,
                                          pkr.inner_results.inner_results.accepted_results.step_size]
                 )
@@ -62,12 +90,11 @@ class CompositionalModel:
         # Samples after burn-in
         states_burnin = []
         acceptances = accept[0].numpy()
-        accepted = acceptances[acceptances == True]
         for s in samples:
             states_burnin.append(s[n_burnin:])
 
         # acceptance rate
-        p_accept = accepted.shape[0] / acceptances.shape[0]
+        p_accept = sum(acceptances) / acceptances.shape[0]
         print('Acceptance rate: %0.1f%%' % (100 * p_accept))
 
         return states_burnin
@@ -98,8 +125,12 @@ class CompositionalModel:
 
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
-        return dict(zip(self.param_names, states_burnin)), y_hat
+        params = dict(zip(self.param_names, states_burnin))
 
+        return res.CompAnaResult(params=params, y_hat=y_hat, y=self.y, x=self.x,
+                                 baseline=(self.baseline_index is None),
+                                 cell_types=self.cell_types,
+                                 covariate_names=self.covariate_names)
 
     def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01):
 
@@ -143,31 +174,11 @@ class NoBaselineModel(CompositionalModel):
     without specification of a baseline cell type
     """
 
-    def __init__(self, covariate_matrix, data_matrix):
-        """
-        Constructor of model class
-        :param covariate_matrix: numpy array [NxD] - covariate matrix
-        :param data_matrix: numpy array [NxK] - cell count matrix
-        :param sample_counts: numpy array [N] - number of cells per sample
-        :param dtype: data type for all numbers (for tensorflow)
-        """
+    def __init__(self, *args, **kwargs):
+        super(self.__class__, self).__init__(*args, **kwargs)
 
-        dtype = tf.float32
-        self.x = tf.cast(covariate_matrix, dtype)
-        self.y = tf.cast(data_matrix, dtype)
-        sample_counts = np.sum(data_matrix, axis=1)
-        self.n_total = tf.cast(sample_counts, dtype)
         self.baseline_index = None
-
-        # Get dimensions of data
-        N, D = self.x.shape
-        K = self.y.shape[1]
-
-        # Check input data
-        if N != self.y.shape[0]:
-            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(self.x.shape[0], self.y.shape[0]))
-        if N != len(self.n_total):
-            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
+        dtype = tf.float32
 
         # All parameters that are returned for analysis
         self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw",
@@ -218,7 +229,7 @@ class NoBaselineModel(CompositionalModel):
         self.target_log_prob_fn = lambda alpha_, mu_b_, sigma_b_, b_offset_, sigma_ind_raw_:\
             self.log_joint(x=self.x,
                            n_total=self.n_total,
-                           K=K,
+                           K=self.K,
                            predictions=self.y,
                            alpha=alpha_,
                            mu_b=mu_b_,
@@ -227,26 +238,24 @@ class NoBaselineModel(CompositionalModel):
                            sigma_ind_raw=sigma_ind_raw_,
                            )
 
-        alpha_size = [K]
-        beta_size = [D, K]
+        alpha_size = [self.K]
+        beta_size = [self.D, self.K]
 
         # MCMC starting values
         self.params = [tf.zeros(alpha_size, name='init_alpha', dtype=dtype),
                        # tf.random.normal(alpha_size, 0, 1, name='init_alpha'),
                        tf.zeros(1, name="init_mu_b", dtype=dtype),
                        tf.ones(1, name="init_sigma_b", dtype=dtype),
-                       tf.zeros([D, K], name='init_b_offset', dtype=dtype),
+                       tf.zeros(beta_size, name='init_b_offset', dtype=dtype),
                        # tf.random.normal(beta_size, 0, 1, name='init_b_offset'),
                        tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
                        ]
 
-        self.vars = [tf.Variable(v, trainable=True) for v in self.params]
-
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, n_burnin):
-        # TODO: Calculate all posteriors
-        N, D = self.x.shape
-        K = self.y.shape[1]
+
+        chain_size_beta = [num_results - n_burnin, self.D, self.K]
+        chain_size_y = [num_results - n_burnin, self.N, self.K]
 
         alphas = states_burnin[0].numpy()
         alphas_final = alphas.mean(axis=0)
@@ -256,11 +265,11 @@ class NoBaselineModel(CompositionalModel):
         sigma_b = states_burnin[2].numpy()
         b_offset = states_burnin[3].numpy()
 
-        inds = np.zeros([num_results - n_burnin, D, K])
-        beta_raws = np.zeros([num_results-n_burnin, D, K])
-        betas = np.zeros([num_results - n_burnin, D, K])
-        concentrations = np.zeros([num_results - n_burnin, N, K])
-        predictions = np.zeros([num_results - n_burnin, N, K])
+        inds = np.zeros(chain_size_beta)
+        beta_raws = np.zeros(chain_size_beta)
+        betas = np.zeros(chain_size_beta)
+        concentrations = np.zeros(chain_size_y)
+        predictions = np.zeros(chain_size_y)
 
         for i in range(num_results-n_burnin):
             ir = ind_raw[i]
@@ -299,7 +308,7 @@ class BaselineModel(CompositionalModel):
     with specification of a baseline cell type
     """
 
-    def __init__(self, covariate_matrix, data_matrix, baseline_index=0):
+    def __init__(self, *args, **kwargs):
 
         """
         Constructor of model class
@@ -307,26 +316,14 @@ class BaselineModel(CompositionalModel):
         :param data_matrix: numpy array [NxK] - cell count matrix
         :param baseline_index: index of cell type that is used as a reference (baseline)
         """
+        super(self.__class__, self).__init__(*args, **kwargs)
 
         dtype = tf.float32
-        self.x = tf.cast(covariate_matrix, dtype)
-        self.y = tf.cast(data_matrix, dtype)
-        sample_counts = np.sum(data_matrix, axis=1)
-        self.n_total = tf.cast(sample_counts, dtype)
         self.baseline_index = baseline_index
 
-        # Get dimensions of data
-        N, D = self.x.shape
-        K = self.y.shape[1]
-
-        # Check input data
-        if N != self.y.shape[0]:
-            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(self.x.shape[0], self.y.shape[0]))
-        if N != len(self.n_total):
-            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
-
         # All parameters that are returned for analysis
-        self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw", "beta"]
+        self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw",
+                            "ind", "b_raw", "beta", "concentration", "prediction"]
 
         def define_model(x, n_total, K):
             """
@@ -344,25 +341,26 @@ class BaselineModel(CompositionalModel):
             # Noncentered parametrization for raw slopes of all cell types except baseline type (before spike-and-slab)
             mu_b = ed.Normal(loc=tf.zeros(1, dtype=dtype), scale=tf.ones(1, dtype=dtype), name="mu_b")
             sigma_b = ed.HalfCauchy(tf.zeros(1, dtype=dtype), tf.ones(1, dtype=dtype), name="sigma_b")
-            b_offset = ed.Normal(loc=tf.zeros([D, K - 1], dtype=dtype), scale=tf.ones([D, K - 1], dtype=dtype),
+            b_offset = ed.Normal(loc=tf.zeros([D, K-1], dtype=dtype), scale=tf.ones([D, K-1], dtype=dtype),
                                  name="b_offset")
 
             b_raw = mu_b + sigma_b * b_offset
-            # Include slope 0 for baseline cell type
-            b_raw = tf.concat(axis=1, values=[b_raw[:, :baseline_index],
-                                              tf.fill(value=0., dims=[D, 1]),
-                                              b_raw[:, baseline_index:]])
 
             # Spike-and-slab priors
             sigma_ind_raw = ed.Normal(
-                loc=tf.zeros(shape=[D, K], dtype=dtype),
-                scale=tf.ones(shape=[D, K], dtype=dtype),
+                loc=tf.zeros(shape=[D, K-1], dtype=dtype),
+                scale=tf.ones(shape=[D, K-1], dtype=dtype),
                 name='sigma_ind_raw')
             ind_t = sigma_ind_raw * 50
             ind = tf.exp(ind_t) / (1 + tf.exp(ind_t))
 
             # Calculate betas
             beta = ind * b_raw
+
+            # Include slope 0 for baseline cell type
+            beta = tf.concat(axis=1, values=[beta[:, :baseline_index],
+                                             tf.fill(value=0., dims=[D, 1]),
+                                             beta[:, baseline_index:]])
 
             # Concentration vector from intercepts, slopes
             concentration_ = tf.exp(alpha + tf.matmul(x, beta))
@@ -378,7 +376,7 @@ class BaselineModel(CompositionalModel):
         self.target_log_prob_fn = lambda alpha_, mu_b_, sigma_b_, b_offset_, sigma_ind_raw_:\
             self.log_joint(x=self.x,
                            n_total=self.n_total,
-                           K=K,
+                           K=self.K,
                            predictions=self.y,
                            alpha=alpha_,
                            mu_b=mu_b_,
@@ -387,49 +385,69 @@ class BaselineModel(CompositionalModel):
                            sigma_ind_raw=sigma_ind_raw_,
                            )
 
-        alpha_size = [K]
-        beta_size = [D, K]
+        alpha_size = [self.K]
+        beta_size = [self.D, self.K-1]
 
         # MCMC starting values
         self.params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha'),
                        tf.zeros(1, name="init_mu_b", dtype=dtype),
                        tf.ones(1, name="init_sigma_b", dtype=dtype),
-                       tf.random.normal([D, K - 1], 0, 1, name='init_b_offset'),
+                       tf.random.normal(beta_size, 0, 1, name='init_b_offset'),
                        tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
                        ]
-
-        self.vars = [tf.Variable(v, trainable=True) for v in self.params]
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, n_burnin):
 
-        # TODO: Calculate all posteriors
-        alphas_final = states_burnin[0].numpy().mean(axis=0)
+        chain_size_beta = [num_results - n_burnin, self.D, self.K]
+        chain_size_beta_raw = [num_results - n_burnin, self.D, self.K-1]
+        chain_size_y = [num_results - n_burnin, self.N, self.K]
+
+        alphas = states_burnin[0].numpy()
+        alphas_final = alphas.mean(axis=0)
 
         ind_raw = states_burnin[4].numpy() * 50
-        ind = np.exp(ind_raw) / (1 + np.exp(ind_raw))
+        mu_b = states_burnin[1].numpy()
+        sigma_b = states_burnin[2].numpy()
+        b_offset = states_burnin[3].numpy()
 
-        b_raw_o = np.array(
-            [states_burnin[1].numpy()[i] + (states_burnin[2].numpy()[i] * states_burnin[3].numpy()[i])
-             for i in range(num_results - n_burnin)])
+        inds = np.zeros(chain_size_beta_raw)
+        beta_raws = np.zeros(chain_size_beta_raw)
+        betas = np.zeros(chain_size_beta)
+        concentrations = np.zeros(chain_size_y)
+        predictions = np.zeros(chain_size_y)
 
-        b_raw = []
+        for i in range(num_results - n_burnin):
+            ir = ind_raw[i]
+            ind = np.exp(ir) / (1 + np.exp(ir))
+            inds[i, :, :] = ind
 
-        for i in range(b_raw_o.shape[0]):
-            b = b_raw_o[i, :, :]
-            b_o = np.concatenate([b[:, :self.baseline_index],
-                                  np.zeros(shape=[b.shape[0], 1]),
-                                  b[:, self.baseline_index:]], axis=1)
-            b_raw.append(b_o)
-        b_raw = np.array(b_raw).astype("float32")
+            b_raw = mu_b[i] + sigma_b[i] * b_offset[i]
+            beta_raws[i, :, :] = b_raw
 
-        betas = ind * b_raw
+            beta = ind * b_raw
+            beta = np.concatenate([beta[:, :self.baseline_index],
+                                   np.zeros(shape=[self.D, 1], dtype=np.float32),
+                                   beta[:, self.baseline_index:]], axis=1)
+            betas[i, :, :] = beta
+
+            conc = np.exp(np.matmul(self.x, beta) + alphas[i])
+            concentrations[i, :, :] = conc
+
+            pred = ed.DirichletMultinomial(self.n_total, conc).numpy()
+            predictions[i, :, :] = pred
+
         betas_final = betas.mean(axis=0)
-
+        states_burnin.append(inds)
+        states_burnin.append(beta_raws)
         states_burnin.append(betas)
+        states_burnin.append(concentrations)
+        states_burnin.append(predictions)
 
         return ed.DirichletMultinomial(self.n_total,
-                                       concentration=tf.exp(tf.matmul(self.x, betas_final) + alphas_final)).numpy()
+                                       concentration=np.exp(np.matmul(self.x, betas_final)
+                                                            + alphas_final).astype(np.float32)
+                                       ).numpy()
 
 
 class NoBaselineModelNoEdward(CompositionalModel):
@@ -551,5 +569,3 @@ class NoBaselineModelNoEdward(CompositionalModel):
 
         return tfd.DirichletMultinomial(self.n_total,
                                         concentration=tf.exp(tf.matmul(self.x, betas_final) + alphas_final)).mean()
-
-
