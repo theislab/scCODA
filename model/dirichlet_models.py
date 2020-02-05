@@ -127,12 +127,43 @@ class CompositionalModel:
 
         params = dict(zip(self.param_names, states_burnin))
 
-        return res.CompAnaResult(params=params, y_hat=y_hat, y=self.y, x=self.x,
-                                 baseline=(self.baseline_index is None),
-                                 cell_types=self.cell_types,
-                                 covariate_names=self.covariate_names)
+        # Arviz setup
+        if self.baseline_index is not None:
+            cell_types_nb = self.cell_types[:self.baseline_index] + self.cell_types[self.baseline_index+1:]
+            print(cell_types_nb)
+        else:
+            cell_types_nb = self.cell_types
+
+        posterior = {var_name: [var] for var_name, var in params.items() if
+                     "prediction" not in var_name}
+        posterior_predictive = {"prediction": [params["prediction"]]}
+        observed_data = {"y": self.y}
+        dims = {"alpha": ["cell_type"],
+                "mu_b": ["1"],
+                "sigma_b": ["1"],
+                "b_offset": ["covariate", "cell_type_nb"],
+                "ind_raw": ["covariate", "cell_type_nb"],
+                "ind": ["covariate", "cell_type_nb"],
+                "b_raw": ["covariate", "cell_type_nb"],
+                "beta": ["cov", "cell_type"],
+                "concentration": ["sample", "cell_type"],
+                "prediction": ["sample", "cell_type"]
+                }
+        coords = {"cell_type": self.cell_types,
+                  "cell_type_nb": cell_types_nb,
+                  "covariate": self.covariate_names,
+                  "sample": range(self.y.shape[0])
+                  }
+
+        return res.CAResultConverter(posterior=posterior,
+                               posterior_predictive=posterior_predictive,
+                               observed_data=observed_data,
+                               dims=dims,
+                               coords=coords).to_result_data(y_hat, baseline=False)
 
     def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01):
+
+        #TODO: Update Output format
 
         # (not in use atm)
         constraining_bijectors = [
@@ -163,7 +194,34 @@ class CompositionalModel:
         states_burnin = self.get_chains_after_burnin(states, kernel_results, n_burnin)
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
-        return dict(zip(self.param_names, states_burnin)), y_hat
+        params = dict(zip(self.param_names, states_burnin))
+
+        # Arviz setup
+        posterior = {var_name: [var] for var_name, var in params.items() if
+                     "prediction" not in var_name}
+        posterior_predictive = {"prediction": [params["prediction"]]}
+        observed_data = {"y": self.y}
+        dims = {"alpha": ["cell_type"],
+                "mu_b": ["1"],
+                "sigma_b": ["1"],
+                "b_offset": ["covariate", "cell_type"],
+                "ind_raw": ["covariate", "cell_type"],
+                "ind": ["covariate", "cell_type"],
+                "b_raw": ["covariate", "cell_type"],
+                "beta": ["cov", "cell_type"],
+                "concentration": ["sample", "cell_type"],
+                "prediction": ["sample", "cell_type"]
+                }
+        coords = {"cell_type": self.cell_types,
+                  "covariate": self.covariate_names,
+                  "sample": range(self.y.shape[0])
+                  }
+
+        return res.CAResultConverter(posterior=posterior,
+                                     posterior_predictive=posterior_predictive,
+                                     observed_data=observed_data,
+                                     dims=dims,
+                                     coords=coords).to_result_data(y_hat, baseline=False)
 
 
 class NoBaselineModel(CompositionalModel):
@@ -308,7 +366,7 @@ class BaselineModel(CompositionalModel):
     with specification of a baseline cell type
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, baseline_index, *args, **kwargs):
 
         """
         Constructor of model class

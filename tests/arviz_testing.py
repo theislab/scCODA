@@ -36,12 +36,16 @@ print(data.obs)
 importlib.reload(mod)
 importlib.reload(res)
 
-ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
+ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=2)
 
 #%%
-params_mcmc = ana.sample_hmc(num_results=int(1000), n_burnin=500)
+ca_result = ana.sample_hmc(num_results=int(1000), n_burnin=500)
 
-params_mcmc.summary()
+ca_result.summary(credible_interval=0.95)
+
+#%%
+_, betas_df = params_mcmc.summary_prepare()
+print(len(betas_df.index.levels[1]))
 
 #%%
 
@@ -78,7 +82,7 @@ arviz_test = az.from_dict(
 
 #%%
 
-print(arviz_test.posterior)
+print(arviz_test.summary())
 
 #%%
 az.plot_trace(arviz_test, var_names=["concentration"])
@@ -86,19 +90,24 @@ plt.show()
 
 
 #%%
-class CaResult(az.InferenceData):
+class CAResult(az.InferenceData):
 
-    def __init__(self, **kwargs):
+    def __init__(self, y_hat, baseline, **kwargs):
 
         super(self.__class__, self).__init__(**kwargs)
+
+        self.baseline = baseline
+        self.y_hat = y_hat
+
 
 #%%
 
 
 class ResultConverter(az.data.io_dict.DictConverter):
 
-    def to_result_data(self):
+    def to_result_data(self, y_hat, baseline):
         return CaResult(
+            y_hat, baseline=baseline,
             **{
                 "posterior": self.posterior_to_xarray(),
                 "sample_stats": self.sample_stats_to_xarray(),
@@ -115,11 +124,11 @@ class ResultConverter(az.data.io_dict.DictConverter):
 
 #%%
 
-def result_from_dict(params, y, cell_types, covariate_names):
+def result_from_dict(params, y, cell_types, covariate_names, y_hat, baseline):
     posterior = {var_name: [var] for var_name, var in params.items() if
                  "prediction" not in var_name}
 
-    posterior_predictive = {"prediction": [hmc_res["prediction"]]}
+    posterior_predictive = {"prediction": [params["prediction"]]}
     observed_data = {"y": y}
     dims = {"alpha": ["cell_type"],
             "mu_b": ["1"],
@@ -141,12 +150,12 @@ def result_from_dict(params, y, cell_types, covariate_names):
                            posterior_predictive=posterior_predictive,
                            observed_data=observed_data,
                            dims=dims,
-                           coords=coords).to_result_data()
+                           coords=coords).to_result_data(y_hat, baseline)
 
 #%%
 
 
 
-r = result_from_dict(hmc_res, data.X, cell_types, covariate_names)
+r = result_from_dict(hmc_res, data.X, cell_types, covariate_names, y_hat, False)
 
-print(r.posterior)
+print(az.summary(r, kind="stats", var_names=["alpha", "beta"]))
