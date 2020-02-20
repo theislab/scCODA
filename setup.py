@@ -23,8 +23,8 @@ VERSION = "0.0.1"
 # What packages are required for this module to be executed?
 REQUIRED = [
     "numpy", "scipy", "tensorflow", "tensorflow-probability",
-    "arviz", "seaborn", "pandas", "pickle", "ast", "matplotlib",
-    "time"
+    "arviz", "seaborn", "pandas", "matplotlib", "scanpy", "anndata",
+    "patsy", "sklearn"
 ]
 
 # What packages are optional?
