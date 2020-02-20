@@ -1,5 +1,4 @@
 numpy>=1.14.0
-scipy
 pandas
 seaborn
 matplotlib
@@ -9,3 +8,8 @@ arviz
 scipy
 anndata
 patsy
+sklearn
+importlib
+ast
+pickle
+scanpy
