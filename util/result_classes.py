@@ -11,6 +11,7 @@ import arviz as az
 import pandas as pd
 import scipy.stats as st
 import matplotlib.pyplot as plt
+import time
 from abc import ABCMeta, abstractmethod
 
 
@@ -257,16 +258,28 @@ class CompAnaResult:
 class CAResultConverter(az.data.io_dict.DictConverter):
 
     def to_result_data(self, y_hat, baseline):
+
+        start = time.time()
+        post = self.posterior_to_xarray()
+        duration = time.time()-start
+        print("converted posterior ({:.3f} sec)".format(duration))
+        ss = self.sample_stats_to_xarray()
+        postp = self.posterior_predictive_to_xarray()
+        prior = self.prior_to_xarray()
+        ssp = self.sample_stats_prior_to_xarray()
+        prip = self.prior_predictive_to_xarray()
+        obs = self.observed_data_to_xarray()
+
         return CAResult(
             y_hat, baseline=baseline,
             **{
-                "posterior": self.posterior_to_xarray(),
-                "sample_stats": self.sample_stats_to_xarray(),
-                "posterior_predictive": self.posterior_predictive_to_xarray(),
-                "prior": self.prior_to_xarray(),
-                "sample_stats_prior": self.sample_stats_prior_to_xarray(),
-                "prior_predictive": self.prior_predictive_to_xarray(),
-                "observed_data": self.observed_data_to_xarray(),
+                "posterior": post,
+                "sample_stats": ss,
+                "posterior_predictive": postp,
+                "prior": prior,
+                "sample_stats_prior": ssp,
+                "prior_predictive": prip,
+                "observed_data": obs,
             }
         )
 

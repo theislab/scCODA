@@ -21,24 +21,25 @@ from sklearn.metrics import confusion_matrix
 import tensorflow_probability as tfp
 import itertools
 
+from util import compositional_analysis_generation_toolbox as gen
+from model import dirichlet_models as mod
+from util import comp_ana as ca
+
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
-from util import compositional_analysis_generation_toolbox as gen
-from model import dirichlet_models as mod
-
 #%%
 
-class Multi_param_simulation:
+
+class MultiParamSimulation:
 
     """
     Implements subsequent generation and simulation of datasets with a multitude of parameters, such as data dimensions, effect combinations or MCMC chain length.
     Parameters are passed to the
     """
 
-
     def __init__(self, cases=[1], K=[5], n_total=[1000], n_samples=[[5,5]],
-                 b_true=[None], w_true=[None], num_results=[10e3], model=mod.NoBaselineModel):
+                 b_true=[None], w_true=[None], num_results=[10e3], baseline_index=None, formula="x_0"):
 
         """
         constructor. Simulated Parameters are passed to the constructor as lists, except the type of model, which is fixed for all simulations.
@@ -61,16 +62,17 @@ class Multi_param_simulation:
         self.num_leapfrog_steps = 10
 
         # All parameter combinations
-        self.l = list(itertools.product(cases, K, n_total, n_samples, b_true, w_true, num_results))
+        self.simulation_params = list(itertools.product(cases, K, n_total, n_samples, b_true, w_true, num_results))
 
         # Setup result objects
         self.mcmc_results = {}
         self.parameters = pd.DataFrame(
             {'cases': [], 'K': [], 'n_total': [], 'n_samples': [], 'b_true': [], 'w_true': [], 'num_results': []})
 
-        self.model = model
+        self.baseline_index = baseline_index
+        self.formula = formula
 
-    def simulate(self, keep_raw_params=True):
+    def simulate(self):
 
         """
         Generation and modeling of single-cell-like data
@@ -79,16 +81,11 @@ class Multi_param_simulation:
         """
 
         i = 0
-
         # iterate over all parameter combinations
 
-        for c, k, nt, ns, b, w, nr in self.l:
+        for c, k, nt, ns, b, w, nr in self.simulation_params:
             # generate data set
-            temp_data = gen.generate_case_control(cases=c, K=k, n_total=nt, n_samples=ns,
-                                                                       b_true=b, w_true=w)
-
-            x_temp = temp_data.obs.values
-            y_temp = temp_data.X
+            temp_data = gen.generate_case_control(cases=c, K=k, n_total=nt, n_samples=ns, b_true=b, w_true=w)
 
             # Save parameter set
             s = [c, k, nt, ns, b, w, nr]
@@ -96,16 +93,12 @@ class Multi_param_simulation:
             self.parameters.loc[i] = s
 
             # if baseline model: Simulate with baseline, else: without. The baseline index is always the last one
-            if self.model == mod.compositional_model_baseline:
-                model_temp = self.model(x=x_temp, y=y_temp, n_total=np.repeat(nt, x_temp.shape[0]), baseline_index=k-1)
-            else:
-                model_temp = self.model(x=x_temp, y=y_temp, n_total=np.repeat(nt, x_temp.shape[0]))
+            ana = ca.CompositionalAnalysis(temp_data, self.formula, baseline_index=self.baseline_index)
 
-            # HMC sampling, save results
-            result_temp = model_temp.sample(int(nr), self.n_burnin, self.num_leapfrog_steps, self.step_size)
-            if keep_raw_params == False:
-                result_temp._MCMCResult__raw_params = {}
-            self.mcmc_results[i] = result_temp
+            result_temp = ana.sample_hmc(num_results=int(nr), n_burnin=self.n_burnin,
+                                         step_size=self.step_size, num_leapfrog_steps=self.num_leapfrog_steps)
+
+            self.mcmc_results[i] = result_temp.summary_prepare()
 
             i += 1
 
@@ -118,42 +111,36 @@ class Multi_param_simulation:
         :return: None; extends self.parameters
         """
 
-        def get_discovery_rate(res):
+        tp = []
+        tn = []
+        fp = []
+        fn = []
+        ws = self.parameters.loc[:, "w_true"]
 
-            tp = []
-            tn = []
-            fp = []
-            fn = []
-            ws = self.parameters.loc[:, "w_true"]
+        # For all parameter sets:
+        for i in range(len(self.parameters)):
 
-            # For all parameter sets:
-            for i in range(len(self.parameters)):
+            # Locate modelled slopes
+            betas = self.mcmc_results[i][1]["final_parameter"].tolist()
+            betas = [0 if b == 0 else 1 for b in betas]
 
-                # Locate modelled slopes
-                par = res[i].params
-                betas = par.loc[par.index.str.contains('beta')]["final_parameter"].tolist()
-                betas = [0 if b == 0 else 1 for b in betas]
+            # Locate ground truth slopes
+            wt = [item for sublist in ws[i] for item in sublist]
+            wt = [0 if w == 0 else 1 for w in wt]
 
-                # Locate ground truth slopes
-                wt = [item for sublist in ws[i] for item in sublist]
-                wt = [0 if w == 0 else 1 for w in wt]
+            # Calculate confusion matrix: beta[d,k]==0 vs. beta[d,k] !=0
+            tn_, fp_, fn_, tp_ = confusion_matrix(wt, betas).ravel()
 
-                # Calculate confusion matrix: beta[d,k]==0 vs. beta[d,k] !=0
-                tn_, fp_, fn_, tp_ = confusion_matrix(wt, betas).ravel()
-
-                tp.append(tp_)
-                tn.append(tn_)
-                fp.append(fp_)
-                fn.append(fn_)
-
-            return tp, tn, fp, fn
+            tp.append(tp_)
+            tn.append(tn_)
+            fp.append(fp_)
+            fn.append(fn_)
 
         # add results to self.parameters
-        rates = get_discovery_rate(self.mcmc_results)
-        self.parameters['tp'] = rates[0]
-        self.parameters['tn'] = rates[1]
-        self.parameters['fp'] = rates[2]
-        self.parameters['fn'] = rates[3]
+        self.parameters['tp'] = tp
+        self.parameters['tn'] = tn
+        self.parameters['fp'] = fp
+        self.parameters['fn'] = fn
 
         return None
 
@@ -163,51 +150,41 @@ class Multi_param_simulation:
         Discovery rates and other statistics for each entry of beta separately. This only works for cases==[1]
         :return: None, extends self.parameters
         """
+        correct = []
+        false = []
+        ws = self.parameters.loc[:, "w_true"]
 
+        K = len(ws[0][0])
 
-        def get_discovery_rate_per_param(res):
+        # For each parameter set:
+        for i in range(len(self.parameters)):
 
-            correct = []
-            false = []
-            ws = self.parameters.loc[:, "w_true"]
+            # Locate modelled slopes
+            betas = self.mcmc_results[i][1]["final_parameter"].tolist()
+            betas = [0 if b == 0 else 1 for b in betas]
 
-            # For each parameter set:
-            for i in range(len(self.parameters)):
+            # Locate ground truth slopes
+            wt = ws[i][0]
+            wt = [0 if w == 0 else 1 for w in wt]
 
-                # Locate modelled slopes
-                par = res[i].params
-                betas = par.loc[par.index.str.contains('beta')]["final_parameter"].tolist()
-                betas = [0 if b == 0 else 1 for b in betas]
+            correct_ = np.zeros(K)
+            false_ = np.zeros(K)
+            # Count how often each beta[k] is correctly/falsely identified
+            for k in range(K):
+                if wt[k] == betas[k]:
+                    correct_[k] += 1
+                else:
+                    false_[k] += 1
 
-                # Locate ground truth slopes
-                wt = ws[i][0]
-                wt = [0 if w == 0 else 1 for w in wt]
+            correct.append(correct_)
+            false.append(false_)
 
-                K = len(wt)
-
-                correct_ = np.zeros(K)
-                false_ = np.zeros(K)
-                # Count how often each beta[k] is correctly/falsely identified
-                for i in range(K):
-                    if wt[i] == betas[i]:
-                        correct_[i] += 1
-                    else:
-                        false_[i] += 1
-
-                correct.append(correct_)
-                false.append(false_)
-
-            return correct, false
-
-        correct, false = get_discovery_rate_per_param(self.mcmc_results)
-        K = len(correct[0])
         # Add results to self.paramerters
         for i in range(K):
             self.parameters['correct_'+str(i)] = [correct[n][i] for n in range(len(correct))]
             self.parameters['false_'+str(i)] = [false[n][i] for n in range(len(false))]
 
         return None
-
 
     def plot_discovery_rates(self, dim_1='w_true', dim_2='n_samples'):
         """

@@ -44,11 +44,9 @@ importlib.reload(res)
 
 
 model = mod.NoBaselineModelNoEdward(x, y)
-params_mcmc, y_hat = model.sample_hmc(num_results=int(10000), n_burnin=5000)
-res_1 = res.CompAnaResult(params=params_mcmc, y_hat=y_hat, y=y, baseline=False,
-                                     cell_types=["type0", "type1", "type2", "type3", "type4"], covariate_names=["x0"])
+result = model.sample_hmc(num_results=int(10000), n_burnin=5000)
 
-res_1.summary()
+result.summary()
 
 #%%
 model_2 = mod.NoBaselineModel(x, y)
@@ -138,6 +136,7 @@ test_model = tfd.JointDistributionSequential([
             name="predictions"),
         reinterpreted_batch_ndims=1),
 ])
+#%%
 
 init_mu_b = tf.zeros(1, name="init_mu_b", dtype=dtype)
 init_sigma_b = tf.ones(1, name="init_sigma_b", dtype=dtype)
@@ -249,7 +248,7 @@ params_small = [init_mu_b,
 
 #%%
 test_sam_2 = test_model_2.sample()
-print(test_sam_2)
+#print(test_sam_2)
 print(test_model_2.log_prob(params_2))
 print(test_model_2.resolve_graph())
 print(test_model_2.log_prob_parts(params_2))

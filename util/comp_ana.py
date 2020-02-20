@@ -11,7 +11,7 @@ from util import result_classes as res
 
 class CompositionalAnalysis:
 
-    def __new__(cls, data, formula, baseline_index=None, *args, **kwargs):
+    def __new__(cls, data, formula, baseline_index=None):
         """
         Builds count and covariate matrix, returns a CompositionalModel object
         :param data: anndata object with cell counts as data.X and covariates saved in data.obs

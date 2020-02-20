@@ -4,13 +4,17 @@
     <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="ignoredPackages">
         <value>
-          <list size="6">
+          <list size="10">
             <item index="0" class="java.lang.String" itemvalue="tf-nightly" />
             <item index="1" class="java.lang.String" itemvalue="tfp-nightly" />
             <item index="2" class="java.lang.String" itemvalue="ast" />
             <item index="3" class="java.lang.String" itemvalue="time" />
             <item index="4" class="java.lang.String" itemvalue="pickle" />
             <item index="5" class="java.lang.String" itemvalue="padsy" />
+            <item index="6" class="java.lang.String" itemvalue="sklearn" />
+            <item index="7" class="java.lang.String" itemvalue="tensorflow" />
+            <item index="8" class="java.lang.String" itemvalue="importlib" />
+            <item index="9" class="java.lang.String" itemvalue="tensorflow-probability" />
           </list>
         </value>
       </option>

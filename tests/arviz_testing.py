@@ -39,9 +39,13 @@ importlib.reload(res)
 ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=2)
 
 #%%
-ca_result = ana.sample_hmc(num_results=int(1000), n_burnin=500)
+ca_result = ana.sample_hmc(num_results=int(2e4), n_burnin=int(5e3))
 
 ca_result.summary(credible_interval=0.95)
+
+#%%
+az.plot_trace(ca_result, var_names="beta", coords={"cov": [0], "cell_type": ["0", "1", "2", "3", "4"]})
+plt.show()
 
 #%%
 _, betas_df = params_mcmc.summary_prepare()
@@ -159,3 +163,45 @@ def result_from_dict(params, y, cell_types, covariate_names, y_hat, baseline):
 r = result_from_dict(hmc_res, data.X, cell_types, covariate_names, y_hat, False)
 
 print(az.summary(r, kind="stats", var_names=["alpha", "beta"]))
+
+
+#%%
+
+import pymc3 as pm
+draws = 500
+chains = 1
+
+eight_school_data = {
+    'J': 8,
+    'y': np.array([28., 8., -3., 7., -1., 1., 18., 12.]),
+    'sigma': np.array([15., 10., 16., 11., 9., 11., 10., 18.])
+}
+
+with pm.Model() as model:
+    mu = pm.Normal('mu', mu=0, sd=5)
+    tau = pm.HalfCauchy('tau', beta=5)
+    theta_tilde = pm.Normal('theta_tilde', mu=0, sd=1, shape=eight_school_data['J'])
+    theta = pm.Deterministic('theta', mu + tau * theta_tilde)
+    pm.Normal('obs', mu=theta, sd=eight_school_data['sigma'], observed=eight_school_data['y'])
+
+    trace = pm.sample(draws, chains=chains)
+    prior = pm.sample_prior_predictive()
+    posterior_predictive = pm.sample_posterior_predictive(trace)
+
+    pm_data = az.from_pymc3(
+            trace=trace,
+            prior=prior,
+            posterior_predictive=posterior_predictive,
+            coords={'school': np.arange(eight_school_data['J'])},
+            dims={'theta': ['school'], 'theta_tilde': ['school']},
+        )
+#pm_data
+
+#%%
+az.plot_posterior(pm_data)
+plt.show()
+
+#%%
+data = az.load_arviz_data('centered_eight')
+az.plot_posterior(data, coords={"school": ["Choate", "Deerfield"]})
+plt.show()

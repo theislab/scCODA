@@ -312,7 +312,7 @@ def generate_case_control (cases = 1, K = 5, n_total = 1000, n_samples = [5,5], 
 
     # Sigma is identity if not specified else
     if sigma is None:
-        sigma = np.identity(K) * 0.1
+        sigma = np.identity(K) * 0.05
 
 
     noise = noise_std_true * np.random.randn(N, 1).astype(np.float32)

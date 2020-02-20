@@ -210,3 +210,24 @@ for i in range(9):
     print((p.results[0][i]).y)
     for m in p.results.keys():
         print(p.results[m][i])
+
+
+
+#%%
+#einsum tests
+
+a = np.arange(10).reshape((10, 1))
+b = np.repeat([[[0, 1, 2, 3, 4]], [[1, 2, 3, 4, 5]]], 5, axis=0)
+al = np.repeat([[0, 1, 2, 3, 4]], 10, axis=0)
+print(al)
+x = np.arange(6).reshape((6, 1))
+print(a.shape)
+print(b.shape)
+
+print(np.matmul(x, b[6]))
+
+#print((a.reshape((10, 1, 1))+b))
+out = np.einsum("jk, ...kl->...jl", x, b)
+print(al.reshape(10, 1, 5))
+print((out + al.reshape(10, 1, 5)))
+print(out.shape)

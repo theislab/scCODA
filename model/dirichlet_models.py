@@ -130,7 +130,6 @@ class CompositionalModel:
         # Arviz setup
         if self.baseline_index is not None:
             cell_types_nb = self.cell_types[:self.baseline_index] + self.cell_types[self.baseline_index+1:]
-            print(cell_types_nb)
         else:
             cell_types_nb = self.cell_types
 
@@ -311,6 +310,7 @@ class NoBaselineModel(CompositionalModel):
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, n_burnin):
+        start = time.time()
 
         chain_size_beta = [num_results - n_burnin, self.D, self.K]
         chain_size_y = [num_results - n_burnin, self.N, self.K]
@@ -323,35 +323,29 @@ class NoBaselineModel(CompositionalModel):
         sigma_b = states_burnin[2].numpy()
         b_offset = states_burnin[3].numpy()
 
-        inds = np.zeros(chain_size_beta)
-        beta_raws = np.zeros(chain_size_beta)
-        betas = np.zeros(chain_size_beta)
-        concentrations = np.zeros(chain_size_y)
-        predictions = np.zeros(chain_size_y)
+        ind_ = np.exp(ind_raw) / (1 + np.exp(ind_raw))
 
+        b_raw_ = mu_b.reshape((num_results - n_burnin, 1, 1)) + np.einsum("...jk, ...j->...jk", b_offset, sigma_b)
+
+        beta_ = np.einsum("..., ...", ind_, b_raw_)
+
+        conc_ = np.exp(np.einsum("jk, ...kl->...jl", self.x, beta_)
+                       + alphas.reshape((num_results - n_burnin, 1, self.K)))
+
+        predictions_ = np.zeros(chain_size_y)
         for i in range(num_results-n_burnin):
-            ir = ind_raw[i]
-            ind = np.exp(ir) / (1 + np.exp(ir))
-            inds[i, :, :] = ind
+            pred = tfd.DirichletMultinomial(self.n_total, conc_[i, :, :]).mean().numpy()
+            predictions_[i, :, :] = pred
 
-            b_raw = mu_b[i] + sigma_b[i] * b_offset[i]
-            beta_raws[i, :, :] = b_raw
+        betas_final = beta_.mean(axis=0)
+        states_burnin.append(ind_)
+        states_burnin.append(b_raw_)
+        states_burnin.append(beta_)
+        states_burnin.append(conc_)
+        states_burnin.append(predictions_)
 
-            beta = ind * b_raw
-            betas[i, :, :] = beta
-
-            conc = np.exp(np.matmul(self.x, beta) + alphas[i])
-            concentrations[i, :, :] = conc
-
-            pred = ed.DirichletMultinomial(self.n_total, conc).numpy()
-            predictions[i, :, :] = pred
-
-        betas_final = betas.mean(axis=0)
-        states_burnin.append(inds)
-        states_burnin.append(beta_raws)
-        states_burnin.append(betas)
-        states_burnin.append(concentrations)
-        states_burnin.append(predictions)
+        duration = time.time() - start
+        print("get_y_hat ({:.3f} sec)".format(duration))
 
         return ed.DirichletMultinomial(self.n_total,
                                        concentration=np.exp(np.matmul(self.x, betas_final)
@@ -469,38 +463,32 @@ class BaselineModel(CompositionalModel):
         sigma_b = states_burnin[2].numpy()
         b_offset = states_burnin[3].numpy()
 
-        inds = np.zeros(chain_size_beta_raw)
-        beta_raws = np.zeros(chain_size_beta_raw)
-        betas = np.zeros(chain_size_beta)
-        concentrations = np.zeros(chain_size_y)
-        predictions = np.zeros(chain_size_y)
+        ind_ = np.exp(ind_raw) / (1 + np.exp(ind_raw))
 
+        b_raw_ = mu_b.reshape((num_results - n_burnin, 1, 1)) + np.einsum("...jk, ...j->...jk", b_offset, sigma_b)
+
+        beta_temp = np.einsum("..., ...", ind_, b_raw_)
+
+        beta_ = np.zeros(chain_size_beta)
         for i in range(num_results - n_burnin):
-            ir = ind_raw[i]
-            ind = np.exp(ir) / (1 + np.exp(ir))
-            inds[i, :, :] = ind
+            beta_[i] = np.concatenate([beta_temp[i, :, :self.baseline_index],
+                                       np.zeros(shape=[self.D, 1], dtype=np.float32),
+                                       beta_temp[i, :, self.baseline_index:]], axis=1)
 
-            b_raw = mu_b[i] + sigma_b[i] * b_offset[i]
-            beta_raws[i, :, :] = b_raw
+        conc_ = np.exp(np.einsum("jk, ...kl->...jl", self.x, beta_)
+                       + alphas.reshape((num_results - n_burnin, 1, self.K))).astype(np.float32)
 
-            beta = ind * b_raw
-            beta = np.concatenate([beta[:, :self.baseline_index],
-                                   np.zeros(shape=[self.D, 1], dtype=np.float32),
-                                   beta[:, self.baseline_index:]], axis=1)
-            betas[i, :, :] = beta
+        predictions_ = np.zeros(chain_size_y)
+        for i in range(num_results - n_burnin):
+            pred = tfd.DirichletMultinomial(self.n_total, conc_[i, :, :]).mean().numpy()
+            predictions_[i, :, :] = pred
 
-            conc = np.exp(np.matmul(self.x, beta) + alphas[i])
-            concentrations[i, :, :] = conc
-
-            pred = ed.DirichletMultinomial(self.n_total, conc).numpy()
-            predictions[i, :, :] = pred
-
-        betas_final = betas.mean(axis=0)
-        states_burnin.append(inds)
-        states_burnin.append(beta_raws)
-        states_burnin.append(betas)
-        states_burnin.append(concentrations)
-        states_burnin.append(predictions)
+        betas_final = beta_.mean(axis=0)
+        states_burnin.append(ind_)
+        states_burnin.append(b_raw_)
+        states_burnin.append(beta_)
+        states_burnin.append(conc_)
+        states_burnin.append(predictions_)
 
         return ed.DirichletMultinomial(self.n_total,
                                        concentration=np.exp(np.matmul(self.x, betas_final)
