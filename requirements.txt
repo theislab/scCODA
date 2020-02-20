@@ -9,7 +9,4 @@ scipy
 anndata
 patsy
 sklearn
-importlib
-ast
-pickle
 scanpy
