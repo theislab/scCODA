@@ -24,6 +24,8 @@ wheels/
 .installed.cfg
 *.egg
 .idea/
+data/
+server_scripts/
 MANIFEST
 
 # PyInstaller

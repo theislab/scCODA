@@ -45,6 +45,7 @@ class CompositionalModel:
         self.n_total = tf.cast(sample_counts, dtype)
         self.cell_types = cell_types
         self.covariate_names = covariate_names
+        print(covariate_names)
 
         # Get dimensions of data
         self.N, self.D = self.x.shape
@@ -118,7 +119,7 @@ class CompositionalModel:
         hmc_kernel = tfp.mcmc.TransformedTransitionKernel(
             inner_kernel=hmc_kernel, bijector=constraining_bijectors)
         hmc_kernel = tfp.mcmc.SimpleStepSizeAdaptation(
-            inner_kernel=hmc_kernel, num_adaptation_steps=int(4000), target_accept_prob=0.9)
+            inner_kernel=hmc_kernel, num_adaptation_steps=int(4000), target_accept_prob=0.8)
 
         states, kernel_results = self.sampling(num_results, n_burnin, hmc_kernel, self.params)
         states_burnin = self.get_chains_after_burnin(states, kernel_results, n_burnin)
@@ -144,7 +145,7 @@ class CompositionalModel:
                 "ind_raw": ["covariate", "cell_type_nb"],
                 "ind": ["covariate", "cell_type_nb"],
                 "b_raw": ["covariate", "cell_type_nb"],
-                "beta": ["cov", "cell_type"],
+                "beta": ["covariate", "cell_type"],
                 "concentration": ["sample", "cell_type"],
                 "prediction": ["sample", "cell_type"]
                 }
@@ -161,8 +162,6 @@ class CompositionalModel:
                                coords=coords).to_result_data(y_hat, baseline=False)
 
     def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01):
-
-        #TODO: Update Output format
 
         # (not in use atm)
         constraining_bijectors = [
@@ -299,12 +298,12 @@ class NoBaselineModel(CompositionalModel):
         beta_size = [self.D, self.K]
 
         # MCMC starting values
-        self.params = [tf.zeros(alpha_size, name='init_alpha', dtype=dtype),
-                       # tf.random.normal(alpha_size, 0, 1, name='init_alpha'),
+        self.params = [#tf.zeros(alpha_size, name='init_alpha', dtype=dtype),
+                       tf.random.normal(alpha_size, 0, 1, name='init_alpha'),
                        tf.zeros(1, name="init_mu_b", dtype=dtype),
                        tf.ones(1, name="init_sigma_b", dtype=dtype),
-                       tf.zeros(beta_size, name='init_b_offset', dtype=dtype),
-                       # tf.random.normal(beta_size, 0, 1, name='init_b_offset'),
+                       #tf.zeros(beta_size, name='init_b_offset', dtype=dtype),
+                       tf.random.normal(beta_size, 0, 1, name='init_b_offset'),
                        tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
                        ]
 

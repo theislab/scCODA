@@ -10,6 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import importlib
+import arviz as az
 
 from util import compositional_analysis_generation_toolbox as gen
 from util import comp_ana as mod
@@ -57,18 +58,31 @@ print(data.uns["b_true"])
 
 print(data.X)
 print(data.obs)
+print(data.var)
 
 #%%
 importlib.reload(mod)
 importlib.reload(res)
 
-ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
+data.obs["x_0"] = ["A", "A", "A", "B", "B", "B"]
+l = ["A", "B"]
+
+ana = mod.CompositionalAnalysis(data, "C(x_0, [[1], [0]])", baseline_index=None)
+print(ana.x)
+print(ana.covariate_names)
 
 #%%
 params_mcmc = ana.sample_hmc(num_results=int(1000), n_burnin=500)
 
 #%%
 params_mcmc.summary(credible_interval=0.9)
+_, betas_df = params_mcmc.summary_prepare()
+print(betas_df.index)
+print(params_mcmc.posterior)
+
+#%%
+az.plot_trace(params_mcmc)
+plt.show()
 
 #%%
 
