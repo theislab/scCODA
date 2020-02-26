@@ -39,7 +39,7 @@ importlib.reload(res)
 ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=2)
 
 #%%
-ca_result = ana.sample_hmc(num_results=int(2e4), n_burnin=int(5e3))
+ca_result = ana.sample_hmc(num_results=int(1000), n_burnin=int(500))
 
 ca_result.summary(credible_interval=0.95)
 
@@ -48,8 +48,9 @@ az.plot_trace(ca_result, var_names="beta", coords={"cov": [0], "cell_type": ["0"
 plt.show()
 
 #%%
-_, betas_df = params_mcmc.summary_prepare()
-print(len(betas_df.index.levels[1]))
+_, betas_df = ca_result.summary_prepare()
+print(betas_df.index)
+print(ca_result.posterior)
 
 #%%
 
