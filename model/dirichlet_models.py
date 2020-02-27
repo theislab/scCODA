@@ -45,7 +45,6 @@ class CompositionalModel:
         self.n_total = tf.cast(sample_counts, dtype)
         self.cell_types = cell_types
         self.covariate_names = covariate_names
-        print(covariate_names)
 
         # Get dimensions of data
         self.N, self.D = self.x.shape

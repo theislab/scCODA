@@ -27,8 +27,9 @@ class CompositionalAnalysis:
         data_matrix = data.X
 
         # Build covariate matrix from R-like formula
-        covariate_matrix = pt.dmatrix(formula+"-1", data.obs)
-        covariate_names = covariate_matrix.design_info.column_names
+        covariate_matrix = pt.dmatrix(formula, data.obs)
+        covariate_names = covariate_matrix.design_info.column_names[1:]
+        covariate_matrix = covariate_matrix[:, 1:]
 
         # Invoke instance of the correct model depending on baseline index
         if baseline_index is None:
