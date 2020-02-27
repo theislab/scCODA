@@ -64,10 +64,9 @@ print(data.var)
 importlib.reload(mod)
 importlib.reload(res)
 
-data.obs["x_0"] = ["A", "A", "A", "B", "B", "B"]
-l = ["A", "B"]
+#data.obs["x_0"] = ["A", "A", "A", "B", "B", "B"]
 
-ana = mod.CompositionalAnalysis(data, "C(x_0, [[1], [0]])", baseline_index=None)
+ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
 print(ana.x)
 print(ana.covariate_names)
 
@@ -76,9 +75,6 @@ params_mcmc = ana.sample_hmc(num_results=int(1000), n_burnin=500)
 
 #%%
 params_mcmc.summary(credible_interval=0.9)
-_, betas_df = params_mcmc.summary_prepare()
-print(betas_df.index)
-print(params_mcmc.posterior)
 
 #%%
 az.plot_trace(params_mcmc)
@@ -245,3 +241,9 @@ out = np.einsum("jk, ...kl->...jl", x, b)
 print(al.reshape(10, 1, 5))
 print((out + al.reshape(10, 1, 5)))
 print(out.shape)
+
+#%%
+
+url = 'https://stats.idre.ucla.edu/stat/data/hsb2.csv'
+
+hsb2 = pd.read_csv(url)
