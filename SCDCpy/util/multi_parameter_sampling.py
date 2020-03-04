@@ -21,9 +21,9 @@ from sklearn.metrics import confusion_matrix
 import tensorflow_probability as tfp
 import itertools
 
-from util import compositional_analysis_generation_toolbox as gen
+from SCDCpy.util import compositional_analysis_generation_toolbox as gen
 from SCDCpy.model import dirichlet_models as mod
-from util import comp_ana as ca
+from SCDCpy.util import comp_ana as ca
 
 tfd = tfp.distributions
 tfb = tfp.bijectors

@@ -12,9 +12,9 @@ import os
 import ast
 import matplotlib.pyplot as plt
 
-from util import compositional_analysis_generation_toolbox as gen
-from util import result_classes as res
-from util import multi_parameter_sampling as mult
+from SCDCpy.util import compositional_analysis_generation_toolbox as gen
+from SCDCpy.util import result_classes as res
+from SCDCpy.util import multi_parameter_sampling as mult
 
 #%%
 
