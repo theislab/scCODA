@@ -22,7 +22,7 @@ import tensorflow_probability as tfp
 import itertools
 
 from util import compositional_analysis_generation_toolbox as gen
-from model import dirichlet_models as mod
+from SCDCpy.model import dirichlet_models as mod
 from util import comp_ana as ca
 
 tfd = tfp.distributions

@@ -65,7 +65,7 @@ class CompositionalModel:
         """
 
         # HMC sampling function
-        @tf.function
+        @tf.autograph.experimental.do_not_convert
         def sample_mcmc(num_results_, n_burnin_, kernel_, current_state_):
             return tfp.mcmc.sample_chain(
                 num_results=num_results_,
@@ -90,8 +90,9 @@ class CompositionalModel:
         # Samples after burn-in
         states_burnin = []
         acceptances = accept[0].numpy()
+
         for s in samples:
-            states_burnin.append(s[n_burnin:])
+            states_burnin.append(s[n_burnin:].numpy())
 
         # acceptance rate
         p_accept = sum(acceptances) / acceptances.shape[0]
@@ -313,13 +314,13 @@ class NoBaselineModel(CompositionalModel):
         chain_size_beta = [num_results - n_burnin, self.D, self.K]
         chain_size_y = [num_results - n_burnin, self.N, self.K]
 
-        alphas = states_burnin[0].numpy()
+        alphas = states_burnin[0]
         alphas_final = alphas.mean(axis=0)
 
-        ind_raw = states_burnin[4].numpy() * 50
-        mu_b = states_burnin[1].numpy()
-        sigma_b = states_burnin[2].numpy()
-        b_offset = states_burnin[3].numpy()
+        ind_raw = states_burnin[4] * 50
+        mu_b = states_burnin[1]
+        sigma_b = states_burnin[2]
+        b_offset = states_burnin[3]
 
         ind_ = np.exp(ind_raw) / (1 + np.exp(ind_raw))
 
@@ -453,13 +454,13 @@ class BaselineModel(CompositionalModel):
         chain_size_beta_raw = [num_results - n_burnin, self.D, self.K-1]
         chain_size_y = [num_results - n_burnin, self.N, self.K]
 
-        alphas = states_burnin[0].numpy()
+        alphas = states_burnin[0]
         alphas_final = alphas.mean(axis=0)
 
-        ind_raw = states_burnin[4].numpy() * 50
-        mu_b = states_burnin[1].numpy()
-        sigma_b = states_burnin[2].numpy()
-        b_offset = states_burnin[3].numpy()
+        ind_raw = states_burnin[4] * 50
+        mu_b = states_burnin[1]
+        sigma_b = states_burnin[2]
+        b_offset = states_burnin[3]
 
         ind_ = np.exp(ind_raw) / (1 + np.exp(ind_raw))
 

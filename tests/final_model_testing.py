@@ -64,14 +64,15 @@ print(data.var)
 importlib.reload(mod)
 importlib.reload(res)
 
-#data.obs["x_0"] = ["A", "A", "A", "B", "B", "B"]
+#data.obs["x_0"] = ["A", "A", "A", "A", "A", "A", "B", "B", "B", "B", "B", "B"]
+#data.obs["x_1"] = ["A", "A", "A", "B", "B", "B", "A", "A", "A", "B", "B", "B"]
 
 ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
 print(ana.x)
 print(ana.covariate_names)
 
 #%%
-params_mcmc = ana.sample_hmc(num_results=int(1000), n_burnin=500)
+params_mcmc = ana.sample_hmc(num_results=int(2000), n_burnin=500)
 
 #%%
 params_mcmc.summary(credible_interval=0.9)
@@ -247,3 +248,20 @@ print(out.shape)
 url = 'https://stats.idre.ucla.edu/stat/data/hsb2.csv'
 
 hsb2 = pd.read_csv(url)
+
+
+#%%
+
+import pymc4 as pm
+import numpy as np
+@pm.model
+def nested_model(cond):
+    sd = yield pm.HalfNormal("sd", 1.)
+    norm = yield pm.Normal("n", cond, sd, observed=np.random.randn(10))
+    return norm
+
+conditioned = nested_model(cond=2.)
+trace = pm.sample(conditioned)
+
+#%%
+
