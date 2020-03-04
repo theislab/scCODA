@@ -1,10 +1,9 @@
 import numpy as np
 import patsy as pt
-import pandas as pd
 import importlib
 
-from model import dirichlet_models as dm
-from util import result_classes as res
+from SCDCpy.model import dirichlet_models as dm
+
 
 #%%
 
