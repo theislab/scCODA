@@ -18,7 +18,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow_probability.python.experimental import edward2 as ed
 
-from util import result_classes as res
+from SCDCpy.util import result_classes as res
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
