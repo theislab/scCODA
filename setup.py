@@ -12,7 +12,7 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = 'compositionDE'
+NAME = 'SCDCpy'
 DESCRIPTION = 'statistical test to identify compositional changes in count data.'
 URL = 'https://github.com/theislab/SCDCpy'
 EMAIL = 'benjamin.schubert@helmholtz-muenchen.de'
