@@ -1,5 +1,5 @@
 """"
-This file provides functions for plotting and analyzing the results from running compositional analysis models over multiple parameter sets
+This file provides functions for plotting and analyzing the results from running models over multiple parameter sets
 """
 
 
@@ -20,6 +20,7 @@ from util import multi_parameter_sampling as mult
 
 # Helpers for loading result classes from old environment
 import io
+
 
 class RenameUnpickler(pkl.Unpickler):
     def find_class(self, module, name):
@@ -47,7 +48,7 @@ def renamed_loads(pickled_bytes):
 #%%
 
 
-def multi_run_study_analysis_prepare(path, file_identifier="result_", custom_threshold=0.5, keep_results=False):
+def multi_run_study_analysis_prepare(path, file_identifier="result_"):
 
     """
     Function to calculate discovery rates, ... for an entire directory of multi_parameter_sampling files
@@ -76,22 +77,10 @@ def multi_run_study_analysis_prepare(path, file_identifier="result_", custom_thr
             # Load file
             r = renamed_load(open(path + "/" + f, "rb"))
 
-            # Calculate final parameters (average over MCMC chain, 0 if inclusion probability < custom_threshold)
-            for r_k, r_i in r.mcmc_results.items():
-                r.mcmc_results[r_k].params["final_parameter"] = np.where(np.isnan(r_i.params["mean_nonzero"]),
-                                                          r_i.params["mean"],
-                                                          np.where(r_i.params["inclusion_prob"] > custom_threshold,
-                                                                   r_i.params["mean_nonzero"],
-                                                                   0))
             # Discovery rates for beta
             r.get_discovery_rates()
 
-            # Add to results
-            if keep_results:
-                results.append(r)
-            else:
-                r._MCMCResult__raw_params = {}
-                results.append(r)
+            results.append(r)
 
     # Generate all_study_params
     all_study_params = pd.concat([r.parameters for r in results])
@@ -132,7 +121,7 @@ def get_scores(agg_df):
     return agg_df
 
 
-def plot_discovery_rates_agg(rates_df, dim_1='w_true', dim_2=None, path = None):
+def plot_discovery_rates_agg(rates_df, dim_1='w_true', dim_2=None, path=None):
     """
     Plot heatmap of TPR and TNR for one parameter series vs. another
     :param rates_df: pandas DataFrame - format as all_study_params_agg from multi_run_study_analysis_prepare
@@ -175,7 +164,8 @@ def plot_discovery_rates_agg(rates_df, dim_1='w_true', dim_2=None, path = None):
 
     plt.show()
 
-def plot_cases_vs_controls(rates_df, results, identifier_w, type="MCMC", path = None, suptitle=None):
+
+def plot_cases_vs_controls(rates_df, results, identifier_w, path=None, suptitle=None):
     """
     Plot heatmaps of TPR and TNR for number of case vs. number of control samples.
     Also plots counts of cases vs. controls for all cell types
@@ -190,7 +180,7 @@ def plot_cases_vs_controls(rates_df, results, identifier_w, type="MCMC", path = 
     fig, ax = plt.subplots(2, 2, figsize=(12, 10))
 
     # DataFrame for heatmaps
-    rates_df = rates_df.loc[(rates_df["w_true"]==str(identifier_w))].groupby("n_samples").mean().reset_index()
+    rates_df = rates_df.loc[(rates_df["w_true"] == str(identifier_w))].groupby("n_samples").mean().reset_index()
     plot_data = pd.DataFrame({"controls": [ast.literal_eval(x)[0] for x in rates_df["n_samples"].tolist()],
                               "cases": [ast.literal_eval(x)[1] for x in rates_df["n_samples"].tolist()],
                               "tpr": rates_df["tpr"],
@@ -198,8 +188,8 @@ def plot_cases_vs_controls(rates_df, results, identifier_w, type="MCMC", path = 
                               })
 
     # Plot heatmaps
-    sns.heatmap(plot_data.pivot("controls", "cases", 'tpr'), ax=ax[0,0], vmin=0, vmax=1).set_title("MCMC TPR")
-    sns.heatmap(plot_data.pivot("controls", "cases", 'tnr'), ax=ax[0,1], vmin=0, vmax=1).set_title("MCMC TNR")
+    sns.heatmap(plot_data.pivot("controls", "cases", 'tpr'), ax=ax[0, 0], vmin=0, vmax=1).set_title("MCMC TPR")
+    sns.heatmap(plot_data.pivot("controls", "cases", 'tnr'), ax=ax[0, 1], vmin=0, vmax=1).set_title("MCMC TNR")
 
     # Case vs. control count boxplots
     cases_y = []
@@ -233,7 +223,7 @@ def plot_cases_vs_controls(rates_df, results, identifier_w, type="MCMC", path = 
     plt.show()
 
 
-def multi_run_study_analysis_prepare_per_param(path, file_identifier="result_", custom_threshold=0.5, keep_results=False):
+def multi_run_study_analysis_prepare_per_param(path, file_identifier="result_"):
     """
     Function to calculate discovery rates, ... for an entire directory of multi_parameter_sampling files
     Effect Discovery rates are calculated separately for each cell type
@@ -250,30 +240,20 @@ def multi_run_study_analysis_prepare_per_param(path, file_identifier="result_", 
     results = []
 
     print("Calculating discovery rates...")
-    i=0
+    i = 0
 
     for f in files:
-        i+=1
+        i += 1
 
         print("Preparing: ", i / len(files))
         if file_identifier in f:
             # Load file
             r = renamed_load(open(path + "/" + f, "rb"))
-            # Calculate final parameters (average over MCMC chain, 0 if inclusion probability < custom_threshold)
-            for r_k, r_i in r.mcmc_results.items():
-                r.mcmc_results[r_k].params["final_parameter"] = np.where(np.isnan(r_i.params["mean_nonzero"]),
-                                                          r_i.params["mean"],
-                                                          np.where(r_i.params["inclusion_prob"] > custom_threshold,
-                                                                   r_i.params["mean_nonzero"],
-                                                                   0))
+
             # Discovery rates for beta per parameter
             r.get_discovery_rates_per_param()
 
-            if keep_results:
-                results.append(r)
-            else:
-                r._MCMCResult__raw_params = {}
-                results.append(r)
+            results.append(r)
 
     # Generate all_study_params
     all_study_params = pd.concat([r.parameters for r in results])
@@ -306,13 +286,13 @@ def plot_cases_vs_controls_per_param(K, rates_df, results, identifier_w, path=No
         a.set_ylim(0, 1000)
 
     # Get heatmap data relevant for plotting
-    rates_df = rates_df.loc[(rates_df["w_true"]==str(identifier_w))].groupby("n_samples").mean().reset_index()
+    rates_df = rates_df.loc[(rates_df["w_true"] == str(identifier_w))].groupby("n_samples").mean().reset_index()
     rates_df["controls"] = [ast.literal_eval(x)[0] for x in rates_df["n_samples"].tolist()]
     rates_df["cases"] = [ast.literal_eval(x)[1] for x in rates_df["n_samples"].tolist()]
 
     # For each cell type:
     for i in range(K):
-        plot_df = rates_df.loc[:,["controls", "cases", "correct_"+str(i), "false_"+str(i)]]
+        plot_df = rates_df.loc[:, ["controls", "cases", "correct_"+str(i), "false_"+str(i)]]
         plot_df["disc_rate"] = plot_df["correct_"+str(i)]/(plot_df["correct_"+str(i)] + plot_df["false_"+str(i)])
         # If Effect on cell type ==0: plot in blue, else plot in red
         if identifier_w[0][i] == 0:
@@ -320,7 +300,7 @@ def plot_cases_vs_controls_per_param(K, rates_df, results, identifier_w, path=No
         else:
             cmap = "Reds_r"
         # Plot heatmap
-        sns.heatmap(plot_df.pivot("controls", "cases", 'disc_rate'), ax=ax[0,i], vmin=0, vmax=1, cmap=cmap).\
+        sns.heatmap(plot_df.pivot("controls", "cases", 'disc_rate'), ax=ax[0, i], vmin=0, vmax=1, cmap=cmap).\
             set_title("Cell type "+str(i+1)+" accuracy - " + "Effect: " + str(identifier_w[0][i]))
 
     # Get cell count data for each cell type
@@ -356,7 +336,7 @@ def plot_cases_vs_controls_per_param(K, rates_df, results, identifier_w, path=No
     plt.show()
 
 
-def multi_run_study_analysis_multi_model_prepare(path, file_identifier="result_", custom_threshold=0.5, keep_results=False):
+def multi_run_study_analysis_multi_model_prepare(path, file_identifier="result_"):
     """
     Function to calculate discovery rates, ... for an entire directory of multi_parameter_sampling_multi_model files
     :param path: string - path to directory
@@ -375,33 +355,17 @@ def multi_run_study_analysis_multi_model_prepare(path, file_identifier="result_"
 
     # For all files:
     for f in files:
-        i+=1
+        i += 1
 
         print("Preparing: ", i / len(files))
         if file_identifier in f:
             # Load file
             r = renamed_load(open(path + "/" + f, "rb"))
 
-            # Calculate final parameters (average over MCMC chain, 0 if inclusion probability < custom_threshold)
-            # Need to go into level 2 of all results DataFrames!
-            for r_k, r_i in r.results.items():
-                for r2_k, r2_i in r_i.items():
-
-                    if "mean_nonzero" in r2_i.params.columns:
-                        r_i[r2_k].params["final_parameter"] = np.where(np.isnan(r2_i.params["mean_nonzero"]),
-                                                              r2_i.params["mean"],
-                                                              np.where(r2_i.params["inclusion_prob"] > custom_threshold,
-                                                                       r2_i.params["mean_nonzero"],
-                                                                       0))
             # Discovery rates for beta
             r.get_discovery_rates()
 
-            # Add to results
-            if keep_results:
-                results.append(r)
-            else:
-                r._MCMCResult__raw_params = {}
-                results.append(r)
+            results.append(r)
 
     # Generate all_study_params
     all_study_params = pd.concat([r.parameters for r in results])
@@ -413,8 +377,8 @@ def multi_run_study_analysis_multi_model_prepare(path, file_identifier="result_"
 
     return results, all_study_params, all_study_params_agg.reset_index()
 
-# ???
-def plot_cases_vs_controls_per_param_2(K, rates_df, results, identifier_w, path = None, suptitle=None):
+
+def plot_cases_vs_controls_per_param_2(K, rates_df, results, identifier_w, path=None, suptitle=None):
     """
     Optimized version of plot_cases_vs_controls_per_param
     :param K: int - number of cell types
@@ -429,7 +393,7 @@ def plot_cases_vs_controls_per_param_2(K, rates_df, results, identifier_w, path 
     sns.set_style("whitegrid")
 
     # Get heatmap data relevant for plotting
-    rates_df = rates_df.loc[(rates_df["w_true"]==str(identifier_w))].groupby("n_samples").mean().reset_index()
+    rates_df = rates_df.loc[(rates_df["w_true"] == str(identifier_w))].groupby("n_samples").mean().reset_index()
     rates_df["controls"] = [ast.literal_eval(x)[0] for x in rates_df["n_samples"].tolist()]
     rates_df["cases"] = [ast.literal_eval(x)[1] for x in rates_df["n_samples"].tolist()]
 
@@ -453,7 +417,7 @@ def plot_cases_vs_controls_per_param_2(K, rates_df, results, identifier_w, path 
         ax[1].set_ylim(0, 1000)
 
         # DataFrame for heatmap
-        plot_df = rates_df.loc[:,["controls", "cases", "correct_"+str(i), "false_"+str(i)]]
+        plot_df = rates_df.loc[:, ["controls", "cases", "correct_"+str(i), "false_"+str(i)]]
         plot_df["disc_rate"] = plot_df["correct_"+str(i)]/(plot_df["correct_"+str(i)] + plot_df["false_"+str(i)])
         # If Effect on cell type ==0: plot in blue, else plot in red
         if identifier_w[0][i] == 0:
