@@ -3,7 +3,6 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import time
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -12,7 +11,7 @@ import pandas as pd
 from tensorflow_probability.python.experimental import edward2 as ed
 
 from util import result_classes as res
-from model import dirichlet_models as mod
+from SCDCpy.model import dirichlet_models as mod
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -497,7 +496,6 @@ print(target_log_prob_fn_ed(params_ed[0], params_ed[1], params_ed[2], params_ed[
 
 
 #%%
-import matplotlib.pyplot as plt
 
 num_schools = 8  # number of schools
 treatment_effects = np.array(

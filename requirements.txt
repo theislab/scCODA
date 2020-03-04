@@ -4,7 +4,7 @@ seaborn
 matplotlib
 tensorflow>=2.0
 tensorflow-probability>=0.8.0
-arviz>=0.6
+arviz>=0.7
 scipy
 anndata
 patsy
