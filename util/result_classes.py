@@ -31,7 +31,7 @@ class CAResultConverter(az.data.io_dict.DictConverter):
         obs = self.observed_data_to_xarray()
 
         return CAResult(
-            y_hat, baseline=baseline,
+            y_hat=y_hat, baseline=baseline,
             **{
                 "posterior": post,
                 "sample_stats": ss,

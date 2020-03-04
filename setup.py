@@ -23,8 +23,7 @@ VERSION = "0.0.1"
 # What packages are required for this module to be executed?
 REQUIRED = [
     "numpy", "scipy", "tensorflow", "tensorflow-probability",
-    "arviz", "seaborn", "pandas", "pickle", "ast", "matplotlib",
-    "time"
+    "arviz", "seaborn", "pandas", "matplotlib"
 ]
 
 # What packages are optional?
@@ -121,7 +120,7 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
     # $ setup.py publish support.
     cmdclass={
