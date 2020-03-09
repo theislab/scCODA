@@ -23,7 +23,7 @@ class CompositionalAnalysis:
         cell_types = data.var.index.to_list()
 
         # Get count data
-        data_matrix = data.X
+        data_matrix = data.X.astype("float32")
 
         # Build covariate matrix from R-like formula
         covariate_matrix = pt.dmatrix(formula, data.obs)
