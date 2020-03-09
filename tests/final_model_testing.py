@@ -265,3 +265,11 @@ trace = pm.sample(conditioned)
 
 #%%
 
+# progressbar
+import progressbar as pb
+import time
+
+with pb.ProgressBar(max_value=10) as bar:
+    for i in range(10):
+        time.sleep(0.1)
+        bar.update(i)

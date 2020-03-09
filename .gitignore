@@ -25,6 +25,7 @@ wheels/
 *.egg
 .idea/
 data/
+tests/
 server_scripts/
 MANIFEST
 

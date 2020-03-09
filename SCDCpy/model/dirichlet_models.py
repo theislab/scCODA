@@ -7,10 +7,6 @@ Johannes Ostner: Development of a statistical framework for compositional analys
 
 :authors: Johannes Ostner
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import numpy as np
 import time
 
@@ -39,8 +35,8 @@ class CompositionalModel:
                 """
 
         dtype = tf.float32
-        self.x = tf.cast(covariate_matrix, dtype)
-        self.y = tf.cast(data_matrix, dtype)
+        self.x = tf.convert_to_tensor(covariate_matrix, dtype)
+        self.y = tf.convert_to_tensor(data_matrix, dtype)
         sample_counts = np.sum(data_matrix, axis=1)
         self.n_total = tf.cast(sample_counts, dtype)
         self.cell_types = cell_types
@@ -65,7 +61,7 @@ class CompositionalModel:
         """
 
         # HMC sampling function
-        @tf.autograph.experimental.do_not_convert
+        @tf.function
         def sample_mcmc(num_results_, n_burnin_, kernel_, current_state_):
             return tfp.mcmc.sample_chain(
                 num_results=num_results_,
