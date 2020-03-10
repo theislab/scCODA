@@ -27,12 +27,15 @@ class CompositionalModel:
 
     def __init__(self, covariate_matrix, data_matrix, cell_types, covariate_names, *args, **kwargs):
         """
-                Constructor of model class
-                :param covariate_matrix: numpy array [NxD] - covariate matrix
-                :param data_matrix: numpy array [NxK] - cell count matrix
-                :param sample_counts: numpy array [N] - number of cells per sample
-                :param dtype: data type for all numbers (for tensorflow)
-                """
+        Generalized Constructor of model class
+
+        Parameters
+        ----------
+        covariate_matrix -- numpy array [NxD] - covariate matrix
+        data_matrix -- numpy array [NxK] - cell count matrix
+        cell_types -- list of cell type names
+        covariate_names -- List of covariate names
+        """
 
         dtype = tf.float32
         self.x = tf.convert_to_tensor(covariate_matrix, dtype)
@@ -55,9 +58,18 @@ class CompositionalModel:
 
     def sampling(self, num_results, n_burnin, kernel, init_state):
         """
-        HMC sampling of the model
-        :param kernel: MCMC kernel
-        :return: dict of parameters
+
+        Parameters
+        ----------
+        num_results -- MCMC chain length (default 20000)
+        n_burnin -- Number of burnin iterations (default 5000)
+        kernel -- MCMC kernel object
+        init_state -- Starting parameters
+
+        Returns
+        -------
+        states -- States of MCMC chain
+        kernel_results -- sampling meta-information
         """
 
         # HMC sampling function
@@ -73,7 +85,7 @@ class CompositionalModel:
                                          pkr.inner_results.inner_results.accepted_results.step_size]
                 )
 
-        # HMC sampling process
+        # The actual sampling process
         start = time.time()
         states, kernel_results = sample_mcmc(num_results, n_burnin, kernel, init_state)
         duration = time.time() - start
@@ -81,8 +93,19 @@ class CompositionalModel:
 
         return states, kernel_results
 
-    # Re-calculation of some values (beta) and application of burnin
     def get_chains_after_burnin(self, samples, accept, n_burnin):
+        """
+        Application of burnin after sampling
+        Parameters
+        ----------
+        samples -- all kernel states
+        accept -- Kernel meta-information
+        n_burnin -- number of burnin iterations
+
+        Returns
+        -------
+        states_burnin -- Kernel states without burnin samples
+        """
         # Samples after burn-in
         states_burnin = []
         acceptances = accept[0].numpy()
@@ -90,13 +113,26 @@ class CompositionalModel:
         for s in samples:
             states_burnin.append(s[n_burnin:].numpy())
 
-        # acceptance rate
+        # Calculate acceptance rate
         p_accept = sum(acceptances) / acceptances.shape[0]
         print('Acceptance rate: %0.1f%%' % (100 * p_accept))
 
         return states_burnin
 
-    def sample_hmc(self, num_results=int(10e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01):
+    def sample_hmc(self, num_results=int(20e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01):
+        """
+        HMC sampling
+        Parameters
+        ----------
+        num_results -- MCMC chain length (default 20000)
+        n_burnin -- Number of burnin iterations (default 5000)
+        num_leapfrog_steps -- HMC leapfrog steps (default 10)
+        step_size -- Initial step size (default 0.01)
+
+        Returns
+        -------
+        SCDCpy.util.result_data object
+        """
 
         # (not in use atm)
         constraining_bijectors = [
@@ -117,6 +153,7 @@ class CompositionalModel:
         hmc_kernel = tfp.mcmc.SimpleStepSizeAdaptation(
             inner_kernel=hmc_kernel, num_adaptation_steps=int(4000), target_accept_prob=0.8)
 
+        # HMC sampling
         states, kernel_results = self.sampling(num_results, n_burnin, hmc_kernel, self.params)
         states_burnin = self.get_chains_after_burnin(states, kernel_results, n_burnin)
 
@@ -124,7 +161,7 @@ class CompositionalModel:
 
         params = dict(zip(self.param_names, states_burnin))
 
-        # Arviz setup
+        # Result object generation setup
         if self.baseline_index is not None:
             cell_types_nb = self.cell_types[:self.baseline_index] + self.cell_types[self.baseline_index+1:]
         else:
@@ -158,7 +195,19 @@ class CompositionalModel:
                                coords=coords).to_result_data(y_hat, baseline=False)
 
     def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01):
+        """
+        NUTS sampling - WIP, DO NOT USE!!!
+        Parameters
+        ----------
+        num_results
+        n_burnin
+        max_tree_depth
+        step_size
 
+        Returns
+        -------
+
+        """
         # (not in use atm)
         constraining_bijectors = [
             tfb.Identity(),
@@ -227,6 +276,13 @@ class NoBaselineModel(CompositionalModel):
     """
 
     def __init__(self, *args, **kwargs):
+        """
+        Constructor of model class
+        Parameters
+        ----------
+        args -- arguments passed to top-level class
+        kwargs -- arguments passed to top-level class
+        """
         super(self.__class__, self).__init__(*args, **kwargs)
 
         self.baseline_index = None
@@ -239,11 +295,13 @@ class NoBaselineModel(CompositionalModel):
         def define_model(x, n_total, K):
             """
             Model definition in Edward2
-            :param x: numpy array [NxD] - covariate matrix
-            :param n_total: numpy array [N] - number of cells per sample
-            :param K: Number of cell types
-            :return: none
+            Parameters
+            ----------
+            x -- numpy array [NxD] - covariate matrix
+            n_total -- numpy array [N] - number of cells per sample
+            K -- Number of cell types
             """
+
             N, D = x.shape
 
             # normal prior on bias
@@ -294,20 +352,30 @@ class NoBaselineModel(CompositionalModel):
         beta_size = [self.D, self.K]
 
         # MCMC starting values
-        self.params = [#tf.zeros(alpha_size, name='init_alpha', dtype=dtype),
-                       tf.random.normal(alpha_size, 0, 1, name='init_alpha'),
+        self.params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha'),
                        tf.zeros(1, name="init_mu_b", dtype=dtype),
                        tf.ones(1, name="init_sigma_b", dtype=dtype),
-                       #tf.zeros(beta_size, name='init_b_offset', dtype=dtype),
                        tf.random.normal(beta_size, 0, 1, name='init_b_offset'),
                        tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
                        ]
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, n_burnin):
+        """
+        Calculate predicted cell counts (for analysis purposes) and add intermediate parameters to MCMC results
+        Parameters
+        ----------
+        states_burnin -- MCMC chain without burnin samples
+        num_results -- Chain length (with burnin)
+        n_burnin -- Number of burnin samples
+
+        Returns
+        -------
+        predicted cell counts
+        """
+
         start = time.time()
 
-        chain_size_beta = [num_results - n_burnin, self.D, self.K]
         chain_size_y = [num_results - n_burnin, self.N, self.K]
 
         alphas = states_burnin[0]
@@ -342,14 +410,13 @@ class NoBaselineModel(CompositionalModel):
         duration = time.time() - start
         print("get_y_hat ({:.3f} sec)".format(duration))
 
-        return ed.DirichletMultinomial(self.n_total,
-                                       concentration=np.exp(np.matmul(self.x, betas_final)
-                                                            + alphas_final).astype(np.float32)
-                                       ).numpy()
+        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float32)
+        y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
+        return y_mean
 
 
 class BaselineModel(CompositionalModel):
-    """"
+    """
     implements statistical model and
     test statistics for compositional differential change analysis
     with specification of a baseline cell type
@@ -359,9 +426,11 @@ class BaselineModel(CompositionalModel):
 
         """
         Constructor of model class
-        :param covariate_matrix: numpy array [NxD] - covariate matrix
-        :param data_matrix: numpy array [NxK] - cell count matrix
-        :param baseline_index: index of cell type that is used as a reference (baseline)
+        Parameters
+        ----------
+        baseline_index -- Index of reference cell type (column in count data matrix)
+        args -- arguments passed to top-level class
+        kwargs -- arguments passed to top-level class
         """
         super(self.__class__, self).__init__(*args, **kwargs)
 
@@ -375,10 +444,11 @@ class BaselineModel(CompositionalModel):
         def define_model(x, n_total, K):
             """
             Model definition in Edward2
-            :param x: numpy array [NxD] - covariate matrix
-            :param n_total: numpy array [N] - number of cells per sample
-            :param K: Number of cell types
-            :return: none
+            Parameters
+            ----------
+            x -- numpy array [NxD] - covariate matrix
+            n_total -- numpy array [N] - number of cells per sample
+            K -- Number of cell types
             """
             N, D = x.shape
 
@@ -445,6 +515,18 @@ class BaselineModel(CompositionalModel):
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, n_burnin):
+        """
+        Calculate predicted cell counts (for analysis purposes) and add intermediate parameters to MCMC results
+        Parameters
+        ----------
+        states_burnin -- MCMC chain without burnin samples
+        num_results -- Chain length (with burnin)
+        n_burnin -- Number of burnin samples
+
+        Returns
+        -------
+        predicted cell counts
+        """
 
         chain_size_beta = [num_results - n_burnin, self.D, self.K]
         chain_size_beta_raw = [num_results - n_burnin, self.D, self.K-1]
@@ -485,15 +567,16 @@ class BaselineModel(CompositionalModel):
         states_burnin.append(conc_)
         states_burnin.append(predictions_)
 
-        return ed.DirichletMultinomial(self.n_total,
-                                       concentration=np.exp(np.matmul(self.x, betas_final)
-                                                            + alphas_final).astype(np.float32)
-                                       ).numpy()
+        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float32)
+        y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
+        return y_mean
 
 
 class NoBaselineModelNoEdward(CompositionalModel):
 
-    """"
+    """
+    WIP! DO NOT USE!!!
+
     implements statistical model and
     test statistics for compositional differential change analysis
     without specification of a baseline cell type

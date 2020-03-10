@@ -1,3 +1,6 @@
+"""
+Helper functions to convert single-cell data to SCDCpy compositional analysis data
+"""
 import pandas as pd
 import anndata as ad
 import numpy as np
@@ -5,6 +8,18 @@ import os
 
 
 def from_scanpy(adata, cell_type_identifier, covariate_key):
+    """
+    Converts a single scanpy file to a row of a cell count matrix
+    Parameters
+    ----------
+    adata -- single-cell data object from scanpy
+    cell_type_identifier -- column name in adata.obs that specifies the cell types
+    covariate_key -- key for adata.uns, where the covariate values are stored
+
+    Returns
+    -------
+    cell count vector, covariate vector
+    """
 
     # Calculating cell counts for the sample
     cell_counts = adata.obs[cell_type_identifier].value_counts()
@@ -16,6 +31,18 @@ def from_scanpy(adata, cell_type_identifier, covariate_key):
 
 
 def from_scanpy_list(samples, cell_type_identifier, covariate_key):
+    """
+    Creates a compositional analysis data set from a list of scanpy data sets
+    Parameters
+    ----------
+    samples -- list of scanpy data sets
+    cell_type_identifier -- column name in adata.obs that specifies the cell types
+    covariate_key -- key for adata.uns, where the covariate values are stored
+
+    Returns
+    -------
+    compositional analysis data set
+    """
 
     count_data = pd.DataFrame()
     covariate_data = pd.DataFrame()
@@ -37,6 +64,18 @@ def from_scanpy_list(samples, cell_type_identifier, covariate_key):
 
 
 def from_scanpy_dir(path, cell_type_identifier, covariate_key):
+    """
+    reates a compositional analysis data set from all scanpy data sets in a directory
+    Parameters
+    ----------
+    path -- path to directory
+    cell_type_identifier -- column name in adata.obs that specifies the cell types
+    covariate_key -- key for adata.uns, where the covariate values are stored
+
+    Returns
+    -------
+    compositional analysis data set
+    """
 
     count_data = pd.DataFrame()
     covariate_data = pd.DataFrame()
@@ -49,7 +88,7 @@ def from_scanpy_dir(path, cell_type_identifier, covariate_key):
         count_data = count_data.append(cell_counts, ignore_index=True)
         covariate_data = covariate_data.append(pd.Series(covs), ignore_index=True)
 
-        # Replace NaNs
+    # Replace NaNs
     count_data = count_data.fillna(0)
     covariate_data = covariate_data.fillna(0)
 

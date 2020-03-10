@@ -34,26 +34,27 @@ tfb = tfp.bijectors
 class MultiParamSimulation:
 
     """
-    Implements subsequent generation and simulation of datasets with a multitude of parameters, such as data dimensions, effect combinations or MCMC chain length.
-    Parameters are passed to the
+    Implements subsequent generation and simulation of datasets with a multitude of parameters,
+     such as data dimensions, effect combinations or MCMC chain length.
     """
 
     def __init__(self, cases=[1], K=[5], n_total=[1000], n_samples=[[5,5]],
                  b_true=[None], w_true=[None], num_results=[10e3], baseline_index=None, formula="x_0"):
-
         """
         constructor. Simulated Parameters are passed to the constructor as lists, except the type of model, which is fixed for all simulations.
         The simulation is carried out over all possible combinations of specified parameters.
         See the default values for examples
-
-        :param cases: list of int - Number of (binary) covariates
-        :param K: list of int - Number of cell types
-        :param n_total: list of int - number of cells per sample
-        :param n_samples: list of lists - number of samples. Each sublist specifies the number of samples for each covariate combination, length 2**cases
-        :param b_true: list of lists - Base composition. Each sublist has dimension K.
-        :param w_true: list of lists - Effect composition. Each sublist is a nested list that represents a DxK effect matrix
-        :param num_results: list of int - MCMC chain length
-        :param model: Model used
+        Parameters
+        ----------
+        cases -- Number of (binary) covariates
+        K -- Number of cell types
+        n_total -- number of cells per sample
+        n_samples -- number of samples. Each sublist specifies the number of samples for each covariate combination, length 2**cases
+        b_true -- Base composition. Each sublist has dimension K.
+        w_true -- Effect composition. Each sublist is a nested list that represents a DxK effect matrix
+        num_results -- MCMC chain length
+        baseline_index -- Index of reference cellltype (None for no baseline)
+        formula -- R-style formula used in model specification
         """
 
         # HMC Settings
@@ -73,11 +74,11 @@ class MultiParamSimulation:
         self.formula = formula
 
     def simulate(self):
-
         """
         Generation and modeling of single-cell-like data
-        :param keep_raw_params: boolean - if True, all MCMC values are saved. Caution! Eats a lot of memory
-        :return: None. Fills up self.mcmc_results
+        Returns
+        -------
+        None. Fills up self.mcmc_results
         """
 
         i = 0
@@ -105,10 +106,11 @@ class MultiParamSimulation:
         return None
 
     def get_discovery_rates(self):
-
         """
         Calculates discovery rates and other statistics for each effect, summarized over all entries of beta
-        :return: None; extends self.parameters
+        Returns
+        -------
+        None; extends self.parameters
         """
 
         tp = []
@@ -145,11 +147,13 @@ class MultiParamSimulation:
         return None
 
     def get_discovery_rates_per_param(self):
-
         """
         Discovery rates and other statistics for each entry of beta separately. This only works for cases==[1]
-        :return: None, extends self.parameters
+        Returns
+        -------
+        None, extends self.parameters
         """
+
         correct = []
         false = []
         ws = self.parameters.loc[:, "w_true"]
@@ -189,9 +193,14 @@ class MultiParamSimulation:
     def plot_discovery_rates(self, dim_1='w_true', dim_2='n_samples'):
         """
         plots TPR and TNR for two parameter series specified in the constructor (e.g. w_true vs. n_samples)
-        :param dim_1: string - parameter on x-axis
-        :param dim_2: string - parameter on y-axis
-        :return: None - plot!!!
+        Parameters
+        ----------
+        dim_1 -- parameter on x-axis
+        dim_2 -- parameter on y-axis
+
+        Returns
+        -------
+        a plot
         """
 
         plot_data = self.parameters[[dim_1, dim_2, "tpr_mcmc", "tnr_mcmc"]]
@@ -202,40 +211,46 @@ class MultiParamSimulation:
         sns.heatmap(plot_data.pivot(dim_1, dim_2, 'tnr_mcmc'), ax=ax[1]).set_title("MCMC TNR")
         plt.show()
 
-
     def save(self, path='''/Users/Johannes/Documents/Uni/Master's Thesis/simulation_results/tests/''',
              filename=str(datetime.datetime.now())):
         """
         saves results to a pickle file
-        :param path: string - directory
-        :param filename: string - file name
-        :return:
+        Parameters
+        ----------
+        path -- directory
+        filename -- name of new file
+
+        Returns
+        -------
+
         """
+
         with open(path + filename + '.pkl', 'wb') as f:
             pkl.dump(self, f)
 
 
-#%%
 class Multi_param_simulation_multi_model:
 
     """
-    Implements subsequent simulation of parameter sets with multiple models
+    Implements subsequent simulation of parameter sets with multiple models.
+    This class provides a framework for running an instance of multi_param_simulation with more than one model.
+    Each generated dataset is evaluated by each model
     """
 
     def __init__(self, cases=[1], K=[5], n_total=[1000], n_samples=[[5,5]],
                  b_true=[None], w_true=[None], num_results=[10e3], models=[mod.NoBaselineModel]):
-
         """
-        Constructor - This class provides a framework for running an instance of multi_param_simulation with more than one model.
-        Each generated dataset is evaluated by each model
-        :param cases: See multi_param_simulation
-        :param K: See multi_param_simulation
-        :param n_total: See multi_param_simulation
-        :param n_samples: See multi_param_simulation
-        :param b_true: See multi_param_simulation
-        :param w_true: See multi_param_simulation
-        :param num_results: See multi_param_simulation
-        :param models: List of models to evaluate
+
+        Parameters
+        ----------
+        cases -- Number of (binary) covariates
+        K -- Number of cell types
+        n_total -- number of cells per sample
+        n_samples -- number of samples. Each sublist specifies the number of samples for each covariate combination, length 2**cases
+        b_true -- Base composition. Each sublist has dimension K.
+        w_true -- Effect composition. Each sublist is a nested list that represents a DxK effect matrix
+        num_results -- MCMC chain length
+        models -- List of models to evaluate
         """
 
         # HMC Settings
