@@ -11,56 +11,31 @@ We then build a concentration vector for each sample (row of x) that sums up to 
 
 # TODO: Extensive introduction into data format
 
-# Setup
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import matplotlib.pyplot as plt
 import numpy as np
 import anndata as ad
 import pandas as pd
-
-import tensorflow_probability as tfp
-import warnings
 from scipy.special import softmax
 
-plt.style.use("ggplot")
-warnings.filterwarnings('ignore')
 
-tfd = tfp.distributions
-tfb = tfp.bijectors
-plt.style.use('ggplot')
-
-
-# **Requirements:**
-# * Python == 3.7
-# * Tensorflow == 2.0
-# * Tensorflow probability == 0.8.0
-
-# ## Scenario 1: Normally distributed, independent covariates
-# Default Settings
-D = 4  # number of dimensions
-N = 100  # number of datapoints to generate
-K = 5 # number of cell types
-n_total = [1000]*N
-noise_std_true = 1.0
-
-def generate_normal_uncorrelated (N, D, K, n_total, noise_std_true):
+def generate_normal_uncorrelated(N, D, K, n_total, noise_std_true):
     """
     Scenario 1: Normally distributed, independent covariates
-    :param N: Number of samples
-    :param D: Number of covariates
-    :param K: Number of cell types
-    :param n_total: Number of individual cells per sample
-    :param noise_std_true: noise level. 0: No noise
+    Parameters
+    ----------
+    N -- Number of samples
+    D -- Number of covariates
+    K -- Number of cell types
+    n_total -- Number of individual cells per sample
+    noise_std_true -- noise level. 0: No noise
 
-    :return: Anndata object
+    Returns
+    -------
+    Anndata object
     """
 
     # Generate random composition parameters
-    b_true = np.random.normal(0,1, size=K).astype(np.float32)  # bias (alpha)
+    b_true = np.random.normal(0, 1, size=K).astype(np.float32)  # bias (alpha)
     w_true = np.random.normal(0, 1, size=(D, K)).astype(np.float32)  # weights (beta)
 
     # Generate random covariate matrix
@@ -82,22 +57,22 @@ def generate_normal_uncorrelated (N, D, K, n_total, noise_std_true):
     return data
 
 
-# ## Scenario 2: Correlated covariates
-# Default Settings
-covariate_mean = np.zeros(shape=(D))
-covariate_var = np.identity(D)
-
-def generate_normal_correlated (N, D, K, n_total, noise_std_true, covariate_mean = np.zeros(shape=(D)), covariate_var=None):
+def generate_normal_correlated(N, D, K, n_total, noise_std_true, covariate_mean=np.zeros(shape=5), covariate_var=None):
     """
     Scenario 2: Correlated covariates
-    :param N: Number of samples
-    :param D: Number of covariates
-    :param K: Number of cell types
-    :param n_total: Number of individual cells per sample
-    :param noise_std_true: noise level. 0: No noise
-    :param covariate_mean: Mean of each covariate
-    :param covariate_var: Variance matrix for all covaraiates
-    :return: Anndata object
+    Parameters
+    ----------
+    N -- Number of samples
+    D -- Number of covariates
+    K -- Number of cell types
+    n_total -- Number of individual cells per sample
+    noise_std_true -- noise level. 0: No noise
+    covariate_mean -- Mean of each covariate
+    covariate_var -- Variance matrix for all covaraiates
+
+    Returns
+    -------
+    Anndata object
     """
 
     # Generate randomized covariate covariance matrix if none is specified
@@ -105,17 +80,17 @@ def generate_normal_correlated (N, D, K, n_total, noise_std_true, covariate_mean
         # Covariates drawn from MvNormal(0, Cov), Cov_ij = p ^|i-j| , p=0.4
         # Tibshirani for correlated covariates: Tibshirani (1996)
         p = 0.4
-        covariate_var = np.zeros((D,D))
+        covariate_var = np.zeros((D, D))
         for i in range(D):
             for j in range(D):
-                covariate_var[i,j] = p**np.abs(i-j)
+                covariate_var[i, j] = p**np.abs(i-j)
 
     # Generate random composition parameters
-    b_true = np.random.normal(0,1, size=K).astype(np.float32)  # bias (alpha)
+    b_true = np.random.normal(0, 1, size=K).astype(np.float32)  # bias (alpha)
     w_true = np.random.normal(0, 1, size=(D, K)).astype(np.float32)  # weights (beta)
 
     # Generate random covariate matrix
-    x = np.random.multivariate_normal(size = N, mean=covariate_mean, cov=covariate_var).astype(np.float32)
+    x = np.random.multivariate_normal(size=N, mean=covariate_mean, cov=covariate_var).astype(np.float32)
     noise = noise_std_true * np.random.randn(N, 1).astype(np.float32)
 
     # Generate y
@@ -133,31 +108,34 @@ def generate_normal_correlated (N, D, K, n_total, noise_std_true, covariate_mean
     return data
 
 
-# ## Scenario 3: Correlated cell types
-
-def generate_normal_xy_correlated (N, D, K, n_total, noise_std_true=1, covariate_mean = np.zeros(shape=(D)), covariate_var=None, sigma=np.identity(K)):
+def generate_normal_xy_correlated(N, D, K, n_total, noise_std_true=1, covariate_mean=np.zeros(shape=5), covariate_var=None, sigma=np.identity(K)):
     """
-        Scenario 3: Correlated cell types and covariates
-        :param N: Number of samples
-        :param D: Number of covariates
-        :param K: Number of cell types
-        :param n_total: Number of individual cells per sample
-        :param noise_std_true: noise level. 0: No noise
-        :param covariate_mean: Mean of each covariate
-        :param covariate_var: Variance matrix for all covaraiates
-        :param sigma: correlation matrix for cell types - array[K,K]
-        :return: Anndata object
-        """
+    Scenario 3: Correlated cell types and covariates
+    Parameters
+    ----------
+    N -- Number of samples
+    D -- Number of covariates
+    K -- Number of cell types
+    n_total -- Number of individual cells per sample
+    noise_std_true -- noise level. 0: No noise
+    covariate_mean -- Mean of each covariate
+    covariate_var -- Variance matrix for all covaraiates
+    sigma -- correlation matrix for cell types - array[K,K]
+
+    Returns
+    -------
+    Anndata object
+    """
 
     # Generate randomized covariate covariance matrix if none is specified
     if covariate_var is None:
         # Covaraits drawn from MvNormal(0, Cov) Cov_ij = p ^|i-j| , p=0.4
         # Tibshirani for correlated covariates: Tibshirani (1996)
         p = 0.4
-        covariate_var = np.zeros((D,D))
+        covariate_var = np.zeros((D, D))
         for i in range(D):
             for j in range(D):
-                covariate_var[i,j] = p**np.abs(i-j)
+                covariate_var[i, j] = p**np.abs(i-j)
 
     # Generate random composition parameters
     b_true = np.random.normal(0, 1, size=K).astype(np.float32)  # bias (alpha)
@@ -171,7 +149,7 @@ def generate_normal_xy_correlated (N, D, K, n_total, noise_std_true=1, covariate
     y = np.zeros([N, K], dtype=np.float32)
     for i in range(N):
         # Each row of y is now influenced by sigma
-        alpha = np.random.multivariate_normal(mean = x[i,:].T@w_true + b_true, cov = sigma*noise[i,:]).astype(np.float32)
+        alpha = np.random.multivariate_normal(mean=x[i, :].T@w_true + b_true, cov=sigma*noise[i, :]).astype(np.float32)
         concentration = softmax(alpha).astype(np.float32)
         y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float32)
 
@@ -183,18 +161,19 @@ def generate_normal_xy_correlated (N, D, K, n_total, noise_std_true=1, covariate
     return data
 
 
-# ## Scenario 4: Sparse true parameters
-# Now we tend to effects that have most entries at 0 (only few interactions between covariates and cell types)
-
-# Generates a sparse effect matrix w_true
-def sparse_effect_matrix (D,K, n_d, n_k):
+def sparse_effect_matrix(D, K, n_d, n_k):
     """
+    Generates a sparse effect matrix
+    Parameters
+    ----------
+    D -- Number of covariates
+    K -- Number of cell types
+    n_d -- Number of covariates that effect a cell type
+    n_k -- Number of cell types that are affected by any covariate
 
-    :param D: Number of covariates
-    :param K: Number of cell types
-    :param n_d: Number of covariates that effect a cell type
-    :param n_k: Number of cell types that are affected by any covariate
-    :return: w_true: Effect matrix
+    Returns
+    -------
+    Effect matrix
     """
 
     # Choose indices of affected cell types and covariates randomly
@@ -204,34 +183,38 @@ def sparse_effect_matrix (D,K, n_d, n_k):
     # Possible entries of w_true
     w_choice = [0.3, 0.5, 1]
     
-    w_true = np.zeros((D,K))
+    w_true = np.zeros((D, K))
     # Fill in w_true
     for i in d_eff:
         for j in k_eff:
             c = np.random.choice(3, 1)
-            w_true[i,j] = w_choice[c]
+            w_true[i, j] = w_choice[c]
             
     return w_true
     
 
-def generate_sparse_xy_correlated (N, D, K, n_total, noise_std_true=1,
-                                    covariate_mean = np.zeros(shape=(D)), covariate_var=None,
-                                    sigma=np.identity(K),
-                                    b_true=None, w_true=None):
-
+def generate_sparse_xy_correlated(N, D, K, n_total, noise_std_true=1,
+                                  covariate_mean=np.zeros(5), covariate_var=None,
+                                  sigma=np.identity(K),
+                                  b_true=None, w_true=None):
     """
     Scenario 4: Sparse true parameters
-    :param N: Number of samples
-    :param D: Number of covariates
-    :param K: Number of cell types
-    :param n_total: Number of individual cells per sample
-    :param noise_std_true: noise level. 0: No noise
-    :param covariate_mean: Mean of each covariate
-    :param covariate_var: Variance matrix for all covaraiates
-    :param sigma: correlation matrix for cell types - array[K,K]
-    :param b_true: bias coefficients
-    :param w_true: Effect matrix
-    :return: Anndata object
+    Parameters
+    ----------
+    N -- Number of samples
+    D -- Number of covariates
+    K -- Number of cell types
+    n_total -- Number of individual cells per sample
+    noise_std_true -- noise level. 0: No noise
+    covariate_mean -- Mean of each covariate
+    covariate_var -- Variance matrix for all covaraiates
+    sigma -- correlation matrix for cell types - array[K,K]
+    b_true -- bias coefficients
+    w_true -- Effect matrix
+
+    Returns
+    -------
+    Anndata object
     """
 
     # Generate randomized covariate covariance matrix if none is specified
@@ -275,29 +258,29 @@ def generate_sparse_xy_correlated (N, D, K, n_total, noise_std_true=1,
     return data
 
 
-# ## Scenario 5: Uniform/Skewed cell composition
-# 
-# We switch from regression to case control:
-# Take up to 4 cases, and corresponding weight vectors for each case combination
-
-# Calculates the binary representation of an int
 def binary(x, cases):
+
     return [int(i) for i in bin(x)[2:].zfill(cases)]
 
-def generate_case_control (cases = 1, K = 5, n_total = 1000, n_samples = [5,5], noise_std_true=0,
-                                    sigma=None,
-                                    b_true=None, w_true=None):
+
+def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5,5], noise_std_true=0,
+                          sigma=None, b_true=None, w_true=None):
     """
     Generates compositional data with b inary covariates
-    :param cases: Number of cases/covariates
-    :param K: Number of cell types
-    :param n_total: Number of individual cells per sample
-    :param n_samples: array[2**cases] - Number of samples per case combination
-    :param noise_std_true: noise_std_true: noise level. 0: No noise - Not in use atm!!!
-    :param sigma: correlation matrix for cell types - array[K,K]
-    :param b_true: bias coefficients
-    :param w_true: Effect matrix
-    :return: Anndata object
+    Parameters
+    ----------
+    cases -- number of covariates
+    K -- Number of cell types
+    n_total -- number of cells per sample
+    n_samples -- Number of samples per case combination as array[2**cases]
+    noise_std_true -- noise level. 0: No noise - Not in use atm!!!
+    sigma -- correlation matrix for cell types - array[K,K]
+    b_true -- bias coefficients
+    w_true -- Effect matrix
+
+    Returns
+    -------
+    Anndata object
     """
 
     # Uniform intercepts if none are specifed
@@ -315,12 +298,12 @@ def generate_case_control (cases = 1, K = 5, n_total = 1000, n_samples = [5,5], 
         sigma = np.identity(K) * 0.05
 
 
-    noise = noise_std_true * np.random.randn(N, 1).astype(np.float32)
+    # noise = noise_std_true * np.random.randn(N, 1).astype(np.float32)
 
     # Initialize x, y
     x = np.zeros((sum(n_samples), cases))
     y = np.zeros((sum(n_samples), K)) 
-    c=0
+    c = 0
 
     # For all combinations of cases
     for i in range(2**cases):
@@ -334,12 +317,12 @@ def generate_case_control (cases = 1, K = 5, n_total = 1000, n_samples = [5,5], 
                 np.float32)
 
             concentration = softmax(alpha).astype(np.float32)
-            z=np.random.multinomial(n_total, concentration)
+            z = np.random.multinomial(n_total, concentration)
             y[c+j] = z
-        c=c+n_samples[i]
+        c = c+n_samples[i]
 
-    x=x.astype(np.float32)
-    y=y.astype(np.float32)
+    x = x.astype(np.float32)
+    y = y.astype(np.float32)
 
     x_names = ["x_" + str(n) for n in range(x.shape[1])]
     x_df = pd.DataFrame(x, columns=x_names)
@@ -350,15 +333,21 @@ def generate_case_control (cases = 1, K = 5, n_total = 1000, n_samples = [5,5], 
 
 #%%
 
+
 def b_w_from_abs_change(counts_before=np.array([200, 200, 200, 200, 200]), abs_change=50, n_total=1000):
     """
     Calculates intercepts and slopes from a starting count and an absolute change for the first cell type
-    :param counts_before: array[K] - cell counts for control samples
-    :param abs_change: int - change of first cell type in terms of cell counts
-    :param n_total: number of cells per sample. This stays constant over all samples!!!
-    :return: b: intercepts
-        w: slopes
+    Parameters
+    ----------
+    counts_before -- cell counts for control samples
+    abs_change -- change of first cell type in terms of cell counts
+    n_total -- number of cells per sample. This stays constant over all samples!!!
+
+    Returns
+    -------
+    intercepts, slopes
     """
+
     K = counts_before.shape[0]
 
     # calculate intercepts for control samples
@@ -382,8 +371,8 @@ def b_w_from_abs_change(counts_before=np.array([200, 200, 200, 200, 200]), abs_c
 
     return b, w
 
-# Generate a K-dim count vector b with b[0] ans sum(b) specifed, all other entries are the same
-def counts_from_first(b_0 = 200, n_total = 1000, K = 5):
+
+def counts_from_first(b_0=200, n_total=1000, K=5):
     b = np.repeat((n_total-b_0)/(K-1), K)
     b[0] = b_0
     return b

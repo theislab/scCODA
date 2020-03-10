@@ -9,15 +9,24 @@ from SCDCpy.model import dirichlet_models as dm
 
 
 class CompositionalAnalysis:
+    """
+    Helper class that is called when building a new compositional model
+    """
 
     def __new__(cls, data, formula, baseline_index=None):
         """
         Builds count and covariate matrix, returns a CompositionalModel object
-        :param data: anndata object with cell counts as data.X and covariates saved in data.obs
-        :param formula: string - R-style formula for building the covariate matrix
-        :param baseline_index: int - baseline index
-        :return: A CompositionalModel object
+        Parameters
+        ----------
+        data -- anndata object with cell counts as data.X and covariates saved in data.obs
+        formula -- string - R-style formula for building the covariate matrix
+        baseline_index -- int - baseline index
+
+        Returns
+        -------
+        A CompositionalModel object
         """
+
         importlib.reload(dm)
 
         cell_types = data.var.index.to_list()

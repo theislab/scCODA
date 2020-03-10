@@ -16,13 +16,13 @@ from abc import ABCMeta, abstractmethod
 
 
 class CAResultConverter(az.data.io_dict.DictConverter):
+    """
+    Helper class for result conversion
+    """
 
     def to_result_data(self, y_hat, baseline):
 
-        start = time.time()
         post = self.posterior_to_xarray()
-        duration = time.time()-start
-        print("converted posterior ({:.3f} sec)".format(duration))
         ss = self.sample_stats_to_xarray()
         postp = self.posterior_predictive_to_xarray()
         prior = self.prior_to_xarray()
@@ -45,6 +45,9 @@ class CAResultConverter(az.data.io_dict.DictConverter):
 
 
 class CAResult(az.InferenceData):
+    """
+    Result class, extends the arviz framework fot inference data
+    """
 
     def __init__(self, y_hat, baseline, **kwargs):
         super(self.__class__, self).__init__(**kwargs)
@@ -53,6 +56,17 @@ class CAResult(az.InferenceData):
         self.y_hat = y_hat
 
     def summary_prepare(self, *args, **kwargs):
+        """
+        Preparation of summary method
+        Parameters
+        ----------
+        args -- Passed to az.summary
+        kwargs -- Passed to az.summary
+
+        Returns
+        -------
+        alphas_df and betas_df for summary method
+        """
         # initialize summary df
         summ = az.summary(self, *args, **kwargs, kind="stats", var_names=["alpha", "beta"])
         betas_df = summ.loc[summ.index.str.match("|".join(["beta"]))]
@@ -71,6 +85,17 @@ class CAResult(az.InferenceData):
         return alphas_df, betas_df
 
     def complete_beta_df(self, alphas_df, betas_df):
+        """
+        Evaluation of MCMC results for slopes
+        Parameters
+        ----------
+        alphas_df -- Data frame with intercept summary from az.summary
+        betas_df -- Data frame with slope summary from az.summary
+
+        Returns
+        -------
+        DataFrame with inclusion probability, final parameters, expected sample
+        """
         beta_inc_prob = []
         beta_nonzero_mean = []
 
@@ -128,6 +153,16 @@ class CAResult(az.InferenceData):
         return betas_df
 
     def complete_alpha_df(self, alphas_df):
+        """
+        Evaluation of MCMC results for intercepts
+        Parameters
+        ----------
+        alphas_df -- Data frame with intercept summary from az.summary
+
+        Returns
+        -------
+        Summary DataFrame with expected sample, final parameters
+        """
 
         alphas_df["final_parameter"] = alphas_df["mean"]
 
@@ -140,6 +175,17 @@ class CAResult(az.InferenceData):
         return alphas_df
 
     def summary(self, *args, **kwargs):
+        """
+        Printing method for summary data
+        Parameters
+        ----------
+        args -- Passed to az.summary
+        kwargs -- Passed to az.summary
+
+        Returns
+        -------
+
+        """
         alphas_df, betas_df = self.summary_prepare(*args, **kwargs)
 
         hpds = alphas_df.columns[alphas_df.columns.str.contains("hpd")]
@@ -168,6 +214,19 @@ class CAResult(az.InferenceData):
         print(betas_print)
 
     def compare_to_truth(self, b_true, w_true, *args, **kwargs):
+        """
+        Extends data frames from summary_prepare by a comparison to some ground truth slope and intercept values
+        Parameters
+        ----------
+        b_true -- Ground truth slope values
+        w_true -- Ground truth intercept values
+        args -- Passed to az.summary
+        kwargs -- Passed to az.summary
+
+        Returns
+        -------
+        alphas_df, betas_df
+        """
 
         alphas_df, betas_df = self.summary_prepare(*args, **kwargs)
 
@@ -191,7 +250,9 @@ class CAResult(az.InferenceData):
     def distances(self):
         """
         Compares real cell count matrix to the cell count matrix that arises from the calculated parameters
-        :return: a pandas DataFrame
+        Returns
+        -------
+        DataFrame
         """
 
         # Get absolute (counts) and relative error matrices
@@ -212,7 +273,7 @@ class CAResult(az.InferenceData):
                             'Absolute Error': np.append(avg_abs_total_error, avg_abs_cell_type_error),
                             'Relative Error': np.append(avg_rel_total_error, avg_rel_cell_type_error),
                             'Actual Means': np.append(np.mean(y, axis=(0, 1)), np.mean(y, axis=0)),
-                            'Predicted Means': np.append(np.mean(y_hat, axis=(0, 1)), np.mean(y_hat, axis=0))})
+                            'Predicted Means': np.append(np.mean(self.y_hat, axis=(0, 1)), np.mean(self.y_hat, axis=0))})
 
         ret['Cell Type'][0] = 'Total'
         return ret

@@ -12,10 +12,10 @@ import seaborn as sns
 import importlib
 import arviz as az
 
-from util import compositional_analysis_generation_toolbox as gen
-from util import comp_ana as mod
-from util import result_classes as res
-from util import multi_parameter_sampling as mult
+from SCDCpy.util import compositional_analysis_generation_toolbox as gen
+from SCDCpy.util import comp_ana as mod
+from SCDCpy.util import result_classes as res
+from SCDCpy.util import multi_parameter_sampling as mult
 
 pd.options.display.float_format = '{:10,.3f}'.format
 pd.set_option('display.max_columns', None)
