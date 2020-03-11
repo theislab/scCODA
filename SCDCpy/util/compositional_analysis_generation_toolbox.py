@@ -108,7 +108,7 @@ def generate_normal_correlated(N, D, K, n_total, noise_std_true, covariate_mean=
     return data
 
 
-def generate_normal_xy_correlated(N, D, K, n_total, noise_std_true=1, covariate_mean=np.zeros(shape=5), covariate_var=None, sigma=np.identity(K)):
+def generate_normal_xy_correlated(N, D, K, n_total, noise_std_true=1, covariate_mean=np.zeros(shape=5), covariate_var=None, sigma=np.identity(5)):
     """
     Scenario 3: Correlated cell types and covariates
     Parameters
@@ -195,7 +195,7 @@ def sparse_effect_matrix(D, K, n_d, n_k):
 
 def generate_sparse_xy_correlated(N, D, K, n_total, noise_std_true=1,
                                   covariate_mean=np.zeros(5), covariate_var=None,
-                                  sigma=np.identity(K),
+                                  sigma=np.identity(5),
                                   b_true=None, w_true=None):
     """
     Scenario 4: Sparse true parameters
