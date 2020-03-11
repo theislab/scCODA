@@ -83,8 +83,18 @@ increases = []
 for i in range(len(bs)):
     increases.append(b_w_dict[bs[i]][ws[i]])
 all_study_params_agg_2["num_increase"] = increases
+all_study_params_agg_2["log_fold_increase"] = np.log2((all_study_params_agg_2["num_increase"] +
+                                                       all_study_params_agg_2["b_count"]) /
+                                                      all_study_params_agg_2["b_count"])
 
 print(all_study_params_agg_2)
+
+#%%
+
+result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+
+with open(result_path + "\\results_aggregated.pkl", "wb") as f:
+    pkl.dump(all_study_params_agg_2, file=f)
 
 #%%
 
@@ -96,4 +106,43 @@ ws = pd.unique(all_study_params_agg_2["w"])
 print(len(ws))
 
 #%%
+
+sns.heatmap(data=all_study_params_agg_2[["n_cases", "n_controls", "mcc"]].pivot_table("mcc", "n_controls", "n_cases"), vmin=-1, vmax=1)
+plt.savefig(result_path + "\\replicate_heatmap.png")
+plt.show()
+
+#%%
+
+print(all_study_params_agg_2[all_study_params_agg_2["n_samples"]=="[10, 10]"])
+
+#%%
+
+def draw_heatmap(*args, **kwargs):
+    data = kwargs.pop('data')
+    d = data.pivot(index=args[1], columns=args[0], values=args[2])
+    sns.heatmap(d, **kwargs, vmin=-1, vmax=1)
+
+fg = sns.FacetGrid(all_study_params_agg_2, col='num_increase', row="b_count")
+fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
+plt.savefig(result_path + "\\150_heatmaps.png")
+plt.show()
+
+#%%
+print(all_study_params_agg_2[(all_study_params_agg_2["b_count"]==667) & (all_study_params_agg_2["num_increase"]==1000)])
+
+#%%
+
+sns.lineplot(data=all_study_params_agg_2, x="b_count", y="mcc")
+plt.show()
+
+#%%
+sns.lineplot(data=all_study_params_agg_2, x="num_increase", y="mcc", hue="b_count")
+plt.show()
+
+#%%
+sns.lineplot(data=all_study_params_agg_2, x="log_fold_increase", y="mcc", hue="b_count")
+plt.show()
+
+#%%
+
 
