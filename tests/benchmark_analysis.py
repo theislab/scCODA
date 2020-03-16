@@ -145,6 +145,138 @@ plt.show()
 
 #%%
 # Inclusion probability
+results, all_study_params, all_study_params_agg = ana.multi_run_study_analysis_prepare(path,
+                                                                  file_identifier=str(b[0]))
+
+all_study_params_agg = ana.get_scores(all_study_params_agg)
+
+#%%
 
 
+def recalculate_inclusion_probability(results, threshold):
+
+    for r in results:
+        for res in r.mcmc_results.values():
+            res[1]["final_parameter"] = np.where(res[1]["inclusion_prob"] > threshold,
+                                                 res[1]["mean_nonzero"],
+                                                 0)
+        r.get_discovery_rates()
+
+    # Generate all_study_params
+    all_study_params = pd.concat([r.parameters for r in results])
+    simulation_parameters = ["cases", "K", "n_total", "n_samples", "b_true", "w_true", "num_results"]
+    all_study_params[simulation_parameters] = all_study_params[simulation_parameters].astype(str)
+
+    # Aggregate over identical parameter sets
+    all_study_params_agg = all_study_params.groupby(simulation_parameters).sum()
+    all_study_params_agg = ana.get_scores(all_study_params_agg.reset_index())
+
+    return all_study_params_agg
+
+
+#%%
+
+def multiple_threshold_compare(results, thresholds, results_df):
+
+    for t in thresholds:
+        print("threshold: " + str(t))
+        t_results = recalculate_inclusion_probability(results, t)
+
+        t_results["threshold"] = t
+
+        results_df = results_df.append(t_results)
+
+    return results_df
+
+
+#%%
+import os
+
+
+def multiple_thresholds_with_load(path, thresholds, file_identifier="result_"):
+    files = os.listdir(path)
+
+    results = []
+
+    print("Calculating discovery rates...")
+    i = 0
+
+    # For all files:
+    for f in files:
+        i += 1
+
+        print("Preparing: ", i / len(files))
+        if file_identifier in f:
+            # Load file
+            r = ana.renamed_load(open(path + "/" + f, "rb"))
+
+            results.append(r)
+
+    results_df = pd.DataFrame()
+
+    results_df = multiple_threshold_compare(results, thresholds, results_df)
+
+    return results_df
+
+
+id = "b_[[-2.01 -1.53 -1.53 -1.53 -1.53]]_w_[[[0.034, 0.0, 0.0, 0.0, 0.0]]]"
+results_df = multiple_thresholds_with_load(path, [0.5, 0.7], file_identifier=id)
+
+#%%
+
+thresholds = np.round(np.arange(0.05, 1, 0.05), 2)
+
+total_df = pd.DataFrame()
+for b_i in b:
+    print(b_i[0])
+    results_df = multiple_thresholds_with_load(path, thresholds, file_identifier=str(b_i[0]))
+
+    total_df = total_df.append(results_df)
+
+#%%
+
+sns.lineplot(data=total_df, x="threshold", y="mcc", hue="")
+plt.show()
+
+#%%
+total_df_2 = total_df
+total_df_2["n_controls"] = [ast.literal_eval(x)[0] for x in total_df_2["n_samples"].tolist()]
+total_df_2["n_cases"] = [ast.literal_eval(x)[1] for x in total_df_2["n_samples"].tolist()]
+total_df_2["n_total"] = total_df_2["n_total"].astype("float")
+total_df_2["w"] = [ast.literal_eval(x)[0][0] for x in total_df_2["w_true"]]
+total_df_2["b_0"] = [ast.literal_eval(x)[0] for x in total_df_2["b_true"]]
+total_df_2["b_count"] = [b_counts[np.round(x, 2)] for x in total_df_2["b_0"]]
+
+bs = total_df_2["b_0"].tolist()
+ws = total_df_2["w"].tolist()
+increases = []
+for i in range(len(bs)):
+    increases.append(b_w_dict[bs[i]][ws[i]])
+total_df_2["num_increase"] = increases
+total_df_2["log_fold_increase"] = np.log2((total_df_2["num_increase"] +
+                                           total_df_2["b_count"]) /
+                                          total_df_2["b_count"])
+
+print(total_df_2)
+
+#%%
+result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+
+with open(result_path + "\\thresholds.pkl", "wb") as f:
+    pkl.dump(total_df_2, file=f)
+
+#%%
+fig, ax = plt.subplots(1, 2, figsize=(13, 5))
+sns.lineplot(data=total_df_2, x="threshold", y="tpr", hue="num_increase", ax=ax[0])
+plt.axvline(x=0.56)
+sns.lineplot(data=total_df_2, x="threshold", y="tnr", hue="num_increase", ax=ax[1])
+plt.axvline(x=0.56)
+
+plt.show()
+
+#%%
+
+sns.lineplot(data=total_df_2.loc[total_df_2["num_increase"]>50], x="threshold", y="mcc")
+plt.axvline(x=0.56)
+plt.show()
 

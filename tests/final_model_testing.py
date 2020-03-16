@@ -22,6 +22,7 @@ pd.set_option('display.max_columns', None)
 
 #%%
 # Artificial data
+np.random.seed(1234)
 
 n = 3
 
