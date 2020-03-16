@@ -12,6 +12,8 @@ import os
 
 from SCDCpy.util import compositional_analysis_generation_toolbox as gen
 
+np.random.seed(1234)
+
 # General parameters
 cases = [1]
 K = [5]
@@ -50,7 +52,7 @@ for i in range(3):
                 fh.writelines("#SBATCH -e /home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/benchmark_results/error_" + str(count) + ".e\n")
                 fh.writelines("#SBATCH -p icb_cpu\n")
                 fh.writelines("#SBATCH --exclude=ibis-ceph-[002-006,008-019],ibis216-010-[011-012,020-037,051,064],icb-rsrv[05-06,08],ibis216-224-[010-011]\n")
-                fh.writelines("#SBATCH --nodelist=icb-neu-001")
+                fh.writelines("#SBATCH --nodelist=ibis216-010-007")
                 fh.writelines("#SBATCH -c 1\n")
                 fh.writelines("#SBATCH --mem=5000\n")
                 fh.writelines("#SBATCH --nice=100\n")
