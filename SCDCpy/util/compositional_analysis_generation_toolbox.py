@@ -18,7 +18,7 @@ import pandas as pd
 from scipy.special import softmax
 
 
-def generate_normal_uncorrelated(N, D, K, n_total, noise_std_true):
+def generate_normal_uncorrelated(N, D, K, n_total, noise_std_true=1):
     """
     Scenario 1: Normally distributed, independent covariates
     Parameters
@@ -57,7 +57,7 @@ def generate_normal_uncorrelated(N, D, K, n_total, noise_std_true):
     return data
 
 
-def generate_normal_correlated(N, D, K, n_total, noise_std_true, covariate_mean=np.zeros(shape=5), covariate_var=None):
+def generate_normal_correlated(N, D, K, n_total, noise_std_true, covariate_mean=None, covariate_var=None):
     """
     Scenario 2: Correlated covariates
     Parameters
@@ -74,6 +74,9 @@ def generate_normal_correlated(N, D, K, n_total, noise_std_true, covariate_mean=
     -------
     Anndata object
     """
+
+    if covariate_mean is None:
+        covariate_mean = np.zeros(shape=(D))
 
     # Generate randomized covariate covariance matrix if none is specified
     if covariate_var is None:
@@ -108,7 +111,8 @@ def generate_normal_correlated(N, D, K, n_total, noise_std_true, covariate_mean=
     return data
 
 
-def generate_normal_xy_correlated(N, D, K, n_total, noise_std_true=1, covariate_mean=np.zeros(shape=5), covariate_var=None, sigma=np.identity(5)):
+def generate_normal_xy_correlated(N, D, K, n_total, noise_std_true=1,
+                                  covariate_mean=None, covariate_var=None, sigma=None):
     """
     Scenario 3: Correlated cell types and covariates
     Parameters
@@ -126,6 +130,12 @@ def generate_normal_xy_correlated(N, D, K, n_total, noise_std_true=1, covariate_
     -------
     Anndata object
     """
+
+    if covariate_mean is None:
+        covariate_mean = np.zeros(shape=(D))
+
+    if sigma is None:
+        sigma = np.identity(K)
 
     # Generate randomized covariate covariance matrix if none is specified
     if covariate_var is None:
@@ -194,8 +204,8 @@ def sparse_effect_matrix(D, K, n_d, n_k):
     
 
 def generate_sparse_xy_correlated(N, D, K, n_total, noise_std_true=1,
-                                  covariate_mean=np.zeros(5), covariate_var=None,
-                                  sigma=np.identity(5),
+                                  covariate_mean=None, covariate_var=None,
+                                  sigma=None,
                                   b_true=None, w_true=None):
     """
     Scenario 4: Sparse true parameters
@@ -216,6 +226,12 @@ def generate_sparse_xy_correlated(N, D, K, n_total, noise_std_true=1,
     -------
     Anndata object
     """
+
+    if covariate_mean is None:
+        covariate_mean = np.zeros(shape=(D))
+
+    if sigma is None:
+        sigma = np.identity(K)
 
     # Generate randomized covariate covariance matrix if none is specified
     if covariate_var is None:
@@ -282,6 +298,7 @@ def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5,5], noise_std
     -------
     Anndata object
     """
+    D = cases**2
 
     # Uniform intercepts if none are specifed
     if b_true is None:

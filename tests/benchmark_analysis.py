@@ -280,3 +280,128 @@ sns.lineplot(data=total_df_2.loc[total_df_2["num_increase"]>50], x="threshold", 
 plt.axvline(x=0.56)
 plt.show()
 
+#%%
+
+# Negative effect testing
+
+path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\negative_benchmark"
+
+#%%
+
+_, _, all_study_params_neg = ana.multi_run_study_analysis_prepare(path)
+
+all_study_params_neg = ana.get_scores(all_study_params_neg)
+
+#%%
+
+b = []
+for y1_0 in [115, 280, 1000]:
+    b_i = np.round(gen.counts_from_first(y1_0, 5000, 5), 3)
+    b.append(np.round(np.log(b_i / 5000), 2))
+print(b)
+
+b_counts = dict(zip([b_i[0] for b_i in b], [115, 280, 1000]))
+
+b2 = []
+for y1_0 in [115, 280, 1000]:
+    b_i = np.round(gen.counts_from_first(y1_0, 5000, 5), 3)
+    b2.append(b_i)
+
+b_w_dict = {}
+i = 0
+w_all = []
+for b_i in b2:
+    b_t = np.round(np.log(b_i / 5000), 3)
+    print(b_t)
+    w_d = {}
+    for change in [-10, -50, -100]:
+        _, w = gen.b_w_from_abs_change(b_i, change, 5000)
+        w_0 = np.round(w[0], 3)
+        w_d[w_0] = change
+    b_w_dict[b_t[0]] = w_d
+    i += 1
+print(b_w_dict)
+
+#%%
+
+all_study_params_neg = all_study_params_neg
+all_study_params_neg["n_controls"] = [ast.literal_eval(x)[0] for x in all_study_params_neg["n_samples"].tolist()]
+all_study_params_neg["n_cases"] = [ast.literal_eval(x)[1] for x in all_study_params_neg["n_samples"].tolist()]
+all_study_params_neg["n_total"] = all_study_params_neg["n_total"].astype("float")
+all_study_params_neg["w"] = [ast.literal_eval(x)[0][0] for x in all_study_params_neg["w_true"]]
+all_study_params_neg["b_0"] = [ast.literal_eval(x)[0] for x in all_study_params_neg["b_true"]]
+all_study_params_neg["b_count"] = [b_counts[np.round(x, 2)] for x in all_study_params_neg["b_0"]]
+
+bs = all_study_params_neg["b_0"].tolist()
+ws = all_study_params_neg["w"].tolist()
+increases = []
+for i in range(len(bs)):
+    increases.append(b_w_dict[bs[i]][ws[i]])
+all_study_params_neg["num_increase"] = increases
+all_study_params_neg["log_fold_increase"] = np.log2((all_study_params_neg["num_increase"] +
+                                                       all_study_params_neg["b_count"]) /
+                                                      all_study_params_neg["b_count"])
+
+print(all_study_params_neg)
+
+#%%
+result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+
+with open(result_path + "\\results_negative.pkl", "wb") as f:
+    pkl.dump(all_study_params_neg, file=f)
+
+#%%
+result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+
+
+def draw_heatmap(*args, **kwargs):
+    data = kwargs.pop('data')
+    d = data.pivot(index=args[1], columns=args[0], values=args[2])
+    sns.heatmap(d, **kwargs, vmin=-1, vmax=1)
+
+fg = sns.FacetGrid(all_study_params_neg, col='num_increase', row="b_count")
+fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
+plt.savefig(result_path + "\\negative_heatmaps.png")
+plt.show()
+
+#%%
+
+# For comparison: Positive heatmaps
+result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+
+with open(result_path + "\\results_aggregated.pkl", "rb") as f:
+    all_study_params_agg_pos = pkl.load(file=f)
+
+#%%
+
+fg = sns.FacetGrid(all_study_params_agg_2.loc[(all_study_params_agg_2["b_count"].isin([115, 280, 1000])) &
+                                              (all_study_params_agg_2["num_increase"].isin([10, 50, 100]))],
+                   col='num_increase', row="b_count")
+fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
+plt.savefig(result_path + "\\pos_heatmaps_for_negative.png")
+plt.show()
+
+# -> For same absolute cell count change, negative effects are detected even a little better!
+
+
+#%%
+
+result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+
+with open(result_path + "\\results_aggregated.pkl", "rb") as f:
+    all_study_params_agg_2 = pkl.load(file=f)
+
+#%%
+
+def draw_heatmap(*args, **kwargs):
+    data = kwargs.pop('data')
+    d = data.pivot(index=args[1], columns=args[0], values=args[2])
+    sns.heatmap(d, **kwargs, vmin=-1, vmax=1)
+
+fg = sns.FacetGrid(all_study_params_agg_2.loc[(all_study_params_agg_2["b_count"].isin([50, 180, 430])) &
+                                              (all_study_params_agg_2["num_increase"].isin([40, 80, 200]))],
+                   col='num_increase', row="b_count")
+fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
+plt.savefig(result_path + "\\negative_heatmaps.png")
+plt.show()
+
