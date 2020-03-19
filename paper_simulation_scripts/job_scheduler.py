@@ -12,6 +12,8 @@ import os
 
 from SCDCpy.util import compositional_analysis_generation_toolbox as gen
 
+np.random.seed(1234)
+
 # General parameters
 cases = [1]
 K = [5]
