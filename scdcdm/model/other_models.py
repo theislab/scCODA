@@ -234,6 +234,7 @@ class PoissonModel:
 
         return tp, tn, fp, fn
 
+
 class scdney_model:
     """
     wrapper for using the scdney package for R with scdcdm data
@@ -299,7 +300,13 @@ class scdney_model:
                 f.write(str(c) + "\n")
 
     def analyze(self):
-        sp.call(['C:/Program Files/R/R-3.6.3/bin/Rscript', 'paper_simulation_scripts/scdc_r_data/scdney_server_script.r'])
+        server = True
+        if server==True:
+            rscript = "/home/icb/johannes.ostner/anaconda3/lib/R"
+        else:
+            rscript = 'C:/Program Files/R/R-3.6.3/bin/Rscript'
+
+        sp.call([rscript, 'paper_simulation_scripts/scdc_r_data/scdney_server_script.r'])
 
         # read-in results
         with open("paper_simulation_scripts/scdc_r_data/scdc_summary.csv", "r") as f:
