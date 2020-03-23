@@ -11,10 +11,10 @@ import importlib
 import anndata as ad
 import ast
 
-from SCDCpy.util import result_classes as res
-from SCDCpy.util import multi_parameter_sampling as mult
-from SCDCpy.util import multi_parameter_analysis_functions as ana
-from SCDCpy.util import compositional_analysis_generation_toolbox as gen
+from scdcdm.util import result_classes as res
+from scdcdm.util import multi_parameter_sampling as mult
+from scdcdm.util import multi_parameter_analysis_functions as ana
+from scdcdm.util import compositional_analysis_generation_toolbox as gen
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)

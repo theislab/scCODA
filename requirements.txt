@@ -10,3 +10,4 @@ anndata
 patsy
 sklearn
 scanpy
+statsmodels
