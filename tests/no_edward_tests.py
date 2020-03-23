@@ -11,7 +11,7 @@ import pandas as pd
 from tensorflow_probability.python.experimental import edward2 as ed
 
 from util import result_classes as res
-from SCDCpy.model import dirichlet_models as mod
+from scdcdm.model import dirichlet_models as mod
 
 tfd = tfp.distributions
 tfb = tfp.bijectors

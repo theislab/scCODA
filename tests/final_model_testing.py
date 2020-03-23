@@ -12,10 +12,10 @@ import seaborn as sns
 import importlib
 import arviz as az
 
-from SCDCpy.util import compositional_analysis_generation_toolbox as gen
-from SCDCpy.util import comp_ana as mod
-from SCDCpy.util import result_classes as res
-from SCDCpy.util import multi_parameter_sampling as mult
+from scdcdm.util import compositional_analysis_generation_toolbox as gen
+from scdcdm.util import comp_ana as mod
+from scdcdm.util import result_classes as res
+from scdcdm.util import multi_parameter_sampling as mult
 
 pd.options.display.float_format = '{:10,.3f}'.format
 pd.set_option('display.max_columns', None)
@@ -73,10 +73,34 @@ print(ana.x)
 print(ana.covariate_names)
 
 #%%
-params_mcmc = ana.sample_hmc(num_results=int(2000), n_burnin=500)
+params_mcmc = ana.sample_hmc(num_results=int(20000), n_burnin=5000)
 
 #%%
 params_mcmc.summary(credible_interval=0.9)
+
+#%%
+az.plot_trace(params_mcmc)
+plt.show()
+
+
+
+
+#%%
+importlib.reload(mod)
+importlib.reload(res)
+
+#data.obs["x_0"] = ["A", "A", "A", "A", "A", "A", "B", "B", "B", "B", "B", "B"]
+#data.obs["x_1"] = ["A", "A", "A", "B", "B", "B", "A", "A", "A", "B", "B", "B"]
+
+ana_simple = mod.CompositionalAnalysis(data, "x_0", baseline_index="simple")
+print(ana_simple.x)
+print(ana_simple.covariate_names)
+
+#%%
+params_mcmc = ana_simple.sample_hmc(num_results=int(2000), n_burnin=500)
+
+#%%
+params_mcmc.summary(credible_interval=0.95)
 
 #%%
 az.plot_trace(params_mcmc)

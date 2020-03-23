@@ -21,9 +21,10 @@ from sklearn.metrics import confusion_matrix
 import tensorflow_probability as tfp
 import itertools
 
-from SCDCpy.util import compositional_analysis_generation_toolbox as gen
-from SCDCpy.model import dirichlet_models as mod
-from SCDCpy.util import comp_ana as ca
+from scdcdm.util import compositional_analysis_generation_toolbox as gen
+from scdcdm.model import dirichlet_models as dm
+from scdcdm.model import other_models as om
+from scdcdm.util import comp_ana as ca
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -72,6 +73,8 @@ class MultiParamSimulation:
 
         self.baseline_index = baseline_index
         self.formula = formula
+
+        np.set_seed(1234)
 
     def simulate(self):
         """
@@ -229,7 +232,7 @@ class MultiParamSimulation:
             pkl.dump(self, f)
 
 
-class Multi_param_simulation_multi_model:
+class MultiParamSimulationMultiModel:
 
     """
     Implements subsequent simulation of parameter sets with multiple models.
@@ -238,7 +241,7 @@ class Multi_param_simulation_multi_model:
     """
 
     def __init__(self, cases=[1], K=[5], n_total=[1000], n_samples=[[5,5]],
-                 b_true=[None], w_true=[None], num_results=[10e3], models=[mod.NoBaselineModel]):
+                 b_true=[None], w_true=[None], num_results=[10e3], models=["NoBaseline"]):
         """
 
         Parameters
@@ -251,6 +254,7 @@ class Multi_param_simulation_multi_model:
         w_true -- Effect composition. Each sublist is a nested list that represents a DxK effect matrix
         num_results -- MCMC chain length
         models -- List of models to evaluate
+        formula -- R-like model formula
         """
 
         # HMC Settings
@@ -260,6 +264,7 @@ class Multi_param_simulation_multi_model:
 
         # All parameter combinations
         self.l = list(itertools.product(cases, K, n_total, n_samples, b_true, w_true, num_results))
+        self.formula = "x_0"
 
         # Setup result objects
         self.results = {}
@@ -267,12 +272,14 @@ class Multi_param_simulation_multi_model:
             {'cases': [], 'K': [], 'n_total': [], 'n_samples': [], 'b_true': [], 'w_true': [], 'num_results': []})
 
         self.models = models
+        self.data = {}
 
-    def simulate(self, keep_raw_params=True):
+    def simulate(self):
         """
         Generation and modeling of single-cell-like data
-        :param keep_raw_params: boolean - if True, all MCMC values are saved. Caution! Eats a lot of memory
-        :return: None. Fills up self.mcmc_results
+        Returns
+        -------
+        None. Fills up self.mcmc_results
         """
 
         for j in range(len(self.models)):
@@ -284,7 +291,9 @@ class Multi_param_simulation_multi_model:
         for c, k, nt, ns, b, w, nr in self.l:
             # Generate dataset
             temp_data = gen.generate_case_control(cases=c, K=k, n_total=nt, n_samples=ns,
-                                                                       b_true=b, w_true=w, sigma=np.identity(k) * 0.01)
+                                                  b_true=b, w_true=w, sigma=np.identity(k) * 0.01)
+
+            self.data[i] = temp_data
 
             x_temp = temp_data.obs.values
             y_temp = temp_data.X
@@ -294,23 +303,60 @@ class Multi_param_simulation_multi_model:
             print('Simulating:', s)
             self.parameters.loc[i] = s
 
-            j=0
+            j = 0
 
             # For each model:
             for model in self.models:
+                # If Poisson model: Simulate, eval Poisson
+                if model == "Poisson":
+                    print("Model: Poisson")
+                    model_temp = om.PoissonModel(covariate_matrix=x_temp, data_matrix=y_temp)
+                    model_temp.fit_model()
+                    tp, tn, fp, fn = model_temp.eval_model()
+                    self.results[j][i] = (tp, tn, fp, fn)
+
+                # If simple model: Simulate, set "final_parameter" to 0 if 95% confint includes 0
+                elif model == "Simple":
+                    print("Model: Simple")
+                    ana = ca.CompositionalAnalysis(temp_data, self.formula, baseline_index="simple")
+                    result_temp = ana.sample_hmc(num_results=int(nr), n_burnin=self.n_burnin,
+                                                 step_size=self.step_size, num_leapfrog_steps=self.num_leapfrog_steps)
+                    alphas_df, betas_df = result_temp.summary_prepare(credible_interval=0.95)
+
+                    betas_df.loc[:, "final_parameter"] = np.where((betas_df.loc[:, "hpd_2.5%"] < 0) &
+                                                                  (betas_df.loc[:, "hpd_97.5%"] > 0),
+                                                                  0,
+                                                                  betas_df.loc[:, "final_parameter"])
+
+                    self.results[j][i] = (alphas_df, betas_df)
 
                 # if baseline model: Simulate with baseline, else: without. The baseline index is always the last one
-                if model == model == mod.compositional_model_baseline:
-                    model_temp = model(x=x_temp, y=y_temp, n_total=np.repeat(nt, x_temp.shape[0]), baseline_index=k-1)
+                elif model == "Baseline":
+                    print("Model: Baseline")
+                    ana = ca.CompositionalAnalysis(temp_data, self.formula, baseline_index=k-1)
+                    result_temp = ana.sample_hmc(num_results=int(nr), n_burnin=self.n_burnin,
+                                                 step_size=self.step_size, num_leapfrog_steps=self.num_leapfrog_steps)
+                    self.results[j][i] = result_temp.summary_prepare()
+
+                elif model == "NoBaseline":
+                    print("Model: No Baseline")
+                    ana = ca.CompositionalAnalysis(temp_data, self.formula, baseline_index=None)
+                    result_temp = ana.sample_hmc(num_results=int(nr), n_burnin=self.n_burnin,
+                                                 step_size=self.step_size, num_leapfrog_steps=self.num_leapfrog_steps)
+                    self.results[j][i] = result_temp.summary_prepare()
+
+                # If SCDC model: Export data, run R script
+                elif model == "SCDC":
+                    print("model: SCDC")
+                    model = om.scdney_model(data=temp_data, ns=ns)
+                    tp, tn, fp, fn = model.analyze()
+                    self.results[j][i] = (tp, tn, fp, fn)
+
                 else:
-                    model_temp = model(x=x_temp, y=y_temp, n_total=np.repeat(nt, x_temp.shape[0]))
+                    print("Not a valid model specified")
 
                 # HMC sampling, save results
-                result_temp = model_temp.sample(int(nr), self.n_burnin, self.num_leapfrog_steps, self.step_size)
-                if keep_raw_params == False:
-                    result_temp._MCMCResult__raw_params = {}
 
-                self.results[j][i] = result_temp
                 j += 1
 
             i += 1
@@ -333,8 +379,7 @@ class Multi_param_simulation_multi_model:
             # For all parameter sets:
             for i in range(len(self.parameters)):
                 # Locate modelled slopes
-                par = res[i].params
-                betas = par.loc[par.index.str.contains('beta')]["final_parameter"].tolist()
+                betas = res[i][1]["final_parameter"].tolist()
                 betas = [0 if b == 0 else 1 for b in betas]
 
                 # Locate ground truth slopes
@@ -353,11 +398,28 @@ class Multi_param_simulation_multi_model:
 
         # add results to self.parameters
         for j in range(len(self.models)):
-            rates = get_discovery_rate(self.results[j])
-            self.parameters['tp_'+str(j)] = rates[0]
-            self.parameters['tn_'+str(j)] = rates[1]
-            self.parameters['fp_'+str(j)] = rates[2]
-            self.parameters['fn_'+str(j)] = rates[3]
+            if self.models[j] == "Poisson" or self.models[j] == "SCDC":
+                tp = []
+                tn = []
+                fp = []
+                fn = []
+
+                for res in self.results[j].values():
+                    tp.append(res[0])
+                    tn.append(res[1])
+                    fp.append(res[2])
+                    fn.append(res[3])
+
+                self.parameters['tp_' + str(j)] = tp
+                self.parameters['tn_' + str(j)] = tn
+                self.parameters['fp_' + str(j)] = fp
+                self.parameters['fn_' + str(j)] = fn
+            else:
+                rates = get_discovery_rate(self.results[j])
+                self.parameters['tp_'+str(j)] = rates[0]
+                self.parameters['tn_'+str(j)] = rates[1]
+                self.parameters['fp_'+str(j)] = rates[2]
+                self.parameters['fn_'+str(j)] = rates[3]
 
         return None
 

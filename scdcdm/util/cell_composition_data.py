@@ -1,5 +1,5 @@
 """
-Helper functions to convert single-cell data to SCDCpy compositional analysis data
+Helper functions to convert single-cell data to scdcdm compositional analysis data
 """
 import pandas as pd
 import anndata as ad
@@ -41,7 +41,7 @@ def from_scanpy_list(samples, cell_type_identifier, covariate_key):
 
     Returns
     -------
-    compositional analysis data set
+    A compositional analysis data set
     """
 
     count_data = pd.DataFrame()
@@ -65,7 +65,7 @@ def from_scanpy_list(samples, cell_type_identifier, covariate_key):
 
 def from_scanpy_dir(path, cell_type_identifier, covariate_key):
     """
-    reates a compositional analysis data set from all scanpy data sets in a directory
+    Creates a compositional analysis data set from all scanpy data sets in a directory
     Parameters
     ----------
     path -- path to directory
@@ -74,7 +74,7 @@ def from_scanpy_dir(path, cell_type_identifier, covariate_key):
 
     Returns
     -------
-    compositional analysis data set
+    A compositional analysis data set
     """
 
     count_data = pd.DataFrame()
@@ -94,5 +94,27 @@ def from_scanpy_dir(path, cell_type_identifier, covariate_key):
 
     return ad.AnnData(X=count_data.values,
                       var=count_data.sum(axis=0).rename("n_cells").to_frame(),
+                      obs=covariate_data)
+
+
+def from_pandas(df, covariate_columns):
+    """
+    Converts a Pandas DataFrame into a compositional analysis data set.
+    Parameters
+    ----------
+    df -- a pandas DataFrame with each row representing a sample; the columns can be cell counts or covariates
+    covariate_columns -- List of column names that are interpreted as covariates; all other columns will be seen as cell types
+
+    Returns
+    -------
+    A compositional analysis data set
+    """
+
+    covariate_data = df.loc[:, covariate_columns]
+    count_data = df.loc[:, ~df.columns.isin(covariate_data)]
+    celltypes = pd.DataFrame(index=count_data.columns)
+
+    return ad.AnnData(X=count_data.values,
+                      var=celltypes,
                       obs=covariate_data)
 

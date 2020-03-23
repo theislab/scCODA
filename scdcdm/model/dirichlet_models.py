@@ -14,7 +14,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow_probability.python.experimental import edward2 as ed
 
-from SCDCpy.util import result_classes as res
+from scdcdm.util import result_classes as res
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -54,7 +54,6 @@ class CompositionalModel:
             raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(self.x.shape[0], self.y.shape[0]))
         if self.N != len(self.n_total):
             raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
-
 
     def sampling(self, num_results, n_burnin, kernel, init_state):
         """
@@ -131,7 +130,7 @@ class CompositionalModel:
 
         Returns
         -------
-        SCDCpy.util.result_data object
+        scdcdm.util.result_data object
         """
 
         # (not in use atm)
@@ -303,6 +302,7 @@ class NoBaselineModel(CompositionalModel):
             """
 
             N, D = x.shape
+            dtype = tf.float32
 
             # normal prior on bias
             alpha = ed.Normal(loc=tf.zeros([K]), scale=tf.ones([K])*5, name="alpha")
@@ -374,8 +374,6 @@ class NoBaselineModel(CompositionalModel):
         predicted cell counts
         """
 
-        start = time.time()
-
         chain_size_y = [num_results - n_burnin, self.N, self.K]
 
         alphas = states_burnin[0]
@@ -407,9 +405,6 @@ class NoBaselineModel(CompositionalModel):
         states_burnin.append(conc_)
         states_burnin.append(predictions_)
 
-        duration = time.time() - start
-        print("get_y_hat ({:.3f} sec)".format(duration))
-
         concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float32)
         y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
         return y_mean
@@ -434,8 +429,8 @@ class BaselineModel(CompositionalModel):
         """
         super(self.__class__, self).__init__(*args, **kwargs)
 
-        dtype = tf.float32
         self.baseline_index = baseline_index
+        dtype = tf.float32
 
         # All parameters that are returned for analysis
         self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw",
@@ -450,6 +445,7 @@ class BaselineModel(CompositionalModel):
             n_total -- numpy array [N] - number of cells per sample
             K -- Number of cell types
             """
+            dtype = tf.float32
             N, D = x.shape
 
             # normal prior on bias
@@ -693,3 +689,4 @@ class NoBaselineModelNoEdward(CompositionalModel):
 
         return tfd.DirichletMultinomial(self.n_total,
                                         concentration=tf.exp(tf.matmul(self.x, betas_final) + alphas_final)).mean()
+

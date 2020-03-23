@@ -2,7 +2,8 @@ import numpy as np
 import patsy as pt
 import importlib
 
-from SCDCpy.model import dirichlet_models as dm
+from scdcdm.model import dirichlet_models as dm
+from scdcdm.model import other_models as om
 
 
 #%%
@@ -40,7 +41,11 @@ class CompositionalAnalysis:
         covariate_matrix = covariate_matrix[:, 1:]
 
         # Invoke instance of the correct model depending on baseline index
-        if baseline_index is None:
+        # If baseline index is a string: Invokes a model for model comparison
+        if baseline_index == "simple":
+            return om.SimpleModel(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
+                                  cell_types=cell_types, covariate_names=covariate_names)
+        elif baseline_index is None:
             return dm.NoBaselineModel(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
                                       cell_types=cell_types, covariate_names=covariate_names)
         else:

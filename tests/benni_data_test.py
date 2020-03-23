@@ -7,10 +7,10 @@ import importlib
 import anndata as ad
 import matplotlib.pyplot as plt
 
-from SCDCpy.util import result_classes as res
-from SCDCpy.util import comp_ana as mod
-from SCDCpy.util import compositional_analysis_generation_toolbox as gen
-
+from scdcdm.util import result_classes as res
+from scdcdm.util import comp_ana as mod
+from scdcdm.util import compositional_analysis_generation_toolbox as gen
+from scdcdm.util import cell_composition_data as dat
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
@@ -30,6 +30,21 @@ celltypes = pd.read_csv(celltypes_path, sep=",", header=[0], index_col=[0])
 cell_counts = celltypes.loc[:, ["sample_id", "cell_type", "counts"]].\
     set_index(["sample_id", "cell_type"]).unstack(fill_value=0).fillna(0).reset_index()
 print(cell_counts)
+
+#%%
+
+cell_counts_2 = cell_counts
+cell_counts_2.columns = cell_counts_2.columns.droplevel(0)
+cell_counts_2 = cell_counts_2.rename(columns={"": "sample_id"})
+cell_counts_2["Condition"] = cell_counts_2["sample_id"].str.replace(r"[0-9]", "")
+print(cell_counts_2)
+
+#%%
+importlib.reload(dat)
+data = dat.from_pandas(cell_counts_2, ["sample_id", "Condition"])
+print(data.X)
+print(data.obs)
+print(data.var)
 
 #%%
 
@@ -57,4 +72,3 @@ result.summary()
 
 
 #%%
-

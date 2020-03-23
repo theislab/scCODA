@@ -26,12 +26,13 @@ print("num_results:", num_results)
 n = ast.literal_eval(sys.argv[8])
 print("n:", n)
 
+models = ["Poisson", "Simple", "Baseline", "SCDC"]
+
 # Run simulation study
 
-p = mult.MultiParamSimulation(cases, K, n_total, n_samples, b_true, w_true, num_results,
-                              baseline_index=4, formula="x_0")
+p = mult.MultiParamSimulationMultiModel(cases, K, n_total, n_samples, b_true, w_true, num_results, models=models)
 
 p.simulate()
 
-p.save(path="/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/benchmark_results/negative_benchmark/",
+p.save(path="/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/benchmark_results/model_comparison/",
        filename="result_b_" + str(np.round(b_true, 3)).replace("  ", " ") + "_w_" + str(w_true) + "_round_" + str(n))

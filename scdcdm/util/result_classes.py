@@ -110,8 +110,8 @@ class CAResult(az.InferenceData):
                 beta_inc_prob.append(prob)
                 beta_nonzero_mean.append(beta_i_raw[beta_i_raw_nonzero].mean())
 
-        betas_df["inclusion_prob"] = beta_inc_prob
-        betas_df["mean_nonzero"] = beta_nonzero_mean
+        betas_df.loc[:, "inclusion_prob"] = beta_inc_prob
+        betas_df.loc[:, "mean_nonzero"] = beta_nonzero_mean
 
         # Inclusion prob threshold value
         if self.baseline is None:
@@ -121,7 +121,7 @@ class CAResult(az.InferenceData):
         threshold = 1 - threshold_factor / np.sqrt(beta_raw.shape[2])
 
         # Decide whether betas are significant or not
-        betas_df["final_parameter"] = np.where(betas_df["inclusion_prob"] > threshold,
+        betas_df.loc[:, "final_parameter"] = np.where(betas_df["inclusion_prob"] > threshold,
                                                betas_df["mean_nonzero"],
                                                0)
 
@@ -147,8 +147,8 @@ class CAResult(az.InferenceData):
             beta_sample = np.append(beta_sample, beta_d)
             log_sample = np.append(log_sample, np.log2(beta_d/alpha_sample))
 
-        betas_df["expected_sample"] = beta_sample
-        betas_df["log_fold"] = log_sample
+        betas_df.loc[:, "expected_sample"] = beta_sample
+        betas_df.loc[:, "log_fold"] = log_sample
 
         return betas_df
 
@@ -164,13 +164,13 @@ class CAResult(az.InferenceData):
         Summary DataFrame with expected sample, final parameters
         """
 
-        alphas_df["final_parameter"] = alphas_df["mean"]
+        alphas_df.loc[:, "final_parameter"] = alphas_df["mean"]
 
         # Get expected sample
         y_bar = np.mean(np.sum(np.array(self.observed_data.y), axis=1))
         alphas_exp = np.exp(alphas_df["final_parameter"])
         alpha_sample = (alphas_exp / np.sum(alphas_exp) * y_bar).values
-        alphas_df["expected_sample"] = alpha_sample
+        alphas_df.loc[:, "expected_sample"] = alpha_sample
 
         return alphas_df
 

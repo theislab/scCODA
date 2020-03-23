@@ -12,9 +12,9 @@ import os
 import ast
 import matplotlib.pyplot as plt
 
-from SCDCpy.util import compositional_analysis_generation_toolbox as gen
-from SCDCpy.util import result_classes as res
-from SCDCpy.util import multi_parameter_sampling as mult
+from scdcdm.util import compositional_analysis_generation_toolbox as gen
+from scdcdm.util import result_classes as res
+from scdcdm.util import multi_parameter_sampling as mult
 
 # Helpers for loading result classes from old environment
 import io
@@ -24,13 +24,13 @@ class RenameUnpickler(pkl.Unpickler):
     def find_class(self, module, name):
         renamed_module = module
         if module == "multi_parameter_sampling" or module == "model.multi_parameter_sampling":
-            renamed_module = "SCDCpy.util.multi_parameter_sampling"
+            renamed_module = "scdcdm.util.multi_parameter_sampling"
         if module == "compositional_analysis_generation_toolbox" or module == "model.compositional_analysis_generation_toolbox":
-            renamed_module = "SCDCpy.util.compositional_analysis_generation_toolbox"
+            renamed_module = "scdcdm.util.compositional_analysis_generation_toolbox"
         if module == "result_classes" or module == "model.result_classes":
-            renamed_module = "SCDCpy.util.result_classes"
+            renamed_module = "scdcdm.util.result_classes"
         if module == "final_models" or module == "model.final_models":
-            renamed_module = "SCDCpy.model.dirichlet_models"
+            renamed_module = "scdcdm.model.dirichlet_models"
 
         return super(RenameUnpickler, self).find_class(renamed_module, name)
 
