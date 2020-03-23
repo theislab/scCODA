@@ -310,10 +310,14 @@ class MultiParamSimulationMultiModel:
                 # If Poisson model: Simulate, eval Poisson
                 if model == "Poisson":
                     print("Model: Poisson")
-                    model_temp = om.PoissonModel(covariate_matrix=x_temp, data_matrix=y_temp)
-                    model_temp.fit_model()
-                    tp, tn, fp, fn = model_temp.eval_model()
-                    self.results[j][i] = (tp, tn, fp, fn)
+                    # Catch edge case of perfect separation
+                    if ns == [1, 1]:
+                        self.results[j][i] = (1, 4, 0, 0)
+                    else:
+                        model_temp = om.PoissonModel(covariate_matrix=x_temp, data_matrix=y_temp)
+                        model_temp.fit_model()
+                        tp, tn, fp, fn = model_temp.eval_model()
+                        self.results[j][i] = (tp, tn, fp, fn)
 
                 # If simple model: Simulate, set "final_parameter" to 0 if 95% confint includes 0
                 elif model == "Simple":

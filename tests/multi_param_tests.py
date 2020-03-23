@@ -55,7 +55,7 @@ p.save(path="./data/", filename="mult_test")
 # Test multi model sampling
 cases = [1]
 K = [5]
-n_samples = [[i+6, i+6] for i in range(1)]
+n_samples = [[i+1, i+1] for i in range(1)]
 #n_samples = [[9, 9]]
 n_total = [1000]
 b_true = [np.array([0.2, 0.2, 0.2, 0.2, 0.2]).tolist()]
