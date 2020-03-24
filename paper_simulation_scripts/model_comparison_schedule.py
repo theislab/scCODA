@@ -17,7 +17,7 @@ np.random.seed(1234)
 # General parameters
 cases = [1]
 K = [5]
-n_samples = [[i+1,i+1] for i in range(10)]
+n_samples = [[i+1, i+1] for i in range(10)]
 n_total = [5000]
 num_results = [2e4]
 
