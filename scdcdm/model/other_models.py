@@ -286,30 +286,34 @@ class scdney_model:
                 scdc_cond.append(current_condition)
 
         # save lists as csv
-        with open("paper_simulation_scripts/scdc_r_data/scdc_cellTypes.txt", "w") as f:
+        path = "/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/"
+
+        with open(path + "paper_simulation_scripts/scdc_r_data/scdc_cellTypes.txt", "w") as f:
             for c in scdc_cellTypes:
                 f.write(str(c) + "\n")
-        with open("paper_simulation_scripts/scdc_r_data/scdc_subject.txt", "w") as f:
+        with open(path + "paper_simulation_scripts/scdc_r_data/scdc_subject.txt", "w") as f:
             for c in scdc_subject:
                 f.write(str(c) + "\n")
-        with open("paper_simulation_scripts/scdc_r_data/scdc_condition.txt", "w") as f:
+        with open(path + "paper_simulation_scripts/scdc_r_data/scdc_condition.txt", "w") as f:
             for c in scdc_cond:
                 f.write(str(c) + "\n")
-        with open("paper_simulation_scripts/scdc_r_data/scdc_short_conditions.txt", "w") as f:
+        with open(path + "paper_simulation_scripts/scdc_r_data/scdc_short_conditions.txt", "w") as f:
             for c in scdc_sample_cond:
                 f.write(str(c) + "\n")
 
     def analyze(self):
+        path = "/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/"
         server = True
-        if server==True:
+
+        if server:
             rscript = "/home/icb/johannes.ostner/anaconda3/lib/R"
         else:
             rscript = 'C:/Program Files/R/R-3.6.3/bin/Rscript'
 
-        sp.call([rscript, 'paper_simulation_scripts/scdc_r_data/scdney_server_script.r'])
+        sp.call([rscript, path + 'paper_simulation_scripts/scdc_r_data/scdney_server_script.r'])
 
         # read-in results
-        with open("paper_simulation_scripts/scdc_r_data/scdc_summary.csv", "r") as f:
+        with open(path + "paper_simulation_scripts/scdc_r_data/scdc_summary.csv", "r") as f:
             r_summary = pd.read_csv(f, header=0, index_col=1)
 
         p_values = r_summary.loc[r_summary.index.str.contains("condCond_1"), "p.value"].values
