@@ -306,7 +306,7 @@ class scdney_model:
         server = True
 
         if server:
-            rscript = "/home/icb/johannes.ostner/anaconda3/lib/R"
+            rscript = "/home/icb/johannes.ostner/anaconda3/lib/R/bin/Rscript"
         else:
             rscript = 'C:/Program Files/R/R-3.6.3/bin/Rscript'
 
