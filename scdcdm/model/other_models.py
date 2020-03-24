@@ -310,7 +310,7 @@ class scdney_model:
         else:
             rscript = 'C:/Program Files/R/R-3.6.3/bin/Rscript'
 
-        sp.call([rscript, path + 'paper_simulation_scripts/scdc_r_data/scdney_server_script.r'])
+        sp.call([rscript, path + 'paper_simulation_scripts/scdc_r_data/scdney_server_script.R'])
 
         # read-in results
         with open(path + "paper_simulation_scripts/scdc_r_data/scdc_summary.csv", "r") as f:
