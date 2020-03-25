@@ -19,7 +19,8 @@ getCurrentFileLocation <-  function()
 setwd(getCurrentFileLocation())
 
 # Load data
-data_path = "/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/"
+data_path = "/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/paper_simulation_scripts/scdc_r_data/"
+# data_path = ""
 
 py_cellTypes <- read.delim(paste(data_path, "scdc_cellTypes.txt", sep=""), header = FALSE, as.is=TRUE)$V1
 py_subject <- read.delim(paste(data_path, "scdc_subject.txt", sep=""), header = FALSE, as.is=TRUE)$V1
@@ -33,5 +34,7 @@ py_res_scDC_noClust <- scDC_noClustering(py_cellTypes, py_subject, calCI = TRUE,
 py_res_GLM <- fitGLM(py_res_scDC_noClust, py_short_conditions, pairwise = FALSE)
 
 sum <- summary(py_res_GLM$pool_res_random)
+
+print(sum)
 
 write.csv(sum, paste(data_path, "scdc_summary.csv", sep=""))
