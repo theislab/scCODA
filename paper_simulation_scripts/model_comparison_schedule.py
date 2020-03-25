@@ -23,7 +23,7 @@ num_results = [2e4]
 
 # Get Parameter tuples: b: base composition; w: effect
 b = []
-for y1_0 in [115, 280, 1000]:
+for y1_0 in [200, 400, 600, 800, 1000]:
     b.append(np.round(gen.counts_from_first(y1_0, 5000, 5), 3))
 
 b_w_dict = {}
@@ -31,7 +31,7 @@ i = 0
 for b_i in b:
     b_t = np.round(np.log(b_i / 5000), 3)
     w_t = []
-    for change in [10, 50, 100]:
+    for change in [b_i[0]/3, b_i[0]/2, b_i[0], b_i[0]*2, b_i[0]*3]:
         _, w = gen.b_w_from_abs_change(b_i, change, 5000)
         w_t.append(np.round(w, 3))
     b_w_dict[i] = (b_t, w_t)
@@ -52,7 +52,7 @@ for i in range(3):
                 fh.writelines("#SBATCH -e /home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/benchmark_results/error_" + str(count) + ".e\n")
                 fh.writelines("#SBATCH -p icb_cpu\n")
                 fh.writelines("#SBATCH --exclude=ibis-ceph-[002-006,008-019],ibis216-010-[011-012,020-037,051,064],icb-rsrv[05-06,08],ibis216-224-[010-011]\n")
-                fh.writelines("#SBATCH --nodelist=ibis216-010-007")
+                fh.writelines("#SBATCH --constraint='opteron_6378'")
                 fh.writelines("#SBATCH -c 1\n")
                 fh.writelines("#SBATCH --mem=5000\n")
                 fh.writelines("#SBATCH --nice=100\n")

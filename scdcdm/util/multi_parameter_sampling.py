@@ -353,8 +353,8 @@ class MultiParamSimulationMultiModel:
                 elif model == "SCDC":
                     print("model: SCDC")
                     model = om.scdney_model(data=temp_data, ns=ns)
-                    tp, tn, fp, fn = model.analyze()
-                    self.results[j][i] = (tp, tn, fp, fn)
+                    r = model.analyze()
+                    self.results[j][i] = r
 
                 else:
                     print("Not a valid model specified")
@@ -409,6 +409,8 @@ class MultiParamSimulationMultiModel:
                 fn = []
 
                 for res in self.results[j].values():
+                    if self.models[j] == "SCDC":
+                        res = res[1]
                     tp.append(res[0])
                     tn.append(res[1])
                     fp.append(res[2])
