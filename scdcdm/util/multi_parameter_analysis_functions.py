@@ -44,7 +44,7 @@ def renamed_loads(pickled_bytes):
     return renamed_load(file_obj)
 
 
-def multi_run_study_analysis_prepare(path, file_identifier="result_"):
+def multi_run_study_analysis_prepare(path, file_identifier="result_", custom_threshold=None):
 
     """
     Function to calculate discovery rates, ... for an entire directory of multi_parameter_sampling files
@@ -73,6 +73,15 @@ def multi_run_study_analysis_prepare(path, file_identifier="result_"):
             # Load file
             r = renamed_load(open(path + "/" + f, "rb"))
 
+            if custom_threshold is not None:
+                for r_k, r_i in r.mcmc_results.items():
+                    r.mcmc_results[r_k].params["final_parameter"] = np.where(np.isnan(r_i.params["mean_nonzero"]),
+                                                                             r_i.params["mean"],
+                                                                             np.where(r_i.params[
+                                                                                          "inclusion_prob"] > custom_threshold,
+                                                                                      r_i.params["mean_nonzero"],
+                                                                                      0))
+
             # Discovery rates for beta
             r.get_discovery_rates()
 
@@ -89,30 +98,54 @@ def multi_run_study_analysis_prepare(path, file_identifier="result_"):
     return results, all_study_params, all_study_params_agg.reset_index()
 
 
-def get_scores(agg_df):
+def get_scores(agg_df, models = 1):
     """
     Calculates extended summary statistics, such as TPR, TNR, youden index, f1-score, MCC
     :param agg_df: pandas DataFrame - format as all_study_params_agg from multi_run_study_analysis_prepare
     :return: agg_df: input with added columns for summary statistics
     """
-    tp = agg_df["tp"]
-    tn = agg_df["tn"]
-    fp = agg_df["fp"]
-    fn = agg_df["fn"]
+    if models == 1:
+        tp = agg_df["tp"]
+        tn = agg_df["tn"]
+        fp = agg_df["fp"]
+        fn = agg_df["fn"]
 
-    tpr = (tp / (tp + fn)).fillna(0)
-    agg_df["tpr"] = tpr
-    tnr = (tn / (tn + fp)).fillna(0)
-    agg_df["tnr"] = tnr
-    precision = (tp / (tp + fp)).fillna(0)
-    agg_df["precision"] = precision
-    acc = (tp + tn) / (tp + tn + fp + fn).fillna(0)
-    agg_df["accuracy"] = acc
+        tpr = (tp / (tp + fn)).fillna(0)
+        agg_df["tpr"] = tpr
+        tnr = (tn / (tn + fp)).fillna(0)
+        agg_df["tnr"] = tnr
+        precision = (tp / (tp + fp)).fillna(0)
+        agg_df["precision"] = precision
+        acc = (tp + tn) / (tp + tn + fp + fn).fillna(0)
+        agg_df["accuracy"] = acc
 
-    agg_df["youden"] = tpr + tnr - 1
-    agg_df["f1_score"] = 2 * (tpr * precision / (tpr + precision)).fillna(0)
+        agg_df["youden"] = tpr + tnr - 1
+        agg_df["f1_score"] = 2 * (tpr * precision / (tpr + precision)).fillna(0)
 
-    agg_df["mcc"] = (((tp * tn) - (fp * fn)) / np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))).fillna(0)
+        agg_df["mcc"] = (((tp * tn) - (fp * fn)) / np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))).fillna(0)
+
+    else:
+        for m in range(models):
+            m_str = str(m)
+            tp = agg_df["tp_" + m_str]
+            tn = agg_df["tn_" + m_str]
+            fp = agg_df["fp_" + m_str]
+            fn = agg_df["fn_" + m_str]
+
+            tpr = (tp / (tp + fn)).fillna(0)
+            agg_df["tpr_" + m_str] = tpr
+            tnr = (tn / (tn + fp)).fillna(0)
+            agg_df["tnr_" + m_str] = tnr
+            precision = (tp / (tp + fp)).fillna(0)
+            agg_df["precision_" + m_str] = precision
+            acc = (tp + tn) / (tp + tn + fp + fn).fillna(0)
+            agg_df["accuracy_" + m_str] = acc
+
+            agg_df["youden_" + m_str] = tpr + tnr - 1
+            agg_df["f1_score_" + m_str] = 2 * (tpr * precision / (tpr + precision)).fillna(0)
+
+            agg_df["mcc_" + m_str] = (((tp * tn) - (fp * fn)) / np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))).fillna(0)
+
 
     return agg_df
 

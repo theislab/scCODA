@@ -287,6 +287,7 @@ class scdney_model:
 
         # save lists as csv
         path = "/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/"
+        # path = ""
 
         with open(path + "paper_simulation_scripts/scdc_r_data/scdc_cellTypes.txt", "w") as f:
             for c in scdc_cellTypes:
@@ -302,13 +303,14 @@ class scdney_model:
                 f.write(str(c) + "\n")
 
     def analyze(self):
-        path = "/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/"
         server = True
 
         if server:
             rscript = "/home/icb/johannes.ostner/anaconda3/lib/R"
+            path = "/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/"
         else:
             rscript = 'C:/Program Files/R/R-3.6.3/bin/Rscript'
+            path = ""
 
         sp.call([rscript, path + 'paper_simulation_scripts/scdc_r_data/scdney_server_script.r'])
 
@@ -323,4 +325,4 @@ class scdney_model:
         tn = np.sum(p_values[:-1] >= 0.05)
         fp = np.sum(p_values[:-1] < 0.05)
 
-        return tp, tn, fp, fn
+        return (r_summary, (tp, tn, fp, fn))
