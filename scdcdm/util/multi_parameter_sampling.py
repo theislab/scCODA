@@ -408,13 +408,19 @@ class MultiParamSimulationMultiModel:
                 fp = []
                 fn = []
 
-                for res in self.results[j].values():
-                    if self.models[j] == "SCDC":
-                        res = res[1]
-                    tp.append(res[0])
-                    tn.append(res[1])
-                    fp.append(res[2])
-                    fn.append(res[3])
+                if self.models[j] == "SCDC":
+                    for res in self.results[j].values():
+                        res_ = res[1]
+                        tp.append(res_[0])
+                        tn.append(res_[1])
+                        fp.append(res_[2])
+                        fn.append(res_[3])
+                else:
+                    for res in self.results[j].values():
+                        tp.append(res[0])
+                        tn.append(res[1])
+                        fp.append(res[2])
+                        fn.append(res[3])
 
                 self.parameters['tp_' + str(j)] = tp
                 self.parameters['tn_' + str(j)] = tn

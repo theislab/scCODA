@@ -23,7 +23,7 @@ num_results = [2e4]
 
 # Get Parameter tuples: b: base composition; w: effect
 b = []
-for y1_0 in [200, 400, 600, 800, 1000]:
+for y1_0 in [800, 1000]:
     b.append(np.round(gen.counts_from_first(y1_0, 5000, 5), 3))
 
 b_w_dict = {}
@@ -40,7 +40,7 @@ for b_i in b:
 #%%
 # Create bash script to execute run_one_job.py
 count = 0
-for i in range(3):
+for i in range(2):
     b = b_w_dict[i][0].tolist()
     for w in b_w_dict[i][1]:
         print(b)
