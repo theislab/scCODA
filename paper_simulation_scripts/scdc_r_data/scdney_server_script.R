@@ -19,8 +19,8 @@ getCurrentFileLocation <-  function()
 setwd(getCurrentFileLocation())
 
 # Load data
-data_path = "/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/paper_simulation_scripts/scdc_r_data/"
-# data_path = ""
+# data_path = "/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/paper_simulation_scripts/scdc_r_data/"
+data_path = ""
 
 py_cellTypes <- read.delim(paste(data_path, "scdc_cellTypes.txt", sep=""), header = FALSE, as.is=TRUE)$V1
 py_subject <- read.delim(paste(data_path, "scdc_subject.txt", sep=""), header = FALSE, as.is=TRUE)$V1

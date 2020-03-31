@@ -24,6 +24,8 @@ importlib.reload(ana)
 path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\overall_benchmark"
 
 #%%
+# Find relations between numerical values and composition/increase vectors
+
 b = []
 for y1_0 in [20, 30, 50, 75, 115, 180, 280, 430, 667, 1000]:
     b_i = np.round(gen.counts_from_first(y1_0, 5000, 5), 3)
@@ -32,7 +34,6 @@ print(b)
 
 b_counts = dict(zip([b_i[0] for b_i in b], [20, 30, 50, 75, 115, 180, 280, 430, 667, 1000]))
 
-#%%
 b2 = []
 for y1_0 in [20, 30, 50, 75, 115, 180, 280, 430, 667, 1000]:
     b_i = np.round(gen.counts_from_first(y1_0, 5000, 5), 3)
@@ -54,20 +55,22 @@ for b_i in b2:
 print(b_w_dict)
 
 #%%
+# all_study_params: One line per data point
+# all_study_params_agg: Aggregate identical simulation parameters
+p = []
 params = []
 for b_i in b:
     print(b_i[0])
-    _, _, all_study_params_agg = ana.multi_run_study_analysis_prepare(path,
+    _, all_study_params, all_study_params_agg = ana.multi_run_study_analysis_prepare(path,
                                                                       file_identifier=str(b_i[0]))
 
     all_study_params_agg = ana.get_scores(all_study_params_agg)
+    all_study_params = ana.get_scores(all_study_params)
     params.append(all_study_params_agg)
+    p.append(all_study_params)
 
 #%%
-
-print(params)
-
-#%%
+# Get some new metrics that make plotting more convenient
 
 all_study_params_agg_2 = pd.concat(params)
 all_study_params_agg_2["n_controls"] = [ast.literal_eval(x)[0] for x in all_study_params_agg_2["n_samples"].tolist()]
@@ -90,25 +93,45 @@ all_study_params_agg_2["log_fold_increase"] = np.log2((all_study_params_agg_2["n
 print(all_study_params_agg_2)
 
 #%%
+# Get some new metrics that make plotting more convenient
 
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+all_study_params_2 = pd.concat(p)
+all_study_params_2["n_controls"] = [ast.literal_eval(x)[0] for x in all_study_params_2["n_samples"].tolist()]
+all_study_params_2["n_cases"] = [ast.literal_eval(x)[1] for x in all_study_params_2["n_samples"].tolist()]
+all_study_params_2["n_total"] = all_study_params_2["n_total"].astype("float")
+all_study_params_2["w"] = [ast.literal_eval(x)[0][0] for x in all_study_params_2["w_true"]]
+all_study_params_2["b_0"] = [ast.literal_eval(x)[0] for x in all_study_params_2["b_true"]]
+all_study_params_2["b_count"] = [b_counts[np.round(x, 2)] for x in all_study_params_2["b_0"]]
 
-with open(result_path + "\\results_aggregated.pkl", "wb") as f:
-    pkl.dump(all_study_params_agg_2, file=f)
+bs = all_study_params_2["b_0"].tolist()
+ws = all_study_params_2["w"].tolist()
+increases = []
+for i in range(len(bs)):
+    increases.append(b_w_dict[bs[i]][ws[i]])
+all_study_params_2["num_increase"] = increases
+all_study_params_2["log_fold_increase"] = np.log2((all_study_params_2["num_increase"] +
+                                                       all_study_params_2["b_count"]) /
+                                                      all_study_params_2["b_count"])
+
+print(all_study_params_2)
 
 #%%
+# Save that stuff
+result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
 
+with open(result_path + "\\normal_results_aggregated.pkl", "wb") as f:
+    pkl.dump(all_study_params_agg_2, file=f)
+with open(result_path + "\\normal_results.pkl", "wb") as f:
+    pkl.dump(all_study_params_2, file=f)
+
+#%%
+# Exploration...
 sns.heatmap(data=all_study_params_agg_2[["b_count", "num_increase", "mcc"]].pivot_table("mcc", "b_count", "num_increase"), vmin=-1, vmax=1)
 plt.show()
 
 #%%
-ws = pd.unique(all_study_params_agg_2["w"])
-print(len(ws))
-
-#%%
 
 sns.heatmap(data=all_study_params_agg_2[["n_cases", "n_controls", "mcc"]].pivot_table("mcc", "n_controls", "n_cases"), vmin=-1, vmax=1)
-plt.savefig(result_path + "\\replicate_heatmap.png")
 plt.show()
 
 #%%
@@ -116,7 +139,7 @@ plt.show()
 print(all_study_params_agg_2[all_study_params_agg_2["n_samples"]=="[10, 10]"])
 
 #%%
-
+# One heatmap for every combination of b, w
 def draw_heatmap(*args, **kwargs):
     data = kwargs.pop('data')
     d = data.pivot(index=args[1], columns=args[0], values=args[2])
@@ -124,11 +147,7 @@ def draw_heatmap(*args, **kwargs):
 
 fg = sns.FacetGrid(all_study_params_agg_2, col='num_increase', row="b_count")
 fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
-plt.savefig(result_path + "\\150_heatmaps.png")
 plt.show()
-
-#%%
-print(all_study_params_agg_2[(all_study_params_agg_2["b_count"]==667) & (all_study_params_agg_2["num_increase"]==1000)])
 
 #%%
 
@@ -144,14 +163,7 @@ sns.lineplot(data=all_study_params_agg_2, x="log_fold_increase", y="mcc", hue="b
 plt.show()
 
 #%%
-# Inclusion probability
-results, all_study_params, all_study_params_agg = ana.multi_run_study_analysis_prepare(path,
-                                                                  file_identifier=str(b[0]))
-
-all_study_params_agg = ana.get_scores(all_study_params_agg)
-
-#%%
-
+# Inclusion probability - No results here!
 
 def recalculate_inclusion_probability(results, threshold):
 
@@ -174,8 +186,6 @@ def recalculate_inclusion_probability(results, threshold):
     return all_study_params_agg
 
 
-#%%
-
 def multiple_threshold_compare(results, thresholds, results_df):
 
     for t in thresholds:
@@ -189,7 +199,6 @@ def multiple_threshold_compare(results, thresholds, results_df):
     return results_df
 
 
-#%%
 import os
 
 
@@ -223,6 +232,7 @@ id = "b_[[-2.01 -1.53 -1.53 -1.53 -1.53]]_w_[[[0.034, 0.0, 0.0, 0.0, 0.0]]]"
 results_df = multiple_thresholds_with_load(path, [0.5, 0.7], file_identifier=id)
 
 #%%
+# Calculate metrics for different threshold values
 
 thresholds = np.round(np.arange(0.05, 1, 0.05), 2)
 
@@ -239,6 +249,8 @@ sns.lineplot(data=total_df, x="threshold", y="mcc", hue="")
 plt.show()
 
 #%%
+# extra metrics
+
 total_df_2 = total_df
 total_df_2["n_controls"] = [ast.literal_eval(x)[0] for x in total_df_2["n_samples"].tolist()]
 total_df_2["n_cases"] = [ast.literal_eval(x)[1] for x in total_df_2["n_samples"].tolist()]
@@ -260,12 +272,14 @@ total_df_2["log_fold_increase"] = np.log2((total_df_2["num_increase"] +
 print(total_df_2)
 
 #%%
+# Saving
 result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
 
 with open(result_path + "\\thresholds.pkl", "wb") as f:
     pkl.dump(total_df_2, file=f)
 
 #%%
+# more plots
 fig, ax = plt.subplots(1, 2, figsize=(13, 5))
 sns.lineplot(data=total_df_2, x="threshold", y="tpr", hue="num_increase", ax=ax[0])
 plt.axvline(x=0.56)
@@ -274,8 +288,6 @@ plt.axvline(x=0.56)
 
 plt.show()
 
-#%%
-
 sns.lineplot(data=total_df_2.loc[total_df_2["num_increase"]>50], x="threshold", y="mcc")
 plt.axvline(x=0.56)
 plt.show()
@@ -283,16 +295,17 @@ plt.show()
 #%%
 
 # Negative effect testing
+# Same setup as before
+importlib.reload(ana)
 
 path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\negative_benchmark"
 
-#%%
 
-_, _, all_study_params_neg = ana.multi_run_study_analysis_prepare(path)
+_, all_study_params_neg, all_study_params_neg_agg = ana.multi_run_study_analysis_prepare(path)
 
+all_study_params_neg_agg = ana.get_scores(all_study_params_neg_agg)
 all_study_params_neg = ana.get_scores(all_study_params_neg)
 
-#%%
 
 b = []
 for y1_0 in [115, 280, 1000]:
@@ -322,8 +335,6 @@ for b_i in b2:
     i += 1
 print(b_w_dict)
 
-#%%
-
 all_study_params_neg = all_study_params_neg
 all_study_params_neg["n_controls"] = [ast.literal_eval(x)[0] for x in all_study_params_neg["n_samples"].tolist()]
 all_study_params_neg["n_cases"] = [ast.literal_eval(x)[1] for x in all_study_params_neg["n_samples"].tolist()]
@@ -344,13 +355,35 @@ all_study_params_neg["log_fold_increase"] = np.log2((all_study_params_neg["num_i
 
 print(all_study_params_neg)
 
+all_study_params_neg_agg["n_controls"] = [ast.literal_eval(x)[0] for x in all_study_params_neg_agg["n_samples"].tolist()]
+all_study_params_neg_agg["n_cases"] = [ast.literal_eval(x)[1] for x in all_study_params_neg_agg["n_samples"].tolist()]
+all_study_params_neg_agg["n_total"] = all_study_params_neg_agg["n_total"].astype("float")
+all_study_params_neg_agg["w"] = [ast.literal_eval(x)[0][0] for x in all_study_params_neg_agg["w_true"]]
+all_study_params_neg_agg["b_0"] = [ast.literal_eval(x)[0] for x in all_study_params_neg_agg["b_true"]]
+all_study_params_neg_agg["b_count"] = [b_counts[np.round(x, 2)] for x in all_study_params_neg_agg["b_0"]]
+
+bs = all_study_params_neg_agg["b_0"].tolist()
+ws = all_study_params_neg_agg["w"].tolist()
+increases = []
+for i in range(len(bs)):
+    increases.append(b_w_dict[bs[i]][ws[i]])
+all_study_params_neg_agg["num_increase"] = increases
+all_study_params_neg_agg["log_fold_increase"] = np.log2((all_study_params_neg_agg["num_increase"] +
+                                                       all_study_params_neg_agg["b_count"]) /
+                                                      all_study_params_neg_agg["b_count"])
+
+print(all_study_params_neg_agg)
+
 #%%
+# Save that stuff
 result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
 
 with open(result_path + "\\results_negative.pkl", "wb") as f:
     pkl.dump(all_study_params_neg, file=f)
-
+with open(result_path + "\\results_negative_aggregated.pkl", "wb") as f:
+    pkl.dump(all_study_params_neg_agg, file=f)
 #%%
+# Plots
 result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
 
 
@@ -359,7 +392,7 @@ def draw_heatmap(*args, **kwargs):
     d = data.pivot(index=args[1], columns=args[0], values=args[2])
     sns.heatmap(d, **kwargs, vmin=-1, vmax=1)
 
-fg = sns.FacetGrid(all_study_params_neg, col='num_increase', row="b_count")
+fg = sns.FacetGrid(all_study_params_neg_agg, col='num_increase', row="b_count")
 fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
 plt.savefig(result_path + "\\negative_heatmaps.png")
 plt.show()
@@ -374,22 +407,14 @@ with open(result_path + "\\results_aggregated.pkl", "rb") as f:
 
 #%%
 
-fg = sns.FacetGrid(all_study_params_agg_2.loc[(all_study_params_agg_2["b_count"].isin([115, 280, 1000])) &
-                                              (all_study_params_agg_2["num_increase"].isin([10, 50, 100]))],
+fg = sns.FacetGrid(all_study_params_agg_pos.loc[(all_study_params_agg_pos["b_count"].isin([115, 280, 1000])) &
+                                              (all_study_params_agg_pos["num_increase"].isin([10, 50, 100]))],
                    col='num_increase', row="b_count")
 fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
 plt.savefig(result_path + "\\pos_heatmaps_for_negative.png")
 plt.show()
 
 # -> For same absolute cell count change, negative effects are detected even a little better!
-
-
-#%%
-
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
-
-with open(result_path + "\\results_aggregated.pkl", "rb") as f:
-    all_study_params_agg_2 = pkl.load(file=f)
 
 #%%
 
@@ -398,8 +423,8 @@ def draw_heatmap(*args, **kwargs):
     d = data.pivot(index=args[1], columns=args[0], values=args[2])
     sns.heatmap(d, **kwargs, vmin=-1, vmax=1)
 
-fg = sns.FacetGrid(all_study_params_agg_2.loc[(all_study_params_agg_2["b_count"].isin([50, 180, 430])) &
-                                              (all_study_params_agg_2["num_increase"].isin([40, 80, 200]))],
+fg = sns.FacetGrid(all_study_params_agg_pos.loc[(all_study_params_agg_pos["b_count"].isin([50, 180, 430])) &
+                                              (all_study_params_agg_pos["num_increase"].isin([40, 80, 200]))],
                    col='num_increase', row="b_count")
 fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
 plt.savefig(result_path + "\\negative_heatmaps.png")
