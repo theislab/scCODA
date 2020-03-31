@@ -31,6 +31,8 @@ class RenameUnpickler(pkl.Unpickler):
             renamed_module = "scdcdm.util.result_classes"
         if module == "final_models" or module == "model.final_models":
             renamed_module = "scdcdm.model.dirichlet_models"
+        if module == "SCDCpy.util":
+            renamed_module = "scdcdm.util"
 
         return super(RenameUnpickler, self).find_class(renamed_module, name)
 
