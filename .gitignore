@@ -106,5 +106,8 @@ venv.bak/
 .mypy_cache/
 
 # R stuff
-*.RData
-*.Rhistory
+.RData
+.Rhistory
+
+# Other
+prototyping/

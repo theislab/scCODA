@@ -188,10 +188,10 @@ class CompositionalModel:
                   }
 
         return res.CAResultConverter(posterior=posterior,
-                               posterior_predictive=posterior_predictive,
-                               observed_data=observed_data,
-                               dims=dims,
-                               coords=coords).to_result_data(y_hat, baseline=False)
+                                     posterior_predictive=posterior_predictive,
+                                     observed_data=observed_data,
+                                     dims=dims,
+                                     coords=coords).to_result_data(y_hat, baseline=False)
 
     def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01):
         """
