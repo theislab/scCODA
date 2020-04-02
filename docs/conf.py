@@ -10,16 +10,10 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-<<<<<<< Updated upstream
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('.'))
-=======
-import os
-import sys
 sys.path.insert(0, os.path.abspath('./scdcdm'))
->>>>>>> Stashed changes
 
 
 # -- Project information -----------------------------------------------------
@@ -34,16 +28,13 @@ author = 'Johannes Ostner, Benjamin Schubert'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['numpydoc']
+extensions = ['numpydoc',
+              'sphinx.ext.autodoc',
+              'sphinx.ext.napoleon',
+              'sphinx.ext.autosummary']
 
 # Add any paths that contain templates here, relative to this directory.
-<<<<<<< Updated upstream
-
-templates_path = ['sphinx.ext.autodoc', '_templates', 'sphinx.ext.autosummary',
-                  'sphinx.ext.napoleon']
-=======
-templates_path = ['sphinx.ext.autodoc', '_templates', 'sphinx.ext.autosummary']
->>>>>>> Stashed changes
+templates_path = ['_templates']
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
