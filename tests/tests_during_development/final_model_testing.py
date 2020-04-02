@@ -73,7 +73,7 @@ print(ana.x)
 print(ana.covariate_names)
 
 #%%
-params_mcmc = ana.sample_hmc(num_results=int(20000), n_burnin=5000)
+params_mcmc = ana.sample_nuts(num_results=int(20000), n_burnin=5000)
 
 #%%
 params_mcmc.summary(credible_interval=0.9)
