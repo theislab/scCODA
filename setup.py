@@ -12,17 +12,19 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = 'compositionDE'
-DESCRIPTION = 'statistical test to identify compositional changes in count data.'
-URL = 'https://github.com/theislab/compositionalDE'
+NAME = 'scdcdm'
+DESCRIPTION = 'A Dirichlet-Multinomial approach to identify compositional changes in count data.'
+URL = 'https://github.com/theislab/SCDCpy'
 EMAIL = 'benjamin.schubert@helmholtz-muenchen.de'
 AUTHOR = 'Benjamin Schubert'
-REQUIRES_PYTHON = '==3.6.0'
+REQUIRES_PYTHON = '>=3.7.0'
 VERSION = "0.0.1"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "numpy", "scipy", "tf-nightly", "tfp-nightly", "arviz"
+    "numpy", "scipy", "tensorflow", "tensorflow-probability",
+    "arviz", "seaborn", "pandas", "matplotlib", "scanpy", "anndata",
+    "patsy", "sklearn"
 ]
 
 # What packages are optional?
@@ -102,7 +104,7 @@ setup(
     author_email=EMAIL,
     python_requires=REQUIRES_PYTHON,
     url=URL,
-    packages=find_packages(exclude=('prototyping', 'data',)),
+    packages=find_packages(exclude=('prototyping', 'data', 'paper_simulation_scripts', 'tests')),
     # If your package is a single module, use this instead of 'packages':
     # py_modules=['mypackage'],
 

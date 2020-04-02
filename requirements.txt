@@ -1,0 +1,13 @@
+numpy>=1.14.0
+pandas>=1.0
+seaborn
+matplotlib
+tf-nightly==2.2.0.dev20200308
+tensorflow-probability>=0.9.0
+arviz>=0.7
+scipy
+anndata
+patsy
+sklearn
+scanpy
+statsmodels

@@ -23,6 +23,8 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.idea/
+data/
 MANIFEST
 
 # PyInstaller
@@ -102,3 +104,10 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# R stuff
+.RData
+.Rhistory
+
+# Other
+prototyping/
