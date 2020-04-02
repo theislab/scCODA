@@ -7,7 +7,7 @@ The statistical methods used are described in:
 **Johannes Ostner:** *Development of a statistical framework for compositional analysis of scRNA data*
 
 For further information, please refer to the 
-[documentation](scdcdm-public.readthedocs.io) and the 
+[documentation](https://scdcdm-public.readthedocs.io/en/latest/) and the 
 [tutorials](https://github.com/theislab/SCDCdm/blob/master/tutorials/Tutorial.ipynb).
 
 
