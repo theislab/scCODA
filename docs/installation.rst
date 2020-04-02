@@ -3,25 +3,25 @@ Installation
 
 A functioning python environment (>=3.7) is necessary to run this package.
 
-This package uses the tensorflow (>=2.0) and tensorflow-probability (>=0.8.0) packages. 
-The GPU versions of these packages have not been tested with compositionalDiff and are thus not recommended.
+This package uses the tensorflow (==2.2.0.dev20200308) and tensorflow-probability (>=0.9.0) packages.
+The GPU versions of these packages have not been tested with SCDCdm and are thus not recommended.
 To install these packages via pip, call::
 
     pip install tensorflow
     pip install tensorflow-probability
     
-To install compositionalDiff from source:
+To install SCDCdm from source:
 
-- Navigate to the directory you want compositionalDiff in
-- Clone the repository from (Github)[https://github.com/theislab/compositionalDiff]
-- Navigate to the root directory of compositionalDiff
-- Install compositionalDiff::
+- Navigate to the directory you want SCDCdm in
+- Clone the repository from (Github)[https://github.com/theislab/SCDCdm]
+- Navigate to the root directory of SCDCdm
+- Install SCDCdm::
 
     pip install -e
     
-Import compositionalDiff in Python via::
+Import compositionalDiff in a Python session via::
 
-    import compositionalDiff as cd
+    import SCDCdm as scdcdm
 
     
 

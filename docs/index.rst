@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to compositionalDiff's documentation!
+Welcome to SCDCdm's documentation!
 =============================================
 
 This package contains statistical models to analyze changes in compositional data, especially from single-cell RNA-seq experiments.
@@ -13,6 +13,7 @@ This package contains statistical models to analyze changes in compositional dat
    :caption: Contents:
 
    installation
+   data
    models
 
 

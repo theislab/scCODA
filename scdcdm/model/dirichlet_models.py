@@ -207,6 +207,9 @@ class CompositionalModel:
         -------
 
         """
+
+        raise NotImplementedError
+
         # (not in use atm)
         constraining_bijectors = [
             tfb.Identity(),
@@ -586,6 +589,7 @@ class NoBaselineModelNoEdward(CompositionalModel):
         :param sample_counts: numpy array [N] - number of cells per sample
         :param dtype: data type for all numbers (for tensorflow)
         """
+        raise NotImplementedError
 
         dtype = tf.float32
         self.x = tf.cast(covariate_matrix, dtype)
