@@ -1,20 +1,17 @@
-""""
-This file provides functions for plotting and analyzing the results from running models over multiple parameter sets
+"""
+Functions for plotting and analyzing the results from running models over multiple parameter sets
+
+:authors: Johannes Ostner
 """
 
 
 import numpy as np
-import arviz as az
 import seaborn as sns
 import pandas as pd
 import pickle as pkl
 import os
 import ast
 import matplotlib.pyplot as plt
-
-from scdcdm.util import data_generation as gen
-from scdcdm.util import result_classes as res
-from scdcdm.util import multi_parameter_sampling as mult
 
 # Helpers for loading result classes from old environment
 import io
@@ -26,7 +23,7 @@ class RenameUnpickler(pkl.Unpickler):
         if module == "multi_parameter_sampling" or module == "model.multi_parameter_sampling":
             renamed_module = "scdcdm.util.multi_parameter_sampling"
         if module == "compositional_analysis_generation_toolbox" or module == "model.compositional_analysis_generation_toolbox":
-            renamed_module = "scdcdm.util.compositional_analysis_generation_toolbox"
+            renamed_module = "scdcdm.util.data_generation"
         if module == "result_classes" or module == "model.result_classes":
             renamed_module = "scdcdm.util.result_classes"
         if module == "final_models" or module == "model.final_models":

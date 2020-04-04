@@ -1,9 +1,10 @@
 """
 Helper functions to convert single-cell data to scdcdm compositional analysis data
+
+:authors: Johannes Ostner
 """
 import pandas as pd
 import anndata as ad
-import numpy as np
 import os
 
 

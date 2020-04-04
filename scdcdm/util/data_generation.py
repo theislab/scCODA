@@ -1,4 +1,4 @@
-""""
+"""
 Toolbox for simulating compositional data from ScRNA-seq
 
 This toolbox provides data generation and modelling solutions for compositional data with different specifications.
@@ -9,9 +9,6 @@ We then build a concentration vector for each sample (row of x) that sums up to 
 :authors: Johannes Ostner
 """
 
-# TODO: Extensive introduction into data format
-
-import matplotlib.pyplot as plt
 import numpy as np
 import anndata as ad
 import pandas as pd

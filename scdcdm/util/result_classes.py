@@ -1,19 +1,11 @@
 """
-This file contains
-Results objects that summarize the results of the different
-inference methods and calculates test statistics
+Results class that summarizes the results of the different inference methods and calculates test statistics
 
-
-:authors: Benjamin Schubert, Johannes Ostner
+:authors: Johannes Ostner
 """
 import numpy as np
 import arviz as az
 import pandas as pd
-import scipy.stats as st
-import matplotlib.pyplot as plt
-import time
-from abc import ABCMeta, abstractmethod
-
 
 class CAResultConverter(az.data.io_dict.DictConverter):
     """

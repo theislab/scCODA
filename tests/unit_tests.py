@@ -26,7 +26,7 @@ class TestDataGeneration(unittest.TestCase):
 
     def test_data_generation(self):
         """
-        Testing whether the data generation functions from compositional_analysis_generation_toolbox work as intended
+        Testing whether the data generation functions from data_generation work as intended
         Returns
         -------
         boolean -- all tests were passed or not

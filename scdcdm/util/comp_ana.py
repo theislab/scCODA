@@ -1,3 +1,8 @@
+"""
+Initialization of SCDCdm models
+
+:authors: Johannes Ostner
+"""
 import numpy as np
 import patsy as pt
 import importlib

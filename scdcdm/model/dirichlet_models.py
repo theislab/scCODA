@@ -1,7 +1,6 @@
+"""
+Dirichlet-multinomial models for statistical analysis of compositional changes
 
-""""
-This file defines multiple Dirichlet-multinomial models
-for statistical analysis of compositional changes
 For further reference, see:
 Johannes Ostner: Development of a statistical framework for compositional analysis of single-cell data
 

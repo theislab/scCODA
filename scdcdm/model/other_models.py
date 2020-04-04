@@ -1,10 +1,11 @@
-""""
-This file defines models for the model comparison part in the paper
+"""
+Models for the model comparison part in the paper
+
+These models are otherwise not part of SCDCdm
 
 :authors: Johannes Ostner
 """
 import numpy as np
-import time
 import pandas as pd
 import subprocess as sp
 

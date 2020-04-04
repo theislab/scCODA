@@ -13,7 +13,7 @@ Hereby, `data.X` stores the cell counts, and `data.obs` stores the information a
 Data generation methods
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-To test new modeling approaches, SCDCdm contains methods to generate compositional data with different properties (`scdcdm.util.compositional_analysis_generation_toolbox`).
+To test new modeling approaches, SCDCdm contains methods to generate compositional data with different properties (`scdcdm.util.data_generation`).
 
 
 Data import methods

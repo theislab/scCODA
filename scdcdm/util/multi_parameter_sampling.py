@@ -1,5 +1,5 @@
-""""
-This file contains a framework to simulate multiple sets of parameters, and aggregate the results.
+"""
+Framework to simulate multiple sets of parameters, and aggregate the results.
 The functions to evaluate the results via plots, ... can be found in 'multi_parameter_analysis_functions'
 
 :authors: Johannes Ostner
@@ -22,7 +22,6 @@ import tensorflow_probability as tfp
 import itertools
 
 from scdcdm.util import data_generation as gen
-from scdcdm.model import dirichlet_models as dm
 from scdcdm.model import other_models as om
 from scdcdm.util import comp_ana as ca
 
