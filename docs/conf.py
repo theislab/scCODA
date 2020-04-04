@@ -41,7 +41,7 @@ extensions = ['numpydoc',
               'sphinx.ext.autosummary']
 
 autodoc_mock_imports = ["tensorflow",
-                        "tensorflow-probability"]
+                        "tensorflow_probability"]
 
 # Generate the API documentation when building
 autosummary_generate = True
