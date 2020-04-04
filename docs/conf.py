@@ -13,7 +13,8 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('./scdcdm'))
+sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('..'))
 
 
 # -- Project information -----------------------------------------------------
@@ -32,8 +33,23 @@ master_doc = 'index'
 # ones.
 extensions = ['numpydoc',
               'sphinx.ext.autodoc',
+              'sphinx.ext.intersphinx',
+              'sphinx.ext.doctest',
+              'sphinx.ext.coverage',
+              'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
               'sphinx.ext.autosummary']
+
+# Generate the API documentation when building
+autosummary_generate = True
+autodoc_member_order = 'bysource'
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = False
+napoleon_use_rtype = True
+napoleon_use_param = True
+napoleon_custom_sections = [('Params', 'Parameters')]
+todo_include_todos = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

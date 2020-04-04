@@ -10,7 +10,7 @@ import sys
 import numpy as np
 import os
 
-from scdcdm.util import compositional_analysis_generation_toolbox as gen
+from scdcdm.util import data_generation as gen
 
 np.random.seed(1234)
 

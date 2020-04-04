@@ -12,7 +12,7 @@ import os
 import ast
 import matplotlib.pyplot as plt
 
-from scdcdm.util import compositional_analysis_generation_toolbox as gen
+from scdcdm.util import data_generation as gen
 from scdcdm.util import result_classes as res
 from scdcdm.util import multi_parameter_sampling as mult
 
@@ -49,14 +49,26 @@ def renamed_loads(pickled_bytes):
 def multi_run_study_analysis_prepare(path, file_identifier="result_", custom_threshold=None):
 
     """
-    Function to calculate discovery rates, ... for an entire directory of multi_parameter_sampling files
-    :param path: string - path to directory
-    :param file_identifier: string - an (optional) identifier that is part of all files we want to analyze
-    :param custom_threshold: float - custom spike-and-slab threshold
-    :param keep_results: boolean - if True: Load entire MCMC chains - very memory consuming!!!
-    :return: results: List of raw result files
-    all_study_params: pandas DataFrame - Parameters and result data for all files
-    all_study_params_agg: pandas DataFrame - Parameters and result data, aggregated over all files with identical parameters
+    Function to read in and calculate discovery rates, ... for an entire directory of multi_parameter_sampling files
+
+    Parameters
+    ----------
+    path -- str
+        path to directory
+    file_identifier -- str (optional)
+        identifier that is part of all files we want to analyze - only these files are loaded
+    custom_threshold -- float (optional)
+        custom spike-and-slab threshold
+
+    Returns
+    -------
+    results -- list
+        List of raw result files
+    all_study_params -- pandas DataFrame
+        Parameters and result data for all files
+    all_study_params_agg -- pandas DataFrame
+        Parameters and result data, aggregated over all files with identical parameters
+
     """
 
     files = os.listdir(path)
@@ -100,12 +112,23 @@ def multi_run_study_analysis_prepare(path, file_identifier="result_", custom_thr
     return results, all_study_params, all_study_params_agg.reset_index()
 
 
-def get_scores(agg_df, models = 1):
+def get_scores(agg_df, models=1):
     """
     Calculates extended summary statistics, such as TPR, TNR, youden index, f1-score, MCC
-    :param agg_df: pandas DataFrame - format as all_study_params_agg from multi_run_study_analysis_prepare
-    :return: agg_df: input with added columns for summary statistics
+
+    Parameters
+    ----------
+    agg_df -- pandas DataFrame
+    models -- int
+        number of different models used for the analysis (relevant if data comes from MultiParameterSamplingMultiModel)
+
+    Returns
+    -------
+    agg_df -- pandas DataFrame
+        Same as input, with added columns for summary statistics
+
     """
+
     if models == 1:
         tp = agg_df["tp"]
         tn = agg_df["tn"]
@@ -151,16 +174,27 @@ def get_scores(agg_df, models = 1):
 
     return agg_df
 
-
 def plot_discovery_rates_agg(rates_df, dim_1='w_true', dim_2=None, path=None):
     """
     Plot heatmap of TPR and TNR for one parameter series vs. another
-    :param rates_df: pandas DataFrame - format as all_study_params_agg from multi_run_study_analysis_prepare
-    :param dim_1: string - parameter on x-axis
-    :param dim_2: string - parameter on y-axis
-    :param path: string - directory to save plot to
-    :return:
+
+
+    Parameters
+    ----------
+    rates_df -- pandas DataFrame
+        format as all_study_params_agg from multi_run_study_analysis_prepare
+    dim_1 -- str
+        parameter on x-axis
+    dim_2 -- str
+        parameter on y-axis
+    path -- str
+        directory to save plot to
+
+    Returns
+    -------
+
     """
+
     sns.set_style("whitegrid")
     fig, ax = plt.subplots(1, 2, figsize=(13, 5))
 
@@ -196,17 +230,29 @@ def plot_discovery_rates_agg(rates_df, dim_1='w_true', dim_2=None, path=None):
     plt.show()
 
 
-def plot_cases_vs_controls(rates_df, results, identifier_w, path=None, suptitle=None):
+def plot_cases_vs_controls(rates_df, results, identifier_w="", path=None, suptitle=None):
     """
     Plot heatmaps of TPR and TNR for number of case vs. number of control samples.
-    Also plots counts of cases vs. controls for all cell types
-    :param rates_df: pandas DataFrame - format as all_study_params_agg from multi_run_study_analysis_prepare
-    :param results: pandas DataFrame - same format as results from multi_run_study_analysis_prepare
-    :param identifier_w: string - if plotting only a subset of all ground truth effects
-    :param path: string - directory to save plot to
-    :param suptitle: string - Header for entirety of plots
-    :return:
+
+
+    Parameters
+    ----------
+    rates_df -- pandas DataFrame
+        Same as all_study_params_agg from multi_run_study_analysis_prepare
+    results -- pandas DataFrame
+        same format as results from multi_run_study_analysis_prepare
+    identifier_w -- str (optional)
+        if plotting only a subset of all ground truth effects
+    path -- str
+        directory to save plot to
+    suptitle -- str
+        Header for entirety of plots
+
+    Returns
+    -------
+
     """
+
     sns.set_style("whitegrid")
     fig, ax = plt.subplots(2, 2, figsize=(12, 10))
 
@@ -258,14 +304,24 @@ def multi_run_study_analysis_prepare_per_param(path, file_identifier="result_"):
     """
     Function to calculate discovery rates, ... for an entire directory of multi_parameter_sampling files
     Effect Discovery rates are calculated separately for each cell type
-    :param path: string - path to directory
-    :param file_identifier: string - an (optional) identifier that is part of all files we want to analyze
-    :param custom_threshold: float - custom spike-and-slab threshold
-    :param keep_results: boolean - if True: Load entire MCMC chains - very memory consuming!!!
-    :return: results: List of raw result files
-    all_study_params: pandas DataFrame - Parameters and result data for all files
-    all_study_params_agg: pandas DataFrame - Parameters and result data, aggregated over all files with identical parameters
+
+    Parameters
+    ----------
+    path -- str
+        path to directory
+    file_identifier -- str (optional)
+        identifier that is part of all files we want to analyze
+
+    Returns
+    -------
+    results -- list
+        List of raw result files
+    all_study_params -- pandas DataFrame
+        Parameters and result data for all files
+    all_study_params_agg -- pandas DataFrame
+        Parameters and result data, aggregated over all sets of identical parameters
     """
+
     files = os.listdir(path)
 
     results = []
@@ -301,13 +357,25 @@ def plot_cases_vs_controls_per_param(K, rates_df, results, identifier_w, path=No
     """
     Plot heatmaps of discovery rate for number of case vs. number of control samples, for each cell type.
     Also plots counts of cases vs. controls for all cell types
-    :param K: int - number of cell types
-    :param rates_df: pandas DataFrame - format as all_study_params_agg from multi_run_study_analysis_prepare
-    :param results: pandas DataFrame - same format as results from multi_run_study_analysis_prepare
-    :param identifier_w: string - if plotting only a subset of all ground truth effects
-    :param path: string - directory to save plot to
-    :param suptitle: string - Header for entirety of plots
-    :return:
+
+    Parameters
+    ----------
+    K -- int
+
+    rates_df -- pandas DataFrame
+        same format as all_study_params_agg from multi_run_study_analysis_prepare
+    results -- pandas DataFrame
+        same format as results from multi_run_study_analysis_prepare
+    identifier_w -- str
+        if plotting only a subset of all ground truth effects
+    path -- str
+        directory to save plot to
+    suptitle -- str
+        Header for entirety of plots
+
+    Returns
+    -------
+
     """
 
     # plot initialization
@@ -370,13 +438,22 @@ def plot_cases_vs_controls_per_param(K, rates_df, results, identifier_w, path=No
 def multi_run_study_analysis_multi_model_prepare(path, file_identifier="result_"):
     """
     Function to calculate discovery rates, ... for an entire directory of multi_parameter_sampling_multi_model files
-    :param path: string - path to directory
-    :param file_identifier: string - an (optional) identifier that is part of all files we want to analyze
-    :param custom_threshold: float - custom spike-and-slab threshold
-    :param keep_results: boolean - if True: Load entire MCMC chains - very memory consuming!!!
-    :return: results: List of raw result files
-    all_study_params: pandas DataFrame - Parameters and result data for all files
-    all_study_params_agg: pandas DataFrame - Parameters and result data, aggregated over all files with identical parameters
+
+    Parameters
+    ----------
+    path -- str
+        path to directory
+    file_identifier -- str (optional)
+        identifier that is part of all files we want to analyze
+
+    Returns
+    -------
+    results -- list
+        List of raw result files
+    all_study_params -- pandas DataFrame
+        Parameters and result data for all files
+    all_study_params_agg -- pandas DataFrame
+        Parameters and result data, aggregated over all sets of identical parameters
     """
 
     files = os.listdir(path)
@@ -412,14 +489,27 @@ def multi_run_study_analysis_multi_model_prepare(path, file_identifier="result_"
 def plot_cases_vs_controls_per_param_2(K, rates_df, results, identifier_w, path=None, suptitle=None):
     """
     Optimized version of plot_cases_vs_controls_per_param
-    :param K: int - number of cell types
-    :param rates_df: pandas DataFrame - format as all_study_params_agg from multi_run_study_analysis_prepare
-    :param results: pandas DataFrame - same format as results from multi_run_study_analysis_prepare
-    :param identifier_w: string - if plotting only a subset of all ground truth effects
-    :param path: string - directory to save plot to
-    :param suptitle: string - Header for entirety of plots
-    :return:
+
+    Parameters
+    ----------
+    K -- int
+        number of cell types
+    rates_df -- pandas DataFrame
+        same format as all_study_params_agg from multi_run_study_analysis_prepare
+    results -- pandas DataFrame
+        same format as results from multi_run_study_analysis_prepare
+    identifier_w -- str (optional)
+        if plotting only a subset of all ground truth effects
+    path -- str
+        directory to save plot to
+    suptitle -- str
+        Header for entirety of plots
+
+    Returns
+    -------
+
     """
+
 
     sns.set_style("whitegrid")
 

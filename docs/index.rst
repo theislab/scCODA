@@ -16,7 +16,20 @@ This package contains statistical models to analyze changes in compositional dat
    data
    models
 
+Modules
+=======
 
+.. autosummary::
+   :toctree: modules
+
+   scdcdm.model.dirichlet_models
+   scdcdm.model.other_models
+   scdcdm.util.cell_composition_data
+   scdcdm.util.comp_ana
+   scdcdm.util.data_generation
+   scdcdm.util.multi_parameter_analysis_functions
+   scdcdm.util.multi_parameter_sampling
+   scdcdm.util.result_classes
 
 Indices and tables
 ==================

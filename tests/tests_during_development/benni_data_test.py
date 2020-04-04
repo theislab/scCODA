@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from scdcdm.util import result_classes as res
 from scdcdm.util import comp_ana as mod
-from scdcdm.util import compositional_analysis_generation_toolbox as gen
+from scdcdm.util import data_generation as gen
 from scdcdm.util import cell_composition_data as dat
 
 pd.set_option('display.max_columns', 500)

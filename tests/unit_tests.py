@@ -14,7 +14,7 @@ import ast
 from scdcdm.util import result_classes as res
 from scdcdm.util import multi_parameter_sampling as mult
 from scdcdm.util import multi_parameter_analysis_functions as ana
-from scdcdm.util import compositional_analysis_generation_toolbox as gen
+from scdcdm.util import data_generation as gen
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)

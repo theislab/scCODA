@@ -29,13 +29,7 @@ class SimpleModel(dm.CompositionalModel):
     """
 
     def __init__(self, *args, **kwargs):
-        """
 
-        :param X: Numpy Design NxD matrix of independent variables of interest
-        :param Z: Numpy Design NxB matrix of confounders
-        :param y: Numpy NxK Matrix of dependent variables
-        :param n_total: Numpy Nx1 Vector of total observed counts
-        """
         super(self.__class__, self).__init__(*args, **kwargs)
         dtype = tf.float32
 
@@ -78,16 +72,22 @@ class SimpleModel(dm.CompositionalModel):
     def sample_hmc(self, num_results=int(20e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01):
         """
         HMC sampling
+
         Parameters
         ----------
-        num_results -- MCMC chain length (default 20000)
-        n_burnin -- Number of burnin iterations (default 5000)
-        num_leapfrog_steps -- HMC leapfrog steps (default 10)
-        step_size -- Initial step size (default 0.01)
+        num_results -- int
+            MCMC chain length (default 20000)
+        n_burnin -- int
+            Number of burnin iterations (default 5000)
+        num_leapfrog_steps -- int
+            HMC leapfrog steps (default 10)
+        step_size -- float
+            Initial step size (default 0.01)
 
         Returns
         -------
-        scdcdm.util.result_data object
+        result
+            scdcdm.util.result_data object
         """
 
         # (not in use atm)
@@ -138,15 +138,20 @@ class SimpleModel(dm.CompositionalModel):
     def get_y_hat(self, states_burnin, num_results, n_burnin):
         """
         Calculate predicted cell counts (for analysis purposes) and add intermediate parameters to MCMC results
+
         Parameters
         ----------
-        states_burnin -- MCMC chain without burnin samples
-        num_results -- Chain length (with burnin)
-        n_burnin -- Number of burnin samples
+        states_burnin -- list
+            MCMC chain without burnin samples
+        num_results -- int
+            Chain length (with burnin)
+        n_burnin -- int
+            Number of burnin samples
 
         Returns
         -------
-        predicted cell counts
+        y_mean
+            predicted cell counts
         """
 
         chain_size_y = [num_results - n_burnin, self.N, self.K]
@@ -185,10 +190,14 @@ class PoissonModel:
 
         Parameters
         ----------
-        covariate_matrix -- numpy array [NxD] - covariate matrix
-        data_matrix -- numpy array [NxK] - cell count matrix
-        cell_types -- list of cell type names
-        covariate_names -- List of covariate names
+        covariate_matrix -- numpy array [NxD]
+            covariate matrix
+        data_matrix -- numpy array [NxK]
+            cell count matrix
+        cell_types -- list
+            list of cell type names
+        covariate_names -- list
+            List of covariate names
         """
 
         self.x = covariate_matrix
@@ -210,10 +219,11 @@ class PoissonModel:
     def fit_model(self):
         """
         Fits and evaluates model
-        Caution! This only works for
+
         Returns
         -------
-        tp, tn, fp, fn: Number of True positive, ... effects
+        Tuple
+            tp, tn, fp, fn: Number of True positive, ... effects
         """
 
         for k in range(self.K):
@@ -243,10 +253,13 @@ class scdney_model:
     def __init__(self, data, ns):
         """
         Prepares R sampling
+
         Parameters
         ----------
         data -- scdcdm data object
-        ns -- number of samples per condition
+            scdcdm data object
+        ns -- list
+            number of samples per condition
 
         Returns
         -------
@@ -303,6 +316,14 @@ class scdney_model:
                 f.write(str(c) + "\n")
 
     def analyze(self):
+        """
+        Analyzes results from R script
+
+        Returns
+        -------
+        Tuple:
+            Tuple(raw summary from R, True positive...)
+        """
         server = True
 
         if server:

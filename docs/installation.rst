@@ -13,7 +13,7 @@ To install these packages via pip, call::
 To install SCDCdm from source:
 
 - Navigate to the directory you want SCDCdm in
-- Clone the repository from (Github)[https://github.com/theislab/SCDCdm]
+- Clone the repository from (Github)[https://github.com/johannesostner/SCDCdm_public]
 - Navigate to the root directory of SCDCdm
 - Install SCDCdm::
 

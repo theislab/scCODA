@@ -12,13 +12,19 @@ def from_scanpy(adata, cell_type_identifier, covariate_key):
     Converts a single scanpy file to a row of a cell count matrix
     Parameters
     ----------
-    adata -- single-cell data object from scanpy
-    cell_type_identifier -- column name in adata.obs that specifies the cell types
-    covariate_key -- key for adata.uns, where the covariate values are stored
+    adata -- anndata object
+        single-cell data object from scanpy
+    cell_type_identifier -- str
+        column name in adata.obs that specifies the cell types
+    covariate_key -- str
+        key for adata.uns, where the covariate values are stored
 
     Returns
     -------
-    cell count vector, covariate vector
+    cell_counts
+        cell count vector
+    covs
+        covariate vector
     """
 
     # Calculating cell counts for the sample
@@ -33,15 +39,20 @@ def from_scanpy(adata, cell_type_identifier, covariate_key):
 def from_scanpy_list(samples, cell_type_identifier, covariate_key):
     """
     Creates a compositional analysis data set from a list of scanpy data sets
+
     Parameters
     ----------
-    samples -- list of scanpy data sets
-    cell_type_identifier -- column name in adata.obs that specifies the cell types
-    covariate_key -- key for adata.uns, where the covariate values are stored
+    samples -- list
+        list of scanpy data sets
+    cell_type_identifier -- str
+        column name in adata.obs that specifies the cell types
+    covariate_key -- str
+        key for adata.uns, where the covariate values are stored
 
     Returns
     -------
-    A compositional analysis data set
+    data
+        A compositional analysis data set
     """
 
     count_data = pd.DataFrame()
@@ -66,15 +77,20 @@ def from_scanpy_list(samples, cell_type_identifier, covariate_key):
 def from_scanpy_dir(path, cell_type_identifier, covariate_key):
     """
     Creates a compositional analysis data set from all scanpy data sets in a directory
+
     Parameters
     ----------
-    path -- path to directory
-    cell_type_identifier -- column name in adata.obs that specifies the cell types
-    covariate_key -- key for adata.uns, where the covariate values are stored
+    path -- str
+        path to directory
+    cell_type_identifier -- str
+        column name in adata.obs that specifies the cell types
+    covariate_key -- str
+        key for adata.uns, where the covariate values are stored
 
     Returns
     -------
-    A compositional analysis data set
+    data
+        A compositional analysis data set
     """
 
     count_data = pd.DataFrame()
@@ -100,14 +116,18 @@ def from_scanpy_dir(path, cell_type_identifier, covariate_key):
 def from_pandas(df, covariate_columns):
     """
     Converts a Pandas DataFrame into a compositional analysis data set.
+
     Parameters
     ----------
-    df -- a pandas DataFrame with each row representing a sample; the columns can be cell counts or covariates
-    covariate_columns -- List of column names that are interpreted as covariates; all other columns will be seen as cell types
+    df -- DataFrame
+        A pandas DataFrame with each row representing a sample; the columns can be cell counts or covariates
+    covariate_columns -- List
+        List of column names that are interpreted as covariates; all other columns will be seen as cell types
 
     Returns
     -------
-    A compositional analysis data set
+    data
+        A compositional analysis data set
     """
 
     covariate_data = df.loc[:, covariate_columns]

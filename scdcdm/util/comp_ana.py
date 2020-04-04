@@ -17,15 +17,20 @@ class CompositionalAnalysis:
     def __new__(cls, data, formula, baseline_index=None):
         """
         Builds count and covariate matrix, returns a CompositionalModel object
+
         Parameters
         ----------
-        data -- anndata object with cell counts as data.X and covariates saved in data.obs
-        formula -- string - R-style formula for building the covariate matrix
-        baseline_index -- int - baseline index
+        data -- anndata object
+            anndata object with cell counts as data.X and covariates saved in data.obs
+        formula -- string
+            R-style formula for building the covariate matrix
+        baseline_index -- int
+            baseline index
 
         Returns
         -------
-        A CompositionalModel object
+        model
+            A CompositionalModel object
         """
 
         importlib.reload(dm)
