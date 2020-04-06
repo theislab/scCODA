@@ -43,14 +43,14 @@ def generate_normal_uncorrelated(N, D, K, n_total, noise_std_true=1):
     w_true = np.random.normal(0, 1, size=(D, K)).astype(np.float32)  # weights (beta)
 
     # Generate random covariate matrix
-    x = np.random.normal(0, 1, size=(N,D)).astype(np.float32)
+    x = np.random.normal(0, 1, size=(N, D)).astype(np.float32)
     noise = noise_std_true * np.random.randn(N, 1).astype(np.float32)
 
     # Generate y
     y = np.zeros([N, K], dtype=np.float32)
     for i in range(N):
         # Concentration should sum to 1 for each sample
-        concentration = softmax(x[i,:].T@w_true + b_true + noise[i,:]).astype(np.float32)
+        concentration = softmax(x[i, :].T@w_true + b_true + noise[i, :]).astype(np.float32)
         y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float32)
 
     x_names = ["x_" + str(n) for n in range(x.shape[1])]
@@ -89,7 +89,7 @@ def generate_normal_correlated(N, D, K, n_total, noise_std_true, covariate_mean=
     """
 
     if covariate_mean is None:
-        covariate_mean = np.zeros(shape=(D))
+        covariate_mean = np.zeros(shape=D)
 
     # Generate randomized covariate covariance matrix if none is specified
     if covariate_var is None:
@@ -155,7 +155,7 @@ def generate_normal_xy_correlated(N, D, K, n_total, noise_std_true=1,
     """
 
     if covariate_mean is None:
-        covariate_mean = np.zeros(shape=(D))
+        covariate_mean = np.zeros(shape=D)
 
     if sigma is None:
         sigma = np.identity(K)
@@ -269,7 +269,7 @@ def generate_sparse_xy_correlated(N, D, K, n_total, noise_std_true=1,
     """
 
     if covariate_mean is None:
-        covariate_mean = np.zeros(shape=(D))
+        covariate_mean = np.zeros(shape=D)
 
     if sigma is None:
         sigma = np.identity(K)
@@ -315,15 +315,10 @@ def generate_sparse_xy_correlated(N, D, K, n_total, noise_std_true=1,
     return data
 
 
-def binary(x, cases):
-
-    return [int(i) for i in bin(x)[2:].zfill(cases)]
-
-
 def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5,5], noise_std_true=0,
                           sigma=None, b_true=None, w_true=None):
     """
-    Generates compositional data with b inary covariates
+    Generates compositional data with binary covariates
 
     Parameters
     ----------
@@ -364,13 +359,16 @@ def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5,5], noise_std
     if sigma is None:
         sigma = np.identity(K) * 0.05
 
-
     # noise = noise_std_true * np.random.randn(N, 1).astype(np.float32)
 
     # Initialize x, y
     x = np.zeros((sum(n_samples), cases))
     y = np.zeros((sum(n_samples), K)) 
     c = 0
+
+    # Binary representation of x as list of fixed length
+    def binary(x, length):
+        return [int(x_n) for x_n in bin(x)[2:].zfill(length)]
 
     # For all combinations of cases
     for i in range(2**cases):
@@ -397,8 +395,6 @@ def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5,5], noise_std
     data = ad.AnnData(X=y, obs=x_df, uns={"b_true": b_true, "w_true": w_true})
 
     return data
-
-#%%
 
 
 def b_w_from_abs_change(counts_before=np.array([200, 200, 200, 200, 200]), abs_change=50, n_total=1000):

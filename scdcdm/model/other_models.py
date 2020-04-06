@@ -181,7 +181,7 @@ class SimpleModel(dm.CompositionalModel):
 
 class PoissonModel:
     """
-    Implements the Poisson regression model from Habel et al. into the scdcdm framework
+    Implements the Poisson regression model from Haber et al. into the scdcdm framework
     (for model comparison purposes)
     """
 
@@ -219,12 +219,11 @@ class PoissonModel:
 
     def fit_model(self):
         """
-        Fits and evaluates model
+        Fits Poisson model
 
         Returns
         -------
-        Tuple
-            tp, tn, fp, fn: Number of True positive, ... effects
+
         """
 
         for k in range(self.K):
@@ -235,6 +234,15 @@ class PoissonModel:
             self.p_val[k] = model_ct.pvalues[1]
 
     def eval_model(self):
+        """
+        Evaluates Poisson model.
+        It is assumed that the effect on the first cell type is significant, all others are not.
+
+        Returns
+        -------
+        tp, tn, fp, fn : Tuple
+            Number of True positive, ... effects
+        """
 
         ks = list(range(self.K))[1:]
 
@@ -318,7 +326,8 @@ class scdney_model:
 
     def analyze(self):
         """
-        Analyzes results from R script
+        Analyzes results from R script for SCDC from scdney packege.
+        It is assumed that the effect on the first cell type is significant, all others are not.
 
         Returns
         -------

@@ -11,9 +11,6 @@ from scdcdm.model import dirichlet_models as dm
 from scdcdm.model import other_models as om
 
 
-#%%
-
-
 class CompositionalAnalysis:
     """
     Helper class that is called when building a new compositional model

@@ -11,6 +11,7 @@ import os
 def from_scanpy(adata, cell_type_identifier, covariate_key):
     """
     Converts a single scanpy file to a row of a cell count matrix
+
     Parameters
     ----------
     adata -- anndata object
@@ -138,4 +139,3 @@ def from_pandas(df, covariate_columns):
     return ad.AnnData(X=count_data.values,
                       var=celltypes,
                       obs=covariate_data)
-

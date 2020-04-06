@@ -24,7 +24,7 @@ result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\composition
 importlib.reload(ana)
 # Get data:
 # all_study_params: One line per data point
-# all_study_params_agg: Aggregate identical simulation parameters
+# all_study_params_agg: Combine identical simulation parameters
 
 path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\model_comparison"
 

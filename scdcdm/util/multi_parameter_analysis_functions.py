@@ -168,8 +168,8 @@ def get_scores(agg_df, models=1):
 
             agg_df["mcc_" + m_str] = (((tp * tn) - (fp * fn)) / np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))).fillna(0)
 
-
     return agg_df
+
 
 def plot_discovery_rates_agg(rates_df, dim_1='w_true', dim_2=None, path=None):
     """
@@ -299,8 +299,8 @@ def plot_cases_vs_controls(rates_df, results, identifier_w="", path=None, suptit
 
 def multi_run_study_analysis_prepare_per_param(path, file_identifier="result_"):
     """
-    Function to calculate discovery rates, ... for an entire directory of multi_parameter_sampling files
-    Effect Discovery rates are calculated separately for each cell type
+    Function to calculate discovery rates, ... for an entire directory of multi_parameter_sampling files.
+    Effect Discovery rates are calculated separately for each cell type.
 
     Parameters
     ----------
