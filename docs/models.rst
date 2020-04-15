@@ -6,13 +6,14 @@ These are implemented in ``scdcdm.model.dirichlet_models`` and differ whether a 
 Both models can be called via creating an instance of ``scdcdm.util.comp_ana.CompositionalAnalysis``.
 SCDCdm automatically selects the correct model based on whether a baseline cell type was specified.
 
-
 Model structure
 ~~~~~~~~~~~~~~~
 
 Both models are based on a Dirichlet-multinomial model, in which each cell type is described by the covariates through a linear model.
 The intercepts alpha are modeled via a normal prior. For the effects (beta) of a covariate on a cell type, we perform model selection via a spike-and-slab prior (Continuous approximation via a Logit-normal prior).
 The underlying prior for significant effects is a noncentered parametrization of a Normal distribution.
+
+For further information regarding the model structure, please refer to: (paper)
 
 
 Inference

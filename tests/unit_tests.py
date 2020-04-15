@@ -1,17 +1,19 @@
 """
-Unit tests for SCDC_dm
+Unit tests for SCDCdm
 """
 
 import unittest
 import numpy as np
-import arviz as az
+import scanpy as sc
+import tensorflow as tf
 import pandas as pd
-import pickle as pkl
-import importlib
-import anndata as ad
-import ast
+import os
+import sys
+sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('..'))
 
-from scdcdm.util import result_classes as res
+from scdcdm.util import cell_composition_data as dat
+from scdcdm.util import comp_ana as mod
 from scdcdm.util import multi_parameter_sampling as mult
 from scdcdm.util import multi_parameter_analysis_functions as ana
 from scdcdm.util import data_generation as gen
@@ -23,29 +25,32 @@ pd.set_option('display.max_rows', 500)
 
 
 class TestDataGeneration(unittest.TestCase):
+    """
+    Testing whether the data generation functions from data_generation work as intended
+    Returns
+    -------
+    boolean -- all tests were passed or not
+    """
 
-    def test_data_generation(self):
-        """
-        Testing whether the data generation functions from data_generation work as intended
-        Returns
-        -------
-        boolean -- all tests were passed or not
-        """
+    def setUp(self):
+
+        self.N = 3
+        self.D = 1
+        self.K = 2
+        self.n_total = [1000] * self.N
+        self.noise_std_true = 1
+        self.covariate_mean = None
+        self.covariate_var = None
+        self.sigma = None
+        self.b_true = None
+        self.w_true = None
+
+    def test_case_1(self):
+
         np.random.seed(1234)
 
-        N = 3
-        D = 1
-        K = 2
-        n_total = [1000]*N
-        noise_std_true = 1
-        covariate_mean = None
-        covariate_var = None
-        sigma = None
-        b_true = None
-        w_true = None
-
         test_1 = True
-        data_sc_1 = gen.generate_normal_uncorrelated(N, D, K, n_total, noise_std_true)
+        data_sc_1 = gen.generate_normal_uncorrelated(self.N, self.D, self.K, self.n_total, self.noise_std_true)
         if any(np.abs(data_sc_1.obs["x_0"] - [-0.720589, 0.887163, 0.859588]) > 1e-5):
             print("scenario1.obs is not correct!")
             test_1 = False
@@ -53,37 +58,53 @@ class TestDataGeneration(unittest.TestCase):
             print("scenario1.X is not correct!")
             test_1 = False
 
+        self.assertTrue(test_1)
+
+    def test_case_2(self):
+        np.random.seed(1234)
+
         test_2 = True
-        data_sc_2 = gen.generate_normal_correlated(N, D, K, n_total, noise_std_true, covariate_mean, covariate_var)
-        if any(np.abs(data_sc_2.obs["x_0"] - [-0.202646, -0.655969, 0.193421]) > 1e-5):
+        data_sc_2 = gen.generate_normal_correlated(self.N, self.D, self.K, self.n_total, self.noise_std_true,
+                                                   self.covariate_mean, self.covariate_var)
+        if any(np.abs(data_sc_2.obs["x_0"] - [-0.720589, 0.887163, 0.859588]) > 1e-5):
             print("scenario2.obs is not correct!")
             test_2 = False
-        if not np.array_equal(data_sc_2.X, np.array([[383., 617.], [162., 838.], [680., 320.]])):
+        if not np.array_equal(data_sc_2.X, np.array([[591., 409.], [959., 41.], [965., 35.]])):
             print("scenario2.X is not correct!")
             test_2 = False
 
+        self.assertTrue(test_2)
+
+    def test_case_3(self):
+        np.random.seed(1234)
+
         test_3 = True
-        data_sc_3 = gen.generate_normal_xy_correlated(N, D, K, n_total, noise_std_true, covariate_mean, covariate_var, sigma)
-        if any(np.abs(data_sc_3.obs["x_0"] - [0.841675, 2.390960, 0.076200]) > 1e-5):
+        data_sc_3 = gen.generate_normal_xy_correlated(self.N, self.D, self.K, self.n_total, self.noise_std_true,
+                                                      self.covariate_mean, self.covariate_var, self.sigma)
+        if any(np.abs(data_sc_3.obs["x_0"] - [-0.720589, 0.887163, 0.859588]) > 1e-5):
             print("scenario3.obs is not correct!")
             test_3 = False
-        if not np.array_equal(data_sc_3.X, np.array([[598., 402.], [878., 122.], [104., 896.]])):
+        if not np.array_equal(data_sc_3.X, np.array([[570., 430.], [957., 43.], [923., 77.]])):
             print("scenario3.X is not correct!")
             test_3 = False
 
+        self.assertTrue(test_3)
+
+    def test_case_4(self):
+        np.random.seed(1234)
+
         test_4 = True
-        data_sc_4 = gen.generate_sparse_xy_correlated(N, D, K, n_total, noise_std_true, covariate_mean, covariate_var, sigma,
-                                                      b_true, w_true)
-        if any(np.abs(data_sc_4.obs["x_0"] - [0.34769, -0.55482, -0.804660]) > 1e-5):
+        data_sc_4 = gen.generate_sparse_xy_correlated(self.N, self.D, self.K, self.n_total, self.noise_std_true,
+                                                      self.covariate_mean, self.covariate_var, self.sigma,
+                                                      self.b_true, self.w_true)
+        if any(np.abs(data_sc_4.obs["x_0"] - [0.662509, 0.675246, -0.940298]) > 1e-5):
             print("scenario4.obs is not correct!")
             test_4 = False
-        if not np.array_equal(data_sc_4.X, np.array([[550., 450.], [796., 204.], [848., 152.]])):
+        if not np.array_equal(data_sc_4.X, np.array([[12., 988.], [13., 987.], [26., 974.]])):
             print("scenario4.X is not correct!")
             test_4 = False
 
-        assert all([test_1, test_2, test_3, test_4])
-
-        return True
+        self.assertTrue(test_4)
 
     def test_case_control_gen(self):
         """
@@ -113,13 +134,11 @@ class TestDataGeneration(unittest.TestCase):
             print("X is not correct!")
             test = False
         if not np.array_equal(data.uns["b_true"], np.array([-1.8508832,  0.7326526], dtype=np.float32)) & \
-            np.array_equal(data.uns["w_true"], np.array([[0., 0.]])):
+           np.array_equal(data.uns["w_true"], np.array([[0., 0.]])):
             print("uns is not correct!")
             test = False
 
-        assert test
-
-        return True
+        self.assertTrue(test)
 
     def test_change_functions(self):
         """
@@ -152,10 +171,109 @@ class TestDataGeneration(unittest.TestCase):
             print("gen.counts_from_first not correct!")
             correct = False
 
-        assert correct
+        self.assertTrue(correct)
 
-        return True
 
+class TestDataImport(unittest.TestCase):
+
+    def test_from_pandas(self):
+        # Get Haber Salmonella data
+        data_raw = pd.read_csv("./data/haber_counts.csv")
+
+        salm_indices = [0, 1, 2, 3, 8, 9]
+        salm_df = data_raw.iloc[salm_indices, :]
+
+        data_salm = dat.from_pandas(salm_df, covariate_columns=["Mouse"])
+        data_salm.obs["Condition"] = data_salm.obs["Mouse"].str.replace(r"_[0-9]", "")
+
+        # Only check size of x, obs
+        x_shape = (data_salm.X.shape == (6, 8))
+        obs_shape = (data_salm.obs.shape == (6, 2))
+
+        self.assertTrue(x_shape & obs_shape)
+
+    def test_from_scanpy(self):
+        # Get scanpy example data, add covariates, read in three times
+        adata_ref = sc.datasets.pbmc3k_processed()
+        adata_ref.uns["cov"] = {"x1": 0, "x2": 1}
+
+        data = dat.from_scanpy_list([adata_ref, adata_ref, adata_ref],
+                                    cell_type_identifier="louvain",
+                                    covariate_key="cov")
+
+        # Only check size of x, obs
+        x_shape = (data.X.shape == (3, 8))
+        obs_shape = (data.obs.shape == (3, 2))
+        var_names = (data.var.index.tolist() == ['CD4 T cells', 'CD14+ Monocytes', 'B cells', 'CD8 T cells',
+                                                 'NK cells', 'FCGR3A+ Monocytes', 'Dendritic cells', 'Megakaryocytes'])
+
+        self.assertTrue(x_shape & obs_shape & var_names)
+
+
+class TestModels(unittest.TestCase):
+
+    def setUp(self):
+
+        # Get Haber count data
+        data_raw = pd.read_csv("./data/haber_counts.csv")
+
+        salm_indices = [0, 1, 2, 3, 8, 9]
+        salm_df = data_raw.iloc[salm_indices, :]
+
+        data_salm = dat.from_pandas(salm_df, covariate_columns=["Mouse"])
+        data_salm.obs["Condition"] = data_salm.obs["Mouse"].str.replace(r"_[0-9]", "")
+        self.data = data_salm
+
+    def test_no_baseline(self):
+        np.random.seed(1234)
+        tf.random.set_seed(5678)
+
+        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", baseline_index=None)
+
+        # Run MCMC
+        sim_results = model_salm.sample_hmc(num_results=20000, n_burnin=5000)
+        alpha_df, beta_df = sim_results.summary_prepare()
+
+        # Mean cell counts for both groups
+        alphas_true = np.round(np.mean(self.data.X[:4], 0), 0)
+        betas_true = np.round(np.mean(self.data.X[4:], 0), 0)
+
+        # Mean cell counts for simulated data
+        final_alphas = np.round(alpha_df.loc[:, "expected_sample"].tolist(), 0)
+        final_betas = np.round(beta_df.loc[:, "expected_sample"].tolist(), 0)
+
+        # Check if model approximately predicts ground truth
+        differing_alphas = any(np.abs(alphas_true - final_alphas) > 30)
+        differing_betas = any(np.abs(betas_true - final_betas) > 30)
+
+        self.assertTrue((not differing_alphas) & (not differing_betas))
+
+    def test_baseline(self):
+        np.random.seed(1234)
+        tf.random.set_seed(5678)
+
+        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", baseline_index=5)
+
+        # Run MCMC
+        sim_results = model_salm.sample_hmc(num_results=20000, n_burnin=5000)
+        alpha_df, beta_df = sim_results.summary_prepare()
+
+        # Mean cell counts for both groups
+        alphas_true = np.round(np.mean(self.data.X[:4], 0), 0)
+        betas_true = np.round(np.mean(self.data.X[4:], 0), 0)
+
+        # Mean cell counts for simulated data
+        final_alphas = np.round(alpha_df.loc[:, "expected_sample"].tolist(), 0)
+        final_betas = np.round(beta_df.loc[:, "expected_sample"].tolist(), 0)
+
+        # Check if model approximately predicts ground truth
+        differing_alphas = any(np.abs(alphas_true - final_alphas) > 30)
+        differing_betas = any(np.abs(betas_true - final_betas) > 30)
+
+        self.assertTrue((not differing_alphas) & (not differing_betas))
+
+
+#%%
 
 if __name__ == '__main__':
     unittest.main()

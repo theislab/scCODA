@@ -24,7 +24,7 @@ tfb = tfp.bijectors
 
 
 class SimpleModel(dm.CompositionalModel):
-    """"
+    """
     Simple Dirichlet-Multinomial model with normal priors
 
     """
