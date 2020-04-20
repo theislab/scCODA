@@ -42,6 +42,16 @@ class CAResult(az.InferenceData):
     """
 
     def __init__(self, y_hat, baseline, **kwargs):
+        """
+
+        Parameters
+        ----------
+        y_hat -- numpy array
+            Predictions from model
+        baseline -- int
+            baseline index
+        kwargs -- passed to az.InferenceData
+        """
         super(self.__class__, self).__init__(**kwargs)
 
         self.baseline = baseline

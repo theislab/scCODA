@@ -13,7 +13,7 @@ from scdcdm.model import other_models as om
 
 class CompositionalAnalysis:
     """
-    Helper class that is called when building a new compositional model
+    Initializer class for compositional models. Please refer to the tutorial for using this class.
     """
 
     def __new__(cls, data, formula, baseline_index=None):
@@ -25,14 +25,16 @@ class CompositionalAnalysis:
         data -- anndata object
             anndata object with cell counts as data.X and covariates saved in data.obs
         formula -- string
-            R-style formula for building the covariate matrix
+            R-style formula for building the covariate matrix.
+            Categorical covariates are handled automatically, with the covariate value of the first sample being used as the reference category.
+            To set a different level as the reference category, use "C(<CovariateName>, Treatment('<ReferenceLevelName>'))"
         baseline_index -- int
             baseline index
 
         Returns
         -------
         model
-            A CompositionalModel object
+            A scdcdm.models.dirichlet_models.CompositionalModel object
         """
 
         importlib.reload(dm)

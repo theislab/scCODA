@@ -43,6 +43,17 @@ extensions = ['numpydoc',
 autodoc_mock_imports = ["tensorflow",
                         "tensorflow_probability"]
 
+
+def skip(app, what, name, obj, would_skip, options):
+    if name == "__init__" or name == "__new__":
+        return False
+    return would_skip
+
+
+def setup(app):
+    app.connect("autodoc-skip-member", skip)
+
+
 # Generate the API documentation when building
 autosummary_generate = True
 autodoc_member_order = 'bysource'
