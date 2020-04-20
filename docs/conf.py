@@ -11,12 +11,9 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 
-
 import os
 import sys
 sys.path.insert(0, os.path.abspath('.'))
-sys.path.insert(0, os.path.abspath('../'))
-
 
 
 # -- Project information -----------------------------------------------------
@@ -28,24 +25,47 @@ author = 'Johannes Ostner, Benjamin Schubert'
 
 # -- General configuration ---------------------------------------------------
 
+master_doc = 'index'
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['numpydoc',
               'sphinx.ext.autodoc',
+              'sphinx.ext.intersphinx',
+              'sphinx.ext.doctest',
+              'sphinx.ext.coverage',
+              'sphinx.ext.mathjax',
               'sphinx.ext.napoleon',
               'sphinx.ext.autosummary']
 
-# Add any paths that contain templates here, relative to this directory.
+autodoc_mock_imports = ["tensorflow",
+                        "tensorflow_probability"]
 
-templates_path = ['_templates']
 
+def skip(app, what, name, obj, would_skip, options):
+    if name == "__init__" or name == "__new__":
+        return False
+    return would_skip
+
+
+def setup(app):
+    app.connect("autodoc-skip-member", skip)
+
+
+# Generate the API documentation when building
 autosummary_generate = True
 autodoc_member_order = 'bysource'
 napoleon_google_docstring = False
-napoleon_use_param = False
-napoleon_use_ivar = True
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = False
+napoleon_use_rtype = True
+napoleon_use_param = True
+napoleon_custom_sections = [('Params', 'Parameters')]
 todo_include_todos = False
+
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ['_templates']
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

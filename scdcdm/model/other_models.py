@@ -1,10 +1,11 @@
-""""
-This file defines models for the model comparison part in the paper
+"""
+Models for the model comparison part in the paper
+
+These models are otherwise not part of SCDCdm
 
 :authors: Johannes Ostner
 """
 import numpy as np
-import time
 import pandas as pd
 import subprocess as sp
 
@@ -23,19 +24,13 @@ tfb = tfp.bijectors
 
 
 class SimpleModel(dm.CompositionalModel):
-    """"
+    """
     Simple Dirichlet-Multinomial model with normal priors
 
     """
 
     def __init__(self, *args, **kwargs):
-        """
 
-        :param X: Numpy Design NxD matrix of independent variables of interest
-        :param Z: Numpy Design NxB matrix of confounders
-        :param y: Numpy NxK Matrix of dependent variables
-        :param n_total: Numpy Nx1 Vector of total observed counts
-        """
         super(self.__class__, self).__init__(*args, **kwargs)
         dtype = tf.float32
 
@@ -78,16 +73,22 @@ class SimpleModel(dm.CompositionalModel):
     def sample_hmc(self, num_results=int(20e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01):
         """
         HMC sampling
+
         Parameters
         ----------
-        num_results -- MCMC chain length (default 20000)
-        n_burnin -- Number of burnin iterations (default 5000)
-        num_leapfrog_steps -- HMC leapfrog steps (default 10)
-        step_size -- Initial step size (default 0.01)
+        num_results -- int
+            MCMC chain length (default 20000)
+        n_burnin -- int
+            Number of burnin iterations (default 5000)
+        num_leapfrog_steps -- int
+            HMC leapfrog steps (default 10)
+        step_size -- float
+            Initial step size (default 0.01)
 
         Returns
         -------
-        scdcdm.util.result_data object
+        result
+            scdcdm.util.result_data object
         """
 
         # (not in use atm)
@@ -138,15 +139,20 @@ class SimpleModel(dm.CompositionalModel):
     def get_y_hat(self, states_burnin, num_results, n_burnin):
         """
         Calculate predicted cell counts (for analysis purposes) and add intermediate parameters to MCMC results
+
         Parameters
         ----------
-        states_burnin -- MCMC chain without burnin samples
-        num_results -- Chain length (with burnin)
-        n_burnin -- Number of burnin samples
+        states_burnin -- list
+            MCMC chain without burnin samples
+        num_results -- int
+            Chain length (with burnin)
+        n_burnin -- int
+            Number of burnin samples
 
         Returns
         -------
-        predicted cell counts
+        y_mean
+            predicted cell counts
         """
 
         chain_size_y = [num_results - n_burnin, self.N, self.K]
@@ -175,7 +181,7 @@ class SimpleModel(dm.CompositionalModel):
 
 class PoissonModel:
     """
-    Implements the Poisson regression model from Habel et al. into the scdcdm framework
+    Implements the Poisson regression model from Haber et al. into the scdcdm framework
     (for model comparison purposes)
     """
 
@@ -185,10 +191,14 @@ class PoissonModel:
 
         Parameters
         ----------
-        covariate_matrix -- numpy array [NxD] - covariate matrix
-        data_matrix -- numpy array [NxK] - cell count matrix
-        cell_types -- list of cell type names
-        covariate_names -- List of covariate names
+        covariate_matrix -- numpy array [NxD]
+            covariate matrix
+        data_matrix -- numpy array [NxK]
+            cell count matrix
+        cell_types -- list
+            list of cell type names
+        covariate_names -- list
+            List of covariate names
         """
 
         self.x = covariate_matrix
@@ -209,11 +219,11 @@ class PoissonModel:
 
     def fit_model(self):
         """
-        Fits and evaluates model
-        Caution! This only works for
+        Fits Poisson model
+
         Returns
         -------
-        tp, tn, fp, fn: Number of True positive, ... effects
+
         """
 
         for k in range(self.K):
@@ -224,6 +234,15 @@ class PoissonModel:
             self.p_val[k] = model_ct.pvalues[1]
 
     def eval_model(self):
+        """
+        Evaluates Poisson model.
+        It is assumed that the effect on the first cell type is significant, all others are not.
+
+        Returns
+        -------
+        tp, tn, fp, fn : Tuple
+            Number of True positive, ... effects
+        """
 
         ks = list(range(self.K))[1:]
 
@@ -243,10 +262,13 @@ class scdney_model:
     def __init__(self, data, ns):
         """
         Prepares R sampling
+
         Parameters
         ----------
         data -- scdcdm data object
-        ns -- number of samples per condition
+            scdcdm data object
+        ns -- list
+            number of samples per condition
 
         Returns
         -------
@@ -303,6 +325,15 @@ class scdney_model:
                 f.write(str(c) + "\n")
 
     def analyze(self):
+        """
+        Analyzes results from R script for SCDC from scdney packege.
+        It is assumed that the effect on the first cell type is significant, all others are not.
+
+        Returns
+        -------
+        Tuple:
+            Tuple(raw summary from R, True positive...)
+        """
         server = True
 
         if server:

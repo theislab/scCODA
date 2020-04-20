@@ -1,19 +1,11 @@
 """
-This file contains
-Results objects that summarize the results of the different
-inference methods and calculates test statistics
+Results class that summarizes the results of the different inference methods and calculates test statistics
 
-
-:authors: Benjamin Schubert, Johannes Ostner
+:authors: Johannes Ostner
 """
 import numpy as np
 import arviz as az
 import pandas as pd
-import scipy.stats as st
-import matplotlib.pyplot as plt
-import time
-from abc import ABCMeta, abstractmethod
-
 
 class CAResultConverter(az.data.io_dict.DictConverter):
     """
@@ -50,6 +42,16 @@ class CAResult(az.InferenceData):
     """
 
     def __init__(self, y_hat, baseline, **kwargs):
+        """
+
+        Parameters
+        ----------
+        y_hat -- numpy array
+            Predictions from model
+        baseline -- int
+            baseline index
+        kwargs -- passed to az.InferenceData
+        """
         super(self.__class__, self).__init__(**kwargs)
 
         self.baseline = baseline
@@ -58,6 +60,7 @@ class CAResult(az.InferenceData):
     def summary_prepare(self, *args, **kwargs):
         """
         Preparation of summary method
+
         Parameters
         ----------
         args -- Passed to az.summary
@@ -65,7 +68,10 @@ class CAResult(az.InferenceData):
 
         Returns
         -------
-        alphas_df and betas_df for summary method
+        alphas_df -- pandas df
+            Summary of intercept parameters
+        betas_df -- pandas df
+            Summary of slope parameters
         """
         # initialize summary df
         summ = az.summary(self, *args, **kwargs, kind="stats", var_names=["alpha", "beta"])
@@ -89,12 +95,15 @@ class CAResult(az.InferenceData):
         Evaluation of MCMC results for slopes
         Parameters
         ----------
-        alphas_df -- Data frame with intercept summary from az.summary
-        betas_df -- Data frame with slope summary from az.summary
+        alphas_df -- Data frame
+            Intercept summary from az.summary
+        betas_df -- Data frame
+            Slope summary from az.summary
 
         Returns
         -------
-        DataFrame with inclusion probability, final parameters, expected sample
+        betas_df -- DataFrame
+            DataFrame with inclusion probability, final parameters, expected sample
         """
         beta_inc_prob = []
         beta_nonzero_mean = []
@@ -155,13 +164,16 @@ class CAResult(az.InferenceData):
     def complete_alpha_df(self, alphas_df):
         """
         Evaluation of MCMC results for intercepts
+
         Parameters
         ----------
-        alphas_df -- Data frame with intercept summary from az.summary
+        alphas_df -- Data frame
+            Intercept summary from az.summary
 
         Returns
         -------
-        Summary DataFrame with expected sample, final parameters
+        alphas_df -- DataFrame
+            Summary DataFrame with expected sample, final parameters
         """
 
         alphas_df.loc[:, "final_parameter"] = alphas_df["mean"]
@@ -177,6 +189,7 @@ class CAResult(az.InferenceData):
     def summary(self, *args, **kwargs):
         """
         Printing method for summary data
+
         Parameters
         ----------
         args -- Passed to az.summary
@@ -216,16 +229,22 @@ class CAResult(az.InferenceData):
     def compare_to_truth(self, b_true, w_true, *args, **kwargs):
         """
         Extends data frames from summary_prepare by a comparison to some ground truth slope and intercept values
+
         Parameters
         ----------
-        b_true -- Ground truth slope values
-        w_true -- Ground truth intercept values
+        b_true -- pandas Series
+            Ground truth slope values
+        w_true -- pandas Series
+            Ground truth intercept values
         args -- Passed to az.summary
         kwargs -- Passed to az.summary
 
         Returns
         -------
-        alphas_df, betas_df
+        alphas_df -- DataFrame
+            Summary DataFrame for intercepts
+        betas_df -- DataFrame
+            Summary DataFrame for effects
         """
 
         alphas_df, betas_df = self.summary_prepare(*args, **kwargs)
@@ -250,9 +269,10 @@ class CAResult(az.InferenceData):
     def distances(self):
         """
         Compares real cell count matrix to the cell count matrix that arises from the calculated parameters
+
         Returns
         -------
-        DataFrame
+        ret: DataFrame
         """
 
         # Get absolute (counts) and relative error matrices

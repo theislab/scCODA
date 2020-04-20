@@ -12,10 +12,11 @@ import seaborn as sns
 import importlib
 import arviz as az
 
-from scdcdm.util import compositional_analysis_generation_toolbox as gen
+from scdcdm.util import data_generation as gen
 from scdcdm.util import comp_ana as mod
 from scdcdm.util import result_classes as res
 from scdcdm.util import multi_parameter_sampling as mult
+from scdcdm.util import cell_composition_data as dat
 
 pd.options.display.float_format = '{:10,.3f}'.format
 pd.set_option('display.max_columns', None)
@@ -73,7 +74,7 @@ print(ana.x)
 print(ana.covariate_names)
 
 #%%
-params_mcmc = ana.sample_nuts(num_results=int(20000), n_burnin=5000)
+params_mcmc = ana.sample_hmc(num_results=int(20000), n_burnin=5000)
 
 #%%
 params_mcmc.summary(credible_interval=0.9)
@@ -249,52 +250,40 @@ for i in range(9):
 
 
 
-#%%
-#einsum tests
+#%% Haber data on multiple categories
 
-a = np.arange(10).reshape((10, 1))
-b = np.repeat([[[0, 1, 2, 3, 4]], [[1, 2, 3, 4, 5]]], 5, axis=0)
-al = np.repeat([[0, 1, 2, 3, 4]], 10, axis=0)
-print(al)
-x = np.arange(6).reshape((6, 1))
-print(a.shape)
-print(b.shape)
+cell_counts = pd.read_csv("C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\haber_counts.csv")
 
-print(np.matmul(x, b[6]))
+print(cell_counts)
 
-#print((a.reshape((10, 1, 1))+b))
-out = np.einsum("jk, ...kl->...jl", x, b)
-print(al.reshape(10, 1, 5))
-print((out + al.reshape(10, 1, 5)))
-print(out.shape)
+# Convert data to anndata object
 
-#%%
+# Filter out salmonella data
+salm_indices = [0, 1, 2, 3, 8, 9]
+salm_df = cell_counts.iloc[salm_indices, :]
 
-url = 'https://stats.idre.ucla.edu/stat/data/hsb2.csv'
+data_salm = dat.from_pandas(salm_df, covariate_columns=["Mouse"])
 
-hsb2 = pd.read_csv(url)
-
+# Extract condition from mouse name and add it as an extra column to the covariates
+data_salm.obs["Condition"] = data_salm.obs["Mouse"].str.replace(r"_[0-9]", "")
+print(data_salm.X)
+print(data_salm.obs)
 
 #%%
 
-import pymc4 as pm
-import numpy as np
-@pm.model
-def nested_model(cond):
-    sd = yield pm.HalfNormal("sd", 1.)
-    norm = yield pm.Normal("n", cond, sd, observed=np.random.randn(10))
-    return norm
+data_all = dat.from_pandas(cell_counts, covariate_columns=["Mouse"])
+data_all.obs["Condition"] = data_all.obs["Mouse"].str.replace(r"_[0-9]", "")
+print(data_all.X)
+print(data_all.obs)
 
-conditioned = nested_model(cond=2.)
-trace = pm.sample(conditioned)
+#%%
+model_all = mod.CompositionalAnalysis(data_all, formula="C(Condition, Treatment('Salm'))", baseline_index=5)
 
 #%%
 
-# progressbar
-import progressbar as pb
-import time
+# Run MCMC
+sim_results = model_all.sample_hmc()
+sim_results.summary()
 
-with pb.ProgressBar(max_value=10) as bar:
-    for i in range(10):
-        time.sleep(0.1)
-        bar.update(i)
+#%%
+print(model_all.x)

@@ -7,9 +7,9 @@ import importlib
 import anndata as ad
 
 import matplotlib.pyplot as plt
-from util import result_classes as res
-from util import comp_ana as mod
-from util import compositional_analysis_generation_toolbox as gen
+from scdcdm.util import result_classes as res
+from scdcdm.util import comp_ana as mod
+from scdcdm.util import data_generation as gen
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)

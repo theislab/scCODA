@@ -1,3 +1,8 @@
+"""
+Initialization of SCDCdm models
+
+:authors: Johannes Ostner
+"""
 import numpy as np
 import patsy as pt
 import importlib
@@ -6,26 +11,30 @@ from scdcdm.model import dirichlet_models as dm
 from scdcdm.model import other_models as om
 
 
-#%%
-
-
 class CompositionalAnalysis:
     """
-    Helper class that is called when building a new compositional model
+    Initializer class for compositional models. Please refer to the tutorial for using this class.
     """
 
     def __new__(cls, data, formula, baseline_index=None):
         """
         Builds count and covariate matrix, returns a CompositionalModel object
+
         Parameters
         ----------
-        data -- anndata object with cell counts as data.X and covariates saved in data.obs
-        formula -- string - R-style formula for building the covariate matrix
-        baseline_index -- int - baseline index
+        data -- anndata object
+            anndata object with cell counts as data.X and covariates saved in data.obs
+        formula -- string
+            R-style formula for building the covariate matrix.
+            Categorical covariates are handled automatically, with the covariate value of the first sample being used as the reference category.
+            To set a different level as the reference category, use "C(<CovariateName>, Treatment('<ReferenceLevelName>'))"
+        baseline_index -- int
+            baseline index
 
         Returns
         -------
-        A CompositionalModel object
+        model
+            A scdcdm.models.dirichlet_models.CompositionalModel object
         """
 
         importlib.reload(dm)

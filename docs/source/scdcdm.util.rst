@@ -20,10 +20,10 @@ scdcdm.util.comp\_ana module
    :undoc-members:
    :show-inheritance:
 
-scdcdm.util.compositional\_analysis\_generation\_toolbox module
----------------------------------------------------------------
+scdcdm.util.data\_generation module
+-----------------------------------
 
-.. automodule:: scdcdm.util.compositional_analysis_generation_toolbox
+.. automodule:: scdcdm.util.data_generation
    :members:
    :undoc-members:
    :show-inheritance:
