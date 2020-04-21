@@ -7,6 +7,7 @@ import numpy as np
 import arviz as az
 import pandas as pd
 
+
 class CAResultConverter(az.data.io_dict.DictConverter):
     """
     Helper class for result conversion
@@ -131,8 +132,8 @@ class CAResult(az.InferenceData):
 
         # Decide whether betas are significant or not
         betas_df.loc[:, "final_parameter"] = np.where(betas_df["inclusion_prob"] > threshold,
-                                               betas_df["mean_nonzero"],
-                                               0)
+                                                      betas_df["mean_nonzero"],
+                                                      0)
 
         # Get expected sample, log-fold change
         D = len(betas_df.index.levels[0])
@@ -217,6 +218,9 @@ class CAResult(az.InferenceData):
             ["Final Parameter", hpds_new[0], hpds_new[1], "SD", "Inclusion probability",
              "Expected Sample", "log2-fold change"]
         )))
+
+        self.intercept_df = alphas_print
+        self.effect_df = betas_print
 
         print("Compositional Analysis summary:")
         print("Intercepts:")

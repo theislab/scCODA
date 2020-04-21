@@ -271,6 +271,22 @@ print(data_salm.obs)
 
 #%%
 
+salm_df.index = pd.Series([0, 1, 2, 3, 4, 5])
+print(salm_df.index)
+data_salm_2 = dat.from_pandas(salm_df, covariate_columns=["Mouse"])
+data_salm_2.obs["Condition"] = data_salm_2.obs["Mouse"].str.replace(r"_[0-9]", "")
+
+
+#%%
+model_2 = mod.CompositionalAnalysis(data_salm_2, formula="Condition", baseline_index="Endocrine")
+
+#%%
+
+# Run MCMC
+sim_results = model_2.sample_hmc(num_results=1000, n_burnin=500)
+sim_results.summary()
+#%%
+
 data_all = dat.from_pandas(cell_counts, covariate_columns=["Mouse"])
 data_all.obs["Condition"] = data_all.obs["Mouse"].str.replace(r"_[0-9]", "")
 print(data_all.X)

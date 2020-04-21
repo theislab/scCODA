@@ -5,7 +5,7 @@ from scdcdm.util import cell_composition_data as ccd
 
 #%%
 adata_ref = sc.datasets.pbmc3k_processed()  # this is an earlier version of the dataset from the pbmc3k tutorial
-print(adata_ref.uns)
+print(adata_ref.X.shape)
 
 #%%
 cell_counts = adata_ref.obs["louvain"].value_counts()
