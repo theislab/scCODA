@@ -74,11 +74,14 @@ print(ana.x)
 print(ana.covariate_names)
 
 #%%
-params_mcmc = ana.sample_hmc(num_results=int(20000), n_burnin=5000)
+params_mcmc = ana.sample_hmc(num_results=int(1000), n_burnin=500)
+print(params_mcmc)
 
 #%%
-params_mcmc.summary(credible_interval=0.9)
+params_mcmc.summary()
 
+#%%
+params_mcmc.summary_extended(credible_interval=0.9)
 #%%
 az.plot_trace(params_mcmc)
 plt.show()
