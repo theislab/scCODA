@@ -4,7 +4,7 @@ import numpy as np
 import importlib
 from scdcdm.util import result_classes as res
 from scdcdm.util import comp_ana as mod
-from scdcdm.util import compositional_analysis_generation_toolbox as gen
+from scdcdm.util import data_generation as gen
 from scdcdm.util import multi_parameter_sampling as mult
 from scdcdm.model import dirichlet_models as dm
 from scdcdm.model import other_models as om

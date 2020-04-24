@@ -1,26 +1,19 @@
 """
-This file contains
-Results objects that summarize the results of the different
-inference methods and calculates test statistics
+Results class that summarizes the results of the different inference methods and calculates test statistics
 
-
-:authors: Benjamin Schubert, Johannes Ostner
+:authors: Johannes Ostner
 """
 import numpy as np
 import arviz as az
 import pandas as pd
-import scipy.stats as st
-import matplotlib.pyplot as plt
-import time
-from abc import ABCMeta, abstractmethod
 
 
 class CAResultConverter(az.data.io_dict.DictConverter):
     """
-    Helper class for result conversion
+    Helper class for result conversion in arviz's format
     """
 
-    def to_result_data(self, y_hat, baseline):
+    def to_result_data(self, sampling_stats, model_specs):
 
         post = self.posterior_to_xarray()
         ss = self.sample_stats_to_xarray()
@@ -31,7 +24,7 @@ class CAResultConverter(az.data.io_dict.DictConverter):
         obs = self.observed_data_to_xarray()
 
         return CAResult(
-            y_hat=y_hat, baseline=baseline,
+            sampling_stats, model_specs,
             **{
                 "posterior": post,
                 "sample_stats": ss,
@@ -46,18 +39,54 @@ class CAResultConverter(az.data.io_dict.DictConverter):
 
 class CAResult(az.InferenceData):
     """
-    Result class, extends the arviz framework fot inference data
+    Result class, extends the arviz framework for inference data.
+
+    The CAResult class is an extension of az.InferenceData, that adds some information about the compositional model.
+    It supports all functionality from az.InferenceData.
     """
 
-    def __init__(self, y_hat, baseline, **kwargs):
+    def __init__(self, sampling_stats, model_specs, **kwargs):
+        """
+        The following attributes are added during class initialization:
+
+        self.sampling_stats: dict - see below
+        self.model_specs: dict - see below
+
+        self.intercept_df: Summary dataframe from CAResult.summary_prepare
+        self.effect_df: Summary dataframe from CAResult.summary_prepare
+
+        Parameters
+        ----------
+        sampling_stats -- dict
+            Information and statistics about the MCMC sampling procedure.
+            Default keys:
+            "chain_length": Length of MCMC chain (with burnin samples)
+            "n_burnin": Number of burnin samples
+            "acc_rate": MCMC Acceptance rate
+            "duration": Duration of MCMC sampling
+        model_specs -- dict
+            All information and statistics about the model specifications.
+            Default keys:
+            "formula": Formula string
+            "baseline": int - identifier of baseline cell type
+            Added during class initialization: "threshold_prob": Threshold for inclusion probability that separates significant from non-significant effects
+        kwargs -- passed to az.InferenceData
+        """
         super(self.__class__, self).__init__(**kwargs)
 
-        self.baseline = baseline
-        self.y_hat = y_hat
+        self.sampling_stats = sampling_stats
+        self.model_specs = model_specs
+
+        intercept_df, effect_df = self.summary_prepare()
+
+        self.intercept_df = intercept_df
+        self.effect_df = effect_df
 
     def summary_prepare(self, *args, **kwargs):
         """
-        Preparation of summary method
+        Generates summary dataframes for intercepts and slopes.
+        This function supports all functionalities from az.summary.
+
         Parameters
         ----------
         args -- Passed to az.summary
@@ -65,36 +94,74 @@ class CAResult(az.InferenceData):
 
         Returns
         -------
-        alphas_df and betas_df for summary method
+        intercept_df -- pandas df
+            Summary of intercept parameters. Contains one row per cell type. Columns:
+            Final Parameter: Final intercept model parameter
+            HPD X%: Upper and lower boundaries of confidence interval (width specified via credible_interval=)
+            SD: Standard deviation of MCMC samples
+            Expected sample: Expected cell counts for a sample with no present covariates. See the tutorial for more explanation
+
+        effect_df -- pandas df
+            Summary of effect (slope) parameters. Contains one row per covariate/cell type combination. Columns:
+            Final Parameter: Final effect model parameter. If this parameter is 0, the effect is not significant, else it is.
+            HPD X%: Upper and lower boundaries of confidence interval (width specified via credible_interval=)
+            SD: Standard deviation of MCMC samples
+            Expected sample: Expected cell counts for a sample with only the current covariate set to 1. See the tutorial for more explanation
+            log2-fold change: Log2-fold change between expected cell counts with no covariates and with only the current covariate
+            Inclusion probability: Share of MCMC samples, for which this effect was not set to 0 by the spike-and-slab prior.
         """
         # initialize summary df
         summ = az.summary(self, *args, **kwargs, kind="stats", var_names=["alpha", "beta"])
-        betas_df = summ.loc[summ.index.str.match("|".join(["beta"]))]
-        alphas_df = summ.loc[summ.index.str.match("|".join(["alpha"]))]
+        effect_df = summ.loc[summ.index.str.match("|".join(["beta"]))]
+        intercept_df = summ.loc[summ.index.str.match("|".join(["alpha"]))]
 
+        # Build neat index
         cell_types = self.posterior.coords["cell_type"]
         covariates = self.posterior.coords["covariate"]
 
-        alphas_df.index = pd.Index(cell_types, name="Cell Type")
-        betas_df.index = pd.MultiIndex.from_product([covariates, cell_types],
+        intercept_df.index = pd.Index(cell_types, name="Cell Type")
+        effect_df.index = pd.MultiIndex.from_product([covariates, cell_types],
                                                     names=["Covariate", "Cell Type"])
 
-        alphas_df = self.complete_alpha_df(alphas_df)
-        betas_df = self.complete_beta_df(alphas_df, betas_df)
+        # Calculation of columns that are not from az.summary
+        intercept_df = self.complete_alpha_df(intercept_df)
+        effect_df = self.complete_beta_df(intercept_df, effect_df)
 
-        return alphas_df, betas_df
+        # Give nice column names, remove unnecessary columns
+        hpds = intercept_df.columns[intercept_df.columns.str.contains("hpd")]
+        hpds_new = hpds.str.replace("hpd_", "HPD ")
 
-    def complete_beta_df(self, alphas_df, betas_df):
+        intercept_df = intercept_df.loc[:, ["final_parameter", hpds[0], hpds[1], "sd", "expected_sample"]]
+        intercept_df = intercept_df.rename(columns=dict(zip(
+            intercept_df.columns,
+            ["Final Parameter", hpds_new[0], hpds_new[1], "SD", "Expected Sample"]
+        )))
+
+        effect_df = effect_df.loc[:, ["final_parameter", hpds[0], hpds[1], "sd", "inclusion_prob",
+                                       "expected_sample", "log_fold"]]
+        effect_df = effect_df.rename(columns=dict(zip(
+            effect_df.columns,
+            ["Final Parameter", hpds_new[0], hpds_new[1], "SD", "Inclusion probability",
+             "Expected Sample", "log2-fold change"]
+        )))
+
+        return intercept_df, effect_df
+
+    def complete_beta_df(self, intercept_df, effect_df):
         """
-        Evaluation of MCMC results for slopes
+        Evaluation of MCMC results for effect parameters. This function is only used within self.summary_prepare.
+
         Parameters
         ----------
-        alphas_df -- Data frame with intercept summary from az.summary
-        betas_df -- Data frame with slope summary from az.summary
+        intercept_df -- Data frame
+            Intercept summary, see self.summary_prepare
+        effect_df -- Data frame
+            Effect summary, see self.summary_prepare
 
         Returns
         -------
-        DataFrame with inclusion probability, final parameters, expected sample
+        effect_df -- DataFrame
+            DataFrame with inclusion probability, final parameters, expected sample
         """
         beta_inc_prob = []
         beta_nonzero_mean = []
@@ -110,27 +177,28 @@ class CAResult(az.InferenceData):
                 beta_inc_prob.append(prob)
                 beta_nonzero_mean.append(beta_i_raw[beta_i_raw_nonzero].mean())
 
-        betas_df.loc[:, "inclusion_prob"] = beta_inc_prob
-        betas_df.loc[:, "mean_nonzero"] = beta_nonzero_mean
+        effect_df.loc[:, "inclusion_prob"] = beta_inc_prob
+        effect_df.loc[:, "mean_nonzero"] = beta_nonzero_mean
 
         # Inclusion prob threshold value
-        if self.baseline is None:
+        if self.model_specs["baseline"] is None:
             threshold_factor = 0.87
         else:
             threshold_factor = 0.98
         threshold = 1 - threshold_factor / np.sqrt(beta_raw.shape[2])
+        self.model_specs["threshold_prob"] = threshold
 
         # Decide whether betas are significant or not
-        betas_df.loc[:, "final_parameter"] = np.where(betas_df["inclusion_prob"] > threshold,
-                                               betas_df["mean_nonzero"],
-                                               0)
+        effect_df.loc[:, "final_parameter"] = np.where(effect_df["inclusion_prob"] > threshold,
+                                                      effect_df["mean_nonzero"],
+                                                      0)
 
         # Get expected sample, log-fold change
-        D = len(betas_df.index.levels[0])
-        K = len(betas_df.index.levels[1])
+        D = len(effect_df.index.levels[0])
+        K = len(effect_df.index.levels[1])
 
         y_bar = np.mean(np.sum(np.array(self.observed_data.y), axis=1))
-        alpha_par = alphas_df["final_parameter"]
+        alpha_par = intercept_df["final_parameter"]
         alphas_exp = np.exp(alpha_par)
         alpha_sample = (alphas_exp / np.sum(alphas_exp) * y_bar).values
 
@@ -139,7 +207,7 @@ class CAResult(az.InferenceData):
         log_sample = []
 
         for d in range(D):
-            beta_d = betas_df["final_parameter"].values[(d*K):((d+1)*K)]
+            beta_d = effect_df["final_parameter"].values[(d*K):((d+1)*K)]
             beta_d = (beta_mean + beta_d)
             beta_d = np.exp(beta_d)
             beta_d = beta_d / np.sum(beta_d) * y_bar
@@ -147,36 +215,42 @@ class CAResult(az.InferenceData):
             beta_sample = np.append(beta_sample, beta_d)
             log_sample = np.append(log_sample, np.log2(beta_d/alpha_sample))
 
-        betas_df.loc[:, "expected_sample"] = beta_sample
-        betas_df.loc[:, "log_fold"] = log_sample
+        effect_df.loc[:, "expected_sample"] = beta_sample
+        effect_df.loc[:, "log_fold"] = log_sample
 
-        return betas_df
+        return effect_df
 
-    def complete_alpha_df(self, alphas_df):
+    def complete_alpha_df(self, intercept_df):
         """
-        Evaluation of MCMC results for intercepts
+        Evaluation of MCMC results for intercepts. This function is only used within self.summary_prepare.
+
         Parameters
         ----------
-        alphas_df -- Data frame with intercept summary from az.summary
+        intercept_df -- Data frame
+            Intercept summary, see self.summary_prepare
 
         Returns
         -------
-        Summary DataFrame with expected sample, final parameters
+        intercept_df -- DataFrame
+            Summary DataFrame with expected sample, final parameters
         """
 
-        alphas_df.loc[:, "final_parameter"] = alphas_df["mean"]
+        intercept_df.loc[:, "final_parameter"] = intercept_df["mean"]
 
         # Get expected sample
         y_bar = np.mean(np.sum(np.array(self.observed_data.y), axis=1))
-        alphas_exp = np.exp(alphas_df["final_parameter"])
+        alphas_exp = np.exp(intercept_df["final_parameter"])
         alpha_sample = (alphas_exp / np.sum(alphas_exp) * y_bar).values
-        alphas_df.loc[:, "expected_sample"] = alpha_sample
+        intercept_df.loc[:, "expected_sample"] = alpha_sample
 
-        return alphas_df
+        return intercept_df
 
     def summary(self, *args, **kwargs):
         """
         Printing method for summary data
+
+        Usage: result.summary()
+
         Parameters
         ----------
         args -- Passed to az.summary
@@ -186,26 +260,28 @@ class CAResult(az.InferenceData):
         -------
 
         """
-        alphas_df, betas_df = self.summary_prepare(*args, **kwargs)
 
-        hpds = alphas_df.columns[alphas_df.columns.str.contains("hpd")]
-        hpds_new = hpds.str.replace("hpd_", "HPD ")
+        # If other than default values for e.g. confidence interval are specified, recalculate the intercept and effect DataFrames
+        if args or kwargs:
+            intercept_df, effect_df = self.summary_prepare(*args, **kwargs)
+        else:
+            intercept_df = self.intercept_df
+            effect_df = self.effect_df
 
-        alphas_print = alphas_df.loc[:, ["final_parameter", hpds[0], hpds[1], "sd", "expected_sample"]]
-        alphas_print = alphas_print.rename(columns=dict(zip(
-            alphas_print.columns,
-            ["Final Parameter", hpds_new[0], hpds_new[1], "SD", "Expected Sample"]
-        )))
+        # Get number of samples, cell types
+        data_dims = self.sampling_stats["y_hat"].shape
 
-        betas_print = betas_df.loc[:, ["final_parameter", hpds[0], hpds[1], "sd", "inclusion_prob",
-                                       "expected_sample", "log_fold"]]
-        betas_print = betas_print.rename(columns=dict(zip(
-            betas_print.columns,
-            ["Final Parameter", hpds_new[0], hpds_new[1], "SD", "Inclusion probability",
-             "Expected Sample", "log2-fold change"]
-        )))
+        # Cut down DataFrames to relevant info
+        alphas_print = intercept_df.loc[:, ["Final Parameter", "Expected Sample"]]
+        betas_print = effect_df.loc[:, ["Final Parameter", "Expected Sample", "log2-fold change"]]
 
+        # Print everything
         print("Compositional Analysis summary:")
+        print("")
+        print("Data: %d samples, %d cell types" % data_dims)
+        print("Baseline index: %s" % str(self.model_specs["baseline"]))
+        print("Formula: %s" % self.model_specs["formula"])
+        print("")
         print("Intercepts:")
         print(alphas_print)
         print("")
@@ -213,51 +289,92 @@ class CAResult(az.InferenceData):
         print("Effects:")
         print(betas_print)
 
+    def summary_extended(self, *args, **kwargs):
+
+        # If other than default values for e.g. confidence interval are specified, recalculate the intercept and effect DataFrames
+        if args or kwargs:
+            intercept_df, effect_df = self.summary_prepare(*args, **kwargs)
+        else:
+            intercept_df = self.intercept_df
+            effect_df = self.effect_df
+
+        # Get number of samples, cell types
+        data_dims = self.sampling_stats["y_hat"].shape
+
+        # Print everything
+        print("Compositional Analysis summary (extended):")
+        print("")
+        print("Data: %d samples, %d cell types" % data_dims)
+        print("Baseline index: %s" % str(self.model_specs["baseline"]))
+        print("Formula: %s" % self.model_specs["formula"])
+        print("Spike-and-slab threshold: {threshold:.3f}".format(threshold=self.model_specs["threshold_prob"]))
+        print("")
+        print("MCMC Sampling: Sampled {num_results} chain states ({n_burnin} burnin samples) in {duration:.3f} sec. "
+              "Acceptance rate: {ar:.1f}%".format(num_results=self.sampling_stats["chain_length"],
+                                                  n_burnin=self.sampling_stats["n_burnin"],
+                                                  duration=self.sampling_stats["duration"],
+                                                  ar=(100*self.sampling_stats["acc_rate"])))
+        print("")
+        print("Intercepts:")
+        print(intercept_df)
+        print("")
+        print("")
+        print("Effects:")
+        print(effect_df)
+
     def compare_to_truth(self, b_true, w_true, *args, **kwargs):
         """
         Extends data frames from summary_prepare by a comparison to some ground truth slope and intercept values
+
         Parameters
         ----------
-        b_true -- Ground truth slope values
-        w_true -- Ground truth intercept values
+        b_true -- pandas Series
+            Ground truth slope values. Length must be same as number of cell types
+        w_true -- pandas Series
+            Ground truth intercept values. Length must be same as number of cell types*number of covariates
         args -- Passed to az.summary
         kwargs -- Passed to az.summary
 
         Returns
         -------
-        alphas_df, betas_df
+        intercept_df -- DataFrame
+            Summary DataFrame for intercepts
+        effect_df -- DataFrame
+            Summary DataFrame for effects
         """
 
-        alphas_df, betas_df = self.summary_prepare(*args, **kwargs)
+        intercept_df, effect_df = self.summary_prepare(*args, **kwargs)
 
-        alphas_df.columns = alphas_df.columns.str.replace('final_parameter', 'predicted')
-        betas_df.columns = betas_df.columns.str.replace('final_parameter', 'predicted')
+        intercept_df.columns = intercept_df.columns.str.replace('final_parameter', 'predicted')
+        effect_df.columns = effect_df.columns.str.replace('final_parameter', 'predicted')
 
         # Get true params, join to calculated parameters
         b_true = b_true.rename("truth")
-        alphas_df = alphas_df.join(b_true)
+        intercept_df = intercept_df.join(b_true)
         w_true = w_true.rename("truth")
-        betas_df = betas_df.join(w_true)
+        effect_df = effect_df.join(w_true)
 
         # decide whether effects are found correctly
-        alphas_df['dist_to_truth'] = alphas_df['truth'] - alphas_df['predicted']
-        alphas_df['effect_correct'] = ((alphas_df['truth'] == 0) == (alphas_df['predicted'] == 0))
-        betas_df['dist_to_truth'] = betas_df['truth'] - betas_df['predicted']
-        betas_df['effect_correct'] = ((betas_df['truth'] == 0) == (betas_df['predicted'] == 0))
+        intercept_df['dist_to_truth'] = intercept_df['truth'] - intercept_df['predicted']
+        intercept_df['effect_correct'] = ((intercept_df['truth'] == 0) == (intercept_df['predicted'] == 0))
+        effect_df['dist_to_truth'] = effect_df['truth'] - effect_df['predicted']
+        effect_df['effect_correct'] = ((effect_df['truth'] == 0) == (effect_df['predicted'] == 0))
 
-        return alphas_df, betas_df
+        return intercept_df, effect_df
 
     def distances(self):
         """
         Compares real cell count matrix to the cell count matrix that arises from the calculated parameters
+
         Returns
         -------
-        DataFrame
+        ret: DataFrame
         """
 
         # Get absolute (counts) and relative error matrices
         y = np.array(self.observed_data.y)
-        err = np.abs(self.y_hat - y)
+        y_hat = self.sampling_stats["y_hat"]
+        err = np.abs(y_hat - y)
 
         err_rel = err / y
         err_rel[np.isinf(err_rel)] = 1.
@@ -273,7 +390,7 @@ class CAResult(az.InferenceData):
                             'Absolute Error': np.append(avg_abs_total_error, avg_abs_cell_type_error),
                             'Relative Error': np.append(avg_rel_total_error, avg_rel_cell_type_error),
                             'Actual Means': np.append(np.mean(y, axis=(0, 1)), np.mean(y, axis=0)),
-                            'Predicted Means': np.append(np.mean(self.y_hat, axis=(0, 1)), np.mean(self.y_hat, axis=0))})
+                            'Predicted Means': np.append(np.mean(y_hat, axis=(0, 1)), np.mean(y_hat, axis=0))})
 
         ret['Cell Type'][0] = 'Total'
         return ret

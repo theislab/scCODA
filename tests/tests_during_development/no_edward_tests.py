@@ -10,7 +10,7 @@ import importlib
 import pandas as pd
 from tensorflow_probability.python.experimental import edward2 as ed
 
-from util import result_classes as res
+from scdcdm.util import result_classes as res
 from scdcdm.model import dirichlet_models as mod
 
 tfd = tfp.distributions
@@ -19,7 +19,7 @@ tfb = tfp.bijectors
 pd.set_option('display.max_columns', 500)
 #%%
 # Testing
-from util import compositional_analysis_generation_toolbox as gen
+from scdcdm.util import data_generation as gen
 
 n = 5
 

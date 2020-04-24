@@ -1,7 +1,6 @@
+"""
+Dirichlet-multinomial models for statistical analysis of compositional changes
 
-""""
-This file defines multiple Dirichlet-multinomial models
-for statistical analysis of compositional changes
 For further reference, see:
 Johannes Ostner: Development of a statistical framework for compositional analysis of single-cell data
 
@@ -25,16 +24,20 @@ class CompositionalModel:
     Implements class framework for compositional data models
     """
 
-    def __init__(self, covariate_matrix, data_matrix, cell_types, covariate_names, *args, **kwargs):
+    def __init__(self, covariate_matrix, data_matrix, cell_types, covariate_names, formula, *args, **kwargs):
         """
         Generalized Constructor of model class
 
         Parameters
         ----------
-        covariate_matrix -- numpy array [NxD] - covariate matrix
-        data_matrix -- numpy array [NxK] - cell count matrix
-        cell_types -- list of cell type names
-        covariate_names -- List of covariate names
+        covariate_matrix -- numpy array [NxD]
+            covariate matrix
+        data_matrix -- numpy array [NxK]
+            cell count matrix
+        cell_types -- list
+            Cell type names
+        covariate_names -- List
+            Covariate names
         """
 
         dtype = tf.float32
@@ -44,6 +47,7 @@ class CompositionalModel:
         self.n_total = tf.cast(sample_counts, dtype)
         self.cell_types = cell_types
         self.covariate_names = covariate_names
+        self.formula = formula
 
         # Get dimensions of data
         self.N, self.D = self.x.shape
@@ -57,18 +61,27 @@ class CompositionalModel:
 
     def sampling(self, num_results, n_burnin, kernel, init_state):
         """
+        MCMC sampling process
 
         Parameters
         ----------
-        num_results -- MCMC chain length (default 20000)
-        n_burnin -- Number of burnin iterations (default 5000)
-        kernel -- MCMC kernel object
-        init_state -- Starting parameters
+        num_results -- int
+            MCMC chain length (default 20000)
+        n_burnin -- int
+            Number of burnin iterations (default 5000)
+        kernel --
+            tensorflow MCMC kernel object
+        init_state -- dict
+            Starting parameters
 
         Returns
         -------
-        states -- States of MCMC chain
-        kernel_results -- sampling meta-information
+        states -- list
+            States of MCMC chain
+        kernel_results -- list
+            sampling meta-information
+        duration -- float
+            Duration of MCMC sampling process
         """
 
         # HMC sampling function
@@ -90,24 +103,31 @@ class CompositionalModel:
         duration = time.time() - start
         print("MCMC sampling finished. ({:.3f} sec)".format(duration))
 
-        return states, kernel_results
+        return states, kernel_results, duration
 
-    def get_chains_after_burnin(self, samples, accept, n_burnin):
+    def get_chains_after_burnin(self, samples, kernel_results, n_burnin):
         """
         Application of burnin after sampling
+
         Parameters
         ----------
-        samples -- all kernel states
-        accept -- Kernel meta-information
-        n_burnin -- number of burnin iterations
+        samples -- list
+            all kernel states
+        kernel_results  -- list
+            Kernel meta-information
+        n_burnin -- int
+            number of burnin iterations
 
         Returns
         -------
-        states_burnin -- Kernel states without burnin samples
+        states_burnin -- list
+            Kernel states without burnin samples
+        p_accept -- float
+            acceptance rate of MCMC process
         """
         # Samples after burn-in
         states_burnin = []
-        acceptances = accept[0].numpy()
+        acceptances = kernel_results[0].numpy()
 
         for s in samples:
             states_burnin.append(s[n_burnin:].numpy())
@@ -116,21 +136,27 @@ class CompositionalModel:
         p_accept = sum(acceptances) / acceptances.shape[0]
         print('Acceptance rate: %0.1f%%' % (100 * p_accept))
 
-        return states_burnin
+        return states_burnin, p_accept
 
     def sample_hmc(self, num_results=int(20e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01):
         """
         HMC sampling
+
         Parameters
         ----------
-        num_results -- MCMC chain length (default 20000)
-        n_burnin -- Number of burnin iterations (default 5000)
-        num_leapfrog_steps -- HMC leapfrog steps (default 10)
-        step_size -- Initial step size (default 0.01)
+        num_results -- int
+            MCMC chain length (default 20000)
+        n_burnin -- int
+            Number of burnin iterations (default 5000)
+        num_leapfrog_steps --  int
+            HMC leapfrog steps (default 10)
+        step_size -- float
+            Initial step size (default 0.01)
 
         Returns
         -------
-        scdcdm.util.result_data object
+        result -- scdcdm.util.result_data.CAResult object
+            Compositional analysis result
         """
 
         # (not in use atm)
@@ -153,8 +179,8 @@ class CompositionalModel:
             inner_kernel=hmc_kernel, num_adaptation_steps=int(4000), target_accept_prob=0.8)
 
         # HMC sampling
-        states, kernel_results = self.sampling(num_results, n_burnin, hmc_kernel, self.params)
-        states_burnin = self.get_chains_after_burnin(states, kernel_results, n_burnin)
+        states, kernel_results, duration = self.sampling(num_results, n_burnin, hmc_kernel, self.params)
+        states_burnin, acc_rate = self.get_chains_after_burnin(states, kernel_results, n_burnin)
 
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
@@ -187,25 +213,37 @@ class CompositionalModel:
                   "sample": range(self.y.shape[0])
                   }
 
+        sampling_stats = {"chain_length": num_results, "n_burnin": n_burnin,
+                        "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
+
+        model_specs = {"baseline": self.baseline_index, "formula": self.formula}
+
         return res.CAResultConverter(posterior=posterior,
                                      posterior_predictive=posterior_predictive,
                                      observed_data=observed_data,
                                      dims=dims,
-                                     coords=coords).to_result_data(y_hat, baseline=False)
+                                     coords=coords).to_result_data(sampling_stats=sampling_stats,
+                                                                   model_specs=model_specs)
 
     def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01):
         """
         NUTS sampling - WIP, DO NOT USE!!!
+
         Parameters
         ----------
-        num_results
-        n_burnin
-        max_tree_depth
-        step_size
+        num_results -- int
+            MCMC chain length (default 20000)
+        n_burnin -- int
+            Number of burnin iterations (default 5000)
+        max_tre_depth --  int
+            Maximum tree depth (default 10)
+        step_size -- float
+            Initial step size (default 0.01)
 
         Returns
         -------
-
+        error
+            NotImplementedError
         """
 
         raise NotImplementedError
@@ -272,14 +310,13 @@ class CompositionalModel:
 class NoBaselineModel(CompositionalModel):
 
     """"
-    implements statistical model and
-    test statistics for compositional differential change analysis
-    without specification of a baseline cell type
+    implements statistical model for compositional differential change analysis without specification of a baseline cell type
     """
 
     def __init__(self, *args, **kwargs):
         """
         Constructor of model class
+
         Parameters
         ----------
         args -- arguments passed to top-level class
@@ -297,11 +334,15 @@ class NoBaselineModel(CompositionalModel):
         def define_model(x, n_total, K):
             """
             Model definition in Edward2
+
             Parameters
             ----------
-            x -- numpy array [NxD] - covariate matrix
-            n_total -- numpy array [N] - number of cells per sample
-            K -- Number of cell types
+            x -- numpy array [NxD]
+                covariate matrix
+            n_total -- numpy array [N]
+                number of cells per sample
+            K -- int
+                Number of cell types
             """
 
             N, D = x.shape
@@ -366,15 +407,20 @@ class NoBaselineModel(CompositionalModel):
     def get_y_hat(self, states_burnin, num_results, n_burnin):
         """
         Calculate predicted cell counts (for analysis purposes) and add intermediate parameters to MCMC results
+
         Parameters
         ----------
-        states_burnin -- MCMC chain without burnin samples
-        num_results -- Chain length (with burnin)
-        n_burnin -- Number of burnin samples
+        states_burnin -- List
+            MCMC chain without burnin samples
+        num_results -- int
+            Chain length (with burnin)
+        n_burnin -- int
+            Number of burnin samples
 
         Returns
         -------
-        predicted cell counts
+        y_mean
+            predicted cell counts
         """
 
         chain_size_y = [num_results - n_burnin, self.N, self.K]
@@ -415,18 +461,18 @@ class NoBaselineModel(CompositionalModel):
 
 class BaselineModel(CompositionalModel):
     """
-    implements statistical model and
-    test statistics for compositional differential change analysis
-    with specification of a baseline cell type
+    implements statistical model for compositional differential change analysis with specification of a baseline cell type
     """
 
     def __init__(self, baseline_index, *args, **kwargs):
 
         """
         Constructor of model class
+
         Parameters
         ----------
-        baseline_index -- Index of reference cell type (column in count data matrix)
+        baseline_index -- string or int
+            Index of reference cell type (column in count data matrix)
         args -- arguments passed to top-level class
         kwargs -- arguments passed to top-level class
         """
@@ -442,11 +488,15 @@ class BaselineModel(CompositionalModel):
         def define_model(x, n_total, K):
             """
             Model definition in Edward2
+
             Parameters
             ----------
-            x -- numpy array [NxD] - covariate matrix
-            n_total -- numpy array [N] - number of cells per sample
-            K -- Number of cell types
+            x -- numpy array [NxD]
+                covariate matrix
+            n_total -- numpy array [N]
+                number of cells per sample
+            K -- int
+                Number of cell types
             """
             dtype = tf.float32
             N, D = x.shape
@@ -516,15 +566,20 @@ class BaselineModel(CompositionalModel):
     def get_y_hat(self, states_burnin, num_results, n_burnin):
         """
         Calculate predicted cell counts (for analysis purposes) and add intermediate parameters to MCMC results
+
         Parameters
         ----------
-        states_burnin -- MCMC chain without burnin samples
-        num_results -- Chain length (with burnin)
-        n_burnin -- Number of burnin samples
+        states_burnin -- List
+            MCMC chain without burnin samples
+        num_results -- int
+            Chain length (with burnin)
+        n_burnin -- int
+            Number of burnin samples
 
         Returns
         -------
-        predicted cell counts
+        y_mean
+            predicted cell counts
         """
 
         chain_size_beta = [num_results - n_burnin, self.D, self.K]
@@ -584,10 +639,14 @@ class NoBaselineModelNoEdward(CompositionalModel):
     def __init__(self, covariate_matrix, data_matrix):
         """
         Constructor of model class
+
         :param covariate_matrix: numpy array [NxD] - covariate matrix
         :param data_matrix: numpy array [NxK] - cell count matrix
         :param sample_counts: numpy array [N] - number of cells per sample
         :param dtype: data type for all numbers (for tensorflow)
+
+        :return
+        NotImplementedError
         """
         raise NotImplementedError
 
