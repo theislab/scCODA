@@ -24,7 +24,7 @@ class CompositionalModel:
     Implements class framework for compositional data models
     """
 
-    def __init__(self, covariate_matrix, data_matrix, cell_types, covariate_names, *args, **kwargs):
+    def __init__(self, covariate_matrix, data_matrix, cell_types, covariate_names, formula, *args, **kwargs):
         """
         Generalized Constructor of model class
 
@@ -47,6 +47,7 @@ class CompositionalModel:
         self.n_total = tf.cast(sample_counts, dtype)
         self.cell_types = cell_types
         self.covariate_names = covariate_names
+        self.formula = formula
 
         # Get dimensions of data
         self.N, self.D = self.x.shape
@@ -68,17 +69,19 @@ class CompositionalModel:
             MCMC chain length (default 20000)
         n_burnin -- int
             Number of burnin iterations (default 5000)
-        kernel :
+        kernel --
             tensorflow MCMC kernel object
         init_state -- dict
             Starting parameters
 
         Returns
         -------
-        states :
+        states -- list
             States of MCMC chain
-        kernel_results :
+        kernel_results -- list
             sampling meta-information
+        duration -- float
+            Duration of MCMC sampling process
         """
 
         # HMC sampling function
@@ -100,29 +103,31 @@ class CompositionalModel:
         duration = time.time() - start
         print("MCMC sampling finished. ({:.3f} sec)".format(duration))
 
-        return states, kernel_results
+        return states, kernel_results, duration
 
-    def get_chains_after_burnin(self, samples, accept, n_burnin):
+    def get_chains_after_burnin(self, samples, kernel_results, n_burnin):
         """
         Application of burnin after sampling
 
         Parameters
         ----------
-        samples :
+        samples -- list
             all kernel states
-        accept :
+        kernel_results  -- list
             Kernel meta-information
         n_burnin -- int
             number of burnin iterations
 
         Returns
         -------
-        states_burnin :
+        states_burnin -- list
             Kernel states without burnin samples
+        p_accept -- float
+            acceptance rate of MCMC process
         """
         # Samples after burn-in
         states_burnin = []
-        acceptances = accept[0].numpy()
+        acceptances = kernel_results[0].numpy()
 
         for s in samples:
             states_burnin.append(s[n_burnin:].numpy())
@@ -131,7 +136,7 @@ class CompositionalModel:
         p_accept = sum(acceptances) / acceptances.shape[0]
         print('Acceptance rate: %0.1f%%' % (100 * p_accept))
 
-        return states_burnin
+        return states_burnin, p_accept
 
     def sample_hmc(self, num_results=int(20e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01):
         """
@@ -150,8 +155,8 @@ class CompositionalModel:
 
         Returns
         -------
-        scdcdm.util.result_data object
-            scdcdm.util.result_data object
+        result -- scdcdm.util.result_data.CAResult object
+            Compositional analysis result
         """
 
         # (not in use atm)
@@ -174,8 +179,8 @@ class CompositionalModel:
             inner_kernel=hmc_kernel, num_adaptation_steps=int(4000), target_accept_prob=0.8)
 
         # HMC sampling
-        states, kernel_results = self.sampling(num_results, n_burnin, hmc_kernel, self.params)
-        states_burnin = self.get_chains_after_burnin(states, kernel_results, n_burnin)
+        states, kernel_results, duration = self.sampling(num_results, n_burnin, hmc_kernel, self.params)
+        states_burnin, acc_rate = self.get_chains_after_burnin(states, kernel_results, n_burnin)
 
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
@@ -208,11 +213,17 @@ class CompositionalModel:
                   "sample": range(self.y.shape[0])
                   }
 
+        sampling_stats = {"chain_length": num_results, "n_burnin": n_burnin,
+                        "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
+
+        model_specs = {"baseline": self.baseline_index, "formula": self.formula}
+
         return res.CAResultConverter(posterior=posterior,
                                      posterior_predictive=posterior_predictive,
                                      observed_data=observed_data,
                                      dims=dims,
-                                     coords=coords).to_result_data(y_hat, baseline=False)
+                                     coords=coords).to_result_data(sampling_stats=sampling_stats,
+                                                                   model_specs=model_specs)
 
     def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01):
         """
@@ -299,9 +310,7 @@ class CompositionalModel:
 class NoBaselineModel(CompositionalModel):
 
     """"
-    implements statistical model
-    for compositional differential change analysis
-    without specification of a baseline cell type
+    implements statistical model for compositional differential change analysis without specification of a baseline cell type
     """
 
     def __init__(self, *args, **kwargs):
@@ -452,9 +461,7 @@ class NoBaselineModel(CompositionalModel):
 
 class BaselineModel(CompositionalModel):
     """
-    implements statistical model
-    for compositional differential change analysis
-    with specification of a baseline cell type
+    implements statistical model for compositional differential change analysis with specification of a baseline cell type
     """
 
     def __init__(self, baseline_index, *args, **kwargs):
@@ -464,7 +471,7 @@ class BaselineModel(CompositionalModel):
 
         Parameters
         ----------
-        baseline_index -- int
+        baseline_index -- string or int
             Index of reference cell type (column in count data matrix)
         args -- arguments passed to top-level class
         kwargs -- arguments passed to top-level class
