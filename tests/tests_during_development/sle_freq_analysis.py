@@ -59,7 +59,7 @@ ana = mod.CompositionalAnalysis(sle_freq_data, "Group", baseline_index=None)
 #%%
 ca_result = ana.sample_hmc(num_results=int(20000), n_burnin=5000)
 
-ca_result.summary(credible_interval=0.95)
+ca_result.summary(hdi_prob=0.95)
 
 #%%
 az.plot_trace(ca_result)
@@ -73,7 +73,7 @@ ana_2 = mod.CompositionalAnalysis(sle_freq_data, "Group", baseline_index=None)
 #%%
 ca_result_2 = ana_2.sample_hmc(num_results=int(2e4), n_burnin=5e3)
 
-ca_result_2.summary(credible_interval=0.95)
+ca_result_2.summary(hdi_prob=0.95)
 
 
 #%%
@@ -106,7 +106,7 @@ ana = mod.CompositionalAnalysis(sle_freq_data, "int_Group", baseline_index=3)
 #%%
 ca_result = ana.sample_hmc(num_results=int(20000), n_burnin=5000)
 
-ca_result.summary(credible_interval=0.95)
+ca_result.summary(hdi_prob=0.95)
 
 #%%
 az.plot_trace(ca_result)

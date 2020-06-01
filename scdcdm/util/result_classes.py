@@ -97,14 +97,14 @@ class CAResult(az.InferenceData):
         intercept_df -- pandas df
             Summary of intercept parameters. Contains one row per cell type. Columns:
             Final Parameter: Final intercept model parameter
-            HPD X%: Upper and lower boundaries of confidence interval (width specified via credible_interval=)
+            hdi X%: Upper and lower boundaries of confidence interval (width specified via hdi_prob=)
             SD: Standard deviation of MCMC samples
             Expected sample: Expected cell counts for a sample with no present covariates. See the tutorial for more explanation
 
         effect_df -- pandas df
             Summary of effect (slope) parameters. Contains one row per covariate/cell type combination. Columns:
             Final Parameter: Final effect model parameter. If this parameter is 0, the effect is not significant, else it is.
-            HPD X%: Upper and lower boundaries of confidence interval (width specified via credible_interval=)
+            HDI X%: Upper and lower boundaries of confidence interval (width specified via hdi_prob=)
             SD: Standard deviation of MCMC samples
             Expected sample: Expected cell counts for a sample with only the current covariate set to 1. See the tutorial for more explanation
             log2-fold change: Log2-fold change between expected cell counts with no covariates and with only the current covariate
@@ -128,20 +128,20 @@ class CAResult(az.InferenceData):
         effect_df = self.complete_beta_df(intercept_df, effect_df)
 
         # Give nice column names, remove unnecessary columns
-        hpds = intercept_df.columns[intercept_df.columns.str.contains("hpd")]
-        hpds_new = hpds.str.replace("hpd_", "HPD ")
+        hdis = intercept_df.columns[intercept_df.columns.str.contains("hdi")]
+        hdis_new = hdis.str.replace("hdi_", "HDI ")
 
-        intercept_df = intercept_df.loc[:, ["final_parameter", hpds[0], hpds[1], "sd", "expected_sample"]]
+        intercept_df = intercept_df.loc[:, ["final_parameter", hdis[0], hdis[1], "sd", "expected_sample"]]
         intercept_df = intercept_df.rename(columns=dict(zip(
             intercept_df.columns,
-            ["Final Parameter", hpds_new[0], hpds_new[1], "SD", "Expected Sample"]
+            ["Final Parameter", hdis_new[0], hdis_new[1], "SD", "Expected Sample"]
         )))
 
-        effect_df = effect_df.loc[:, ["final_parameter", hpds[0], hpds[1], "sd", "inclusion_prob",
+        effect_df = effect_df.loc[:, ["final_parameter", hdis[0], hdis[1], "sd", "inclusion_prob",
                                        "expected_sample", "log_fold"]]
         effect_df = effect_df.rename(columns=dict(zip(
             effect_df.columns,
-            ["Final Parameter", hpds_new[0], hpds_new[1], "SD", "Inclusion probability",
+            ["Final Parameter", hdis_new[0], hdis_new[1], "SD", "Inclusion probability",
              "Expected Sample", "log2-fold change"]
         )))
 
