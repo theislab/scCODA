@@ -6,6 +6,7 @@ Results class that summarizes the results of the different inference methods and
 import numpy as np
 import arviz as az
 import pandas as pd
+import pickle as pkl
 
 
 class CAResultConverter(az.data.io_dict.DictConverter):
@@ -394,3 +395,7 @@ class CAResult(az.InferenceData):
 
         ret['Cell Type'][0] = 'Total'
         return ret
+
+    def save(self, path_to_file):
+        with open(path_to_file, "wb") as f:
+            pkl.dump(self, file=f)

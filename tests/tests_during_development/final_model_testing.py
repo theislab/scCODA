@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import importlib
 import arviz as az
+import pickle as pkl
 
 from scdcdm.util import data_generation as gen
 from scdcdm.util import comp_ana as mod
@@ -84,6 +85,18 @@ params_mcmc.summary()
 
 #%%
 params_mcmc.summary_extended(hdi_prob=0.9)
+
+#%%
+path = "data/test"
+params_mcmc.save(path)
+
+#%%
+with open(path, "rb") as f:
+    params_2 = pkl.load(f)
+
+#%%
+
+params_2.summary()
 #%%
 az.plot_trace(params_mcmc)
 plt.show()
