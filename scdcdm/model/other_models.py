@@ -289,7 +289,7 @@ class scdney_model:
             subjects.append("Cond_1_sub_" + str(n))
 
         # produce lists to use in scdney
-        scdc_cellTypes = []
+        scdc_celltypes = []
         scdc_subject = []
         scdc_cond = []
         scdc_sample_cond = []
@@ -303,7 +303,7 @@ class scdney_model:
             scdc_sample_cond.append(current_condition)
 
             for j in range(int(current_count)):
-                scdc_cellTypes.append(current_type)
+                scdc_celltypes.append(current_type)
                 scdc_subject.append(current_subject)
                 scdc_cond.append(current_condition)
 
@@ -312,7 +312,7 @@ class scdney_model:
         # path = ""
 
         with open(path + "paper_simulation_scripts/scdc_r_data/scdc_cellTypes.txt", "w") as f:
-            for c in scdc_cellTypes:
+            for c in scdc_celltypes:
                 f.write(str(c) + "\n")
         with open(path + "paper_simulation_scripts/scdc_r_data/scdc_subject.txt", "w") as f:
             for c in scdc_subject:
@@ -357,4 +357,45 @@ class scdney_model:
         tn = np.sum(p_values[:-1] >= 0.05)
         fp = np.sum(p_values[:-1] < 0.05)
 
-        return (r_summary, (tp, tn, fp, fn))
+        return r_summary, (tp, tn, fp, fn)
+
+
+class CLRModel:
+
+    """
+    CLR-transformed Data for use in statsmodels.multivariate
+
+    Usage: m = CLRModel(data)
+    Then, m.x contains the raw count data;
+    m.x_clr contains the CLR-transformed count data;
+    m.y contains the covariates
+    """
+
+    def __init__(self, data):
+        """
+        Constructor of model class
+
+        Parameters
+        ----------
+        data -- scdcdm data object
+        """
+
+        n_total = np.sum(data.X, axis=1)
+
+        # Get data from data object
+        self.x = pd.DataFrame(data.X, columns=data.var.index)
+        self.y = data.obs
+
+        # Get dimensions of data
+        self.N, self.D = data.X.shape
+        self.K = data.obs.shape[1]
+
+        # Check input data
+        if self.N != data.obs.shape[0]:
+            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(data.X.shape[0], data.obs.shape[0]))
+        if self.N != len(n_total):
+            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(data.X.shape[0], len(n_total)))
+
+        # computes clr-transformed data matrix as a pandas DataFrame
+        geom_mean = np.prod(data.X, axis=1, keepdims=True)**(1/self.D)
+        self.x_clr = pd.DataFrame(np.log(data.X/geom_mean), columns=data.var.index)

@@ -306,3 +306,13 @@ sim_results.summary()
 
 #%%
 print(model_all.x)
+
+#%%
+
+import scdcdm.model.other_models as om
+
+#%%
+importlib.reload(om)
+m = om.CLRModel(data)
+
+print(m.x_clr)
