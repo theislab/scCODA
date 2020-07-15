@@ -360,42 +360,46 @@ class scdney_model:
         return r_summary, (tp, tn, fp, fn)
 
 
-class CLRModel:
-
+def make_clr_model(formula, data, *args, **kwargs):
     """
-    CLR-transformed Data for use in statsmodels.multivariate
+    Performs a CLR transform before outputting a statsmodels.glm model
 
-    Usage: m = CLRModel(data)
-    Then, m.x contains the raw count data;
-    m.x_clr contains the CLR-transformed count data;
-    m.y contains the covariates
+    Usage:
+    m = make_clr_model(formula="x_0 ~ c_1+c_2", data=data)
+    m_s = m.fit()
+    print(m_s.summary())
+
+    Parameters
+    ----------
+    data -- scdcdm data object
+        The data object
+    formula -- string
+        The model formula for the design matrix
+    args, kwargs -- For use in statsmodels.GLM
+
+    Returns
+    -------
+    a statsmodels.GLM object
     """
 
-    def __init__(self, data):
-        """
-        Constructor of model class
+    n_total = np.sum(data.X, axis=1)
 
-        Parameters
-        ----------
-        data -- scdcdm data object
-        """
+    # Get data from data object
+    y = data.obs
 
-        n_total = np.sum(data.X, axis=1)
+    # Get dimensions of data
+    N, D = data.X.shape
 
-        # Get data from data object
-        self.x = pd.DataFrame(data.X, columns=data.var.index)
-        self.y = data.obs
+    # Check input data
+    if N != data.obs.shape[0]:
+        raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(data.X.shape[0], data.obs.shape[0]))
+    if N != len(n_total):
+        raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(data.X.shape[0], len(n_total)))
 
-        # Get dimensions of data
-        self.N, self.D = data.X.shape
-        self.K = data.obs.shape[1]
+    # computes clr-transformed data matrix as a pandas DataFrame
+    geom_mean = np.prod(data.X, axis=1, keepdims=True)**(1/D)
+    x_clr = pd.DataFrame(np.log(data.X/geom_mean), columns=data.var.index, index=y.index)
 
-        # Check input data
-        if self.N != data.obs.shape[0]:
-            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(data.X.shape[0], data.obs.shape[0]))
-        if self.N != len(n_total):
-            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(data.X.shape[0], len(n_total)))
-
-        # computes clr-transformed data matrix as a pandas DataFrame
-        geom_mean = np.prod(data.X, axis=1, keepdims=True)**(1/self.D)
-        self.x_clr = pd.DataFrame(np.log(data.X/geom_mean), columns=data.var.index)
+    return sm.GLM.from_formula(formula=formula,
+                               data=pd.concat([x_clr, y], axis=1),
+                               *args, **kwargs)

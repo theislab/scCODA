@@ -310,9 +310,14 @@ print(model_all.x)
 #%%
 
 import scdcdm.model.other_models as om
+import statsmodels.api as sm
 
 #%%
 importlib.reload(om)
-m = om.CLRModel(data)
+data.var.index = ["c_0", "c_1", "c_2", "c_3", "c_4"]
+m = om.make_clr_model(formula="x_0 ~ c_1", data=data, family=sm.families.Poisson())
 
-print(m.x_clr)
+m_s = m.fit()
+
+#%%
+print(m_s.summary())
