@@ -127,9 +127,9 @@ print(all_study_params)
 result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
 
 with open(result_path + "\\model_comparison_results_aggregated.pkl", "wb") as f:
-    pkl.dump(all_study_params_agg, file=f)
+    pkl.dump(all_study_params_agg, file=f, protocol=4)
 with open(result_path + "\\model_comparison_results.pkl", "wb") as f:
-    pkl.dump(all_study_params, file=f)
+    pkl.dump(all_study_params, file=f, protocol=4)
 
 #%%
 # Convert data from wide to long

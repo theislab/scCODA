@@ -248,7 +248,7 @@ class MultiParamSimulation:
         """
 
         with open(path + filename + '.pkl', 'wb') as f:
-            pkl.dump(self, f)
+            pkl.dump(self, f, protocol=4)
 
 
 class MultiParamSimulationMultiModel:
@@ -486,4 +486,4 @@ class MultiParamSimulationMultiModel:
 
         """
         with open(path + filename + '.pkl', 'wb') as f:
-            pkl.dump(self, f)
+            pkl.dump(self, f, protocol=4)
