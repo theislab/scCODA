@@ -41,7 +41,7 @@ ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=2)
 #%%
 ca_result = ana.sample_hmc(num_results=int(1000), n_burnin=int(500))
 
-ca_result.summary(credible_interval=0.95)
+ca_result.summary(hdi_prob=0.95)
 
 #%%
 az.plot_trace(ca_result, var_names="beta", coords={"cov": [0], "cell_type": ["0", "1", "2", "3", "4"]})

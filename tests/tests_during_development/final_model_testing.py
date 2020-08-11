@@ -72,9 +72,11 @@ importlib.reload(res)
 
 ana = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
 print(ana.x)
+print(ana.y)
 print(ana.covariate_names)
 
 #%%
+importlib.reload(mod)
 params_mcmc = ana.sample_hmc(num_results=int(1000), n_burnin=500)
 print(params_mcmc)
 
@@ -82,8 +84,7 @@ print(params_mcmc)
 params_mcmc.summary()
 
 #%%
-params_mcmc.summary_extended(credible_interval=0.9)
-
+params_mcmc.summary_extended(hdi_prob=0.9)
 
 #%%
 path = "data/test"
@@ -118,7 +119,7 @@ print(ana_simple.covariate_names)
 params_mcmc = ana_simple.sample_hmc(num_results=int(2000), n_burnin=500)
 
 #%%
-params_mcmc.summary(credible_interval=0.95)
+params_mcmc.summary(hdi_prob=0.95)
 
 #%%
 az.plot_trace(params_mcmc)
