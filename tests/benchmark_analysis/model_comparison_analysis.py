@@ -12,6 +12,7 @@ from scdcdm.util import result_classes as res
 from scdcdm.util import multi_parameter_sampling as mult
 from scdcdm.util import multi_parameter_analysis_functions as ana
 from scdcdm.util import data_generation as gen
+from scdcdm.model import other_models as om
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
@@ -28,13 +29,13 @@ importlib.reload(ana)
 
 path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\model_comparison"
 
-
 results, all_study_params, all_study_params_agg = ana.multi_run_study_analysis_prepare(path)
+
+#%%
 
 all_study_params_agg = ana.get_scores(all_study_params_agg, models=4)
 all_study_params = ana.get_scores(all_study_params, models=4)
 
-#%%
 # Set deprecated cases for poisson model (1 sample per group) to mcc=0
 all_study_params.loc[all_study_params["n_samples"] == "[1, 1]", "mcc_0"] = 0
 all_study_params_agg.loc[all_study_params_agg["n_samples"] == "[1, 1]", "mcc_0"] = 0
@@ -309,3 +310,191 @@ with open(path + "paper_simulation_scripts/scdc_r_data/scdc_condition.txt", "w")
 with open(path + "paper_simulation_scripts/scdc_r_data/scdc_short_conditions.txt", "w") as f:
     for c in scdc_sample_cond:
         f.write(str(c) + "\n")
+
+
+#%%
+
+# August 2020: Implementation of some more tests
+
+# CLR transform + linear regression
+
+# get raw count data
+
+importlib.reload(ana)
+# Get data:
+# all_study_params: One line per data point
+# all_study_params_agg: Combine identical simulation parameters
+
+path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\model_comparison"
+
+
+results, all_study_params, all_study_params_agg = ana.multi_run_study_analysis_prepare(path)
+
+#%%
+def get_scores(df):
+    """
+    Calculates extended summary statistics, such as TPR, TNR, youden index, f1-score, MCC
+
+    """
+    tp = df["tp"].astype("float64")
+    tn = df["tn"].astype("float64")
+    fp = df["fp"].astype("float64")
+    fn = df["fn"].astype("float64")
+
+    tpr = (tp / (tp + fn)).fillna(0)
+    df["tpr"] = tpr
+    tnr = (tn / (tn + fp)).fillna(0)
+    df["tnr"] = tnr
+    precision = (tp / (tp + fp)).fillna(0)
+    df["precision"] = precision
+    acc = (tp + tn) / (tp + tn + fp + fn).fillna(0)
+    df["accuracy"] = acc
+
+    df["youden"] = tpr + tnr - 1
+    df["f1_score"] = 2 * (tpr * precision / (tpr + precision)).fillna(0)
+
+    df["mcc"] = (((tp * tn) - (fp * fn)) / np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))).fillna(0)
+
+    return df
+
+
+#%%
+importlib.reload(om)
+
+alpha = 0.05
+
+# Run the other models on it
+simulation_parameters = ["cases", "K", "n_total", "n_samples", "b_true", "w_true", "num_results"]
+col_names = simulation_parameters + ["tp", "tn", "fp", "fn", "model"]
+
+haber_fin = pd.DataFrame(columns=col_names)
+clr_fin = pd.DataFrame(columns=col_names)
+ks_fin = pd.DataFrame(columns=col_names)
+
+l = len(results)
+k = 1
+for r in results:
+    print(f"{k}/{l}")
+
+    test_params = r.parameters.loc[:, simulation_parameters]
+
+    haber_df = test_params.copy()
+    haber_df["tp"] = 0
+    haber_df["tn"] = 0
+    haber_df["fp"] = 0
+    haber_df["fn"] = 0
+    haber_df["model"] = "Haber"
+
+    clr_df = haber_df.copy()
+    clr_df["model"] = "CLR"
+
+    ks_df = haber_df.copy()
+    ks_df["model"] = "KS"
+
+    for j in range(len(r.data)):
+        test_data = r.data[j]
+
+        haber_mod = om.HaberModel(test_data)
+        haber_mod.fit_model()
+        tp, tn, fp, fn = haber_mod.eval_model(alpha, True)
+        haber_df.loc[j, "tp"] = tp
+        haber_df.loc[j, "fp"] = fp
+        haber_df.loc[j, "tn"] = tn
+        haber_df.loc[j, "fn"] = fn
+
+        clr_mod = om.CLRModel(test_data)
+        clr_mod.fit_model()
+        tp, tn, fp, fn = clr_mod.eval_model(alpha, True)
+        clr_df.loc[j, "tp"] = tp
+        clr_df.loc[j, "fp"] = fp
+        clr_df.loc[j, "tn"] = tn
+        clr_df.loc[j, "fn"] = fn
+
+        ks_mod = om.KSTest(test_data)
+        ks_mod.fit_model()
+        tp, tn, fp, fn = ks_mod.eval_model(alpha, True)
+        ks_df.loc[j, "tp"] = tp
+        ks_df.loc[j, "fp"] = fp
+        ks_df.loc[j, "tn"] = tn
+        ks_df.loc[j, "fn"] = fn
+
+    haber_fin = haber_fin.append(haber_df)
+    clr_fin = clr_fin.append(clr_df)
+    ks_fin = ks_fin.append(ks_df)
+
+    k += 1
+
+print(haber_fin)
+print(clr_fin)
+print(ks_fin)
+
+#%%
+
+haber_fin_2 = get_scores(haber_fin)
+clr_fin_2 = get_scores(clr_fin)
+ks_fin_2 = get_scores(ks_fin)
+
+fin_dfs = pd.concat([haber_fin_2, clr_fin_2, ks_fin_2])
+print(fin_dfs)
+
+#%%
+
+
+fin_dfs["n_controls"] = [x[0] for x in fin_dfs["n_samples"].tolist()]
+fin_dfs["n_cases"] = [x[1] for x in fin_dfs["n_samples"].tolist()]
+fin_dfs["n_total"] = fin_dfs["n_total"].astype("float")
+fin_dfs["w"] = [x[0][0] for x in fin_dfs["w_true"]]
+fin_dfs["b_0"] = [x[0] for x in fin_dfs["b_true"]]
+fin_dfs["b_count"] = [b_counts[np.round(x, 2)] for x in fin_dfs["b_0"]]
+
+bs = fin_dfs["b_0"].tolist()
+ws = fin_dfs["w"].tolist()
+rels = [0.33, 0.5, 1, 2, 3]
+increases = []
+rel_changes = []
+for i in range(len(bs)):
+    increases.append(b_w_dict[bs[i]][ws[i]])
+    rel_changes.append(w_rel_dict[ws[i]])
+fin_dfs["num_increase"] = increases
+fin_dfs["rel_increase"] = rel_changes
+fin_dfs["log_fold_increase"] = np.round(np.log2((fin_dfs["num_increase"] +
+                                                          fin_dfs["b_count"]) /
+                                                          fin_dfs["b_count"]), 2)
+
+param_cols = ["b_count", "num_increase", "n_controls", "n_cases", "log_fold_increase"]
+metrics = ["tpr", "tnr", "precision", "accuracy", "youden", "f1_score", "mcc"]
+fin_dfs = fin_dfs.loc[:, param_cols + metrics + ["model"]]
+
+print(fin_dfs)
+
+#%%
+
+all_df = pd.concat([final_df, fin_dfs])
+
+plot_df = all_df.rename(columns={"b_count": "Base", "num_increase": "Increase", "model": "Model",
+                                   "log_fold_increase": "log-fold increase"})
+
+#%%
+
+# Plot for concept fig
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.lineplot(data=plot_df, x="n_controls", y="mcc", hue="Model", palette="colorblind", ax=ax)
+plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+ax.set(xlabel="Replicates per group", ylabel="MCC")
+
+plt.savefig(result_path + "\\model_comparison_replicates_confint_extended.svg", format="svg", bbox_inches="tight")
+plt.savefig(result_path + "\\model_comparison_replicates_confint_extended.png", format="png", bbox_inches="tight")
+
+plt.show()
+
+#%%
+
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.lineplot(data=plot_df, x="log-fold increase", y="mcc", hue="Model", palette="colorblind", ax=ax)
+plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+ax.set(xlabel="log-fold effect", ylabel="MCC")
+
+plt.savefig(result_path + "\\model_comparison_logfold_confint_extended.svg", format="svg", bbox_inches="tight")
+plt.savefig(result_path + "\\model_comparison_logfold_confint_extended.png", format="png", bbox_inches="tight")
+
+plt.show()
