@@ -515,7 +515,7 @@ class CLRModel(FrequentistModel):
             p_val = [0 for x in range(K)]
         else:
             # computes clr-transformed data matrix as a pandas DataFrame
-            geom_mean = np.prod(self.y, axis=1, keepdims=True) ** (1 / D)
+            geom_mean = np.prod(self.y, axis=1, keepdims=True) ** (1 / K)
             y_clr = np.log(self.y / geom_mean)
 
             for k in range(K):
@@ -528,7 +528,7 @@ class CLRModel(FrequentistModel):
         self.p_val = p_val
 
 
-class KSTest(FrequentistModel):
+class TTest(FrequentistModel):
     """
         Implements a KS test one each cell type into the scdcdm framework
         (for model comparison purposes)
@@ -554,7 +554,42 @@ class KSTest(FrequentistModel):
         else:
             for k in range(K):
 
-                test = stats.ks_2samp(self.y[0:n_group, k], self.y[n_group:, k])
+                test = stats.ttest_ind(self.y[0:n_group, k], self.y[n_group:, k])
+                p_val.append(test[1])
+
+        self.p_val = p_val
+
+
+class CLR_ttest(FrequentistModel):
+    """
+    Implements a CLR transform and subsequent linear model on each cell type into the scdcdm framework
+    (for model comparison purposes)
+    """
+    def fit_model(self):
+        """
+        Fits CLR model
+
+        Returns
+        -------
+        p_val : list
+            p-values for differential abundance test of all cell types
+        """
+
+        p_val = []
+        N, K = self.y.shape
+        D = self.x.shape[1]
+
+        n_group = int(N/2)
+
+        if self.y.shape[0] == 2:
+            p_val = [0 for x in range(K)]
+        else:
+            # computes clr-transformed data matrix as a pandas DataFrame
+            geom_mean = np.prod(self.y, axis=1, keepdims=True) ** (1 / K)
+            y_clr = np.log(self.y / geom_mean)
+
+            for k in range(K):
+                test = stats.ttest_ind(y_clr[0:n_group, k], y_clr[n_group:, k])
                 p_val.append(test[1])
 
         self.p_val = p_val

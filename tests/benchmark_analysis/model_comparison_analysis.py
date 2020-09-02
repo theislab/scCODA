@@ -238,8 +238,8 @@ fg.map_dataframe(sns.lineplot, x='n_controls', y='mcc', hue='Model', palette="co
 
 
 fg.add_legend()
-# plt.savefig(result_path + "\\model_comparison.svg", format="svg", bbox_inces="tight")
-# plt.savefig(result_path + "\\model_comparison.png", format="png", bbox_inces="tight")
+plt.savefig(result_path + "\\model_comparison.svg", format="svg", bbox_inces="tight")
+plt.savefig(result_path + "\\model_comparison.png", format="png", bbox_inces="tight")
 
 plt.show()
 
@@ -368,8 +368,8 @@ simulation_parameters = ["cases", "K", "n_total", "n_samples", "b_true", "w_true
 col_names = simulation_parameters + ["tp", "tn", "fp", "fn", "model"]
 
 haber_fin = pd.DataFrame(columns=col_names)
-clr_fin = pd.DataFrame(columns=col_names)
-ks_fin = pd.DataFrame(columns=col_names)
+clrt_fin = pd.DataFrame(columns=col_names)
+t_fin = pd.DataFrame(columns=col_names)
 
 l = len(results)
 k = 1
@@ -385,11 +385,11 @@ for r in results:
     haber_df["fn"] = 0
     haber_df["model"] = "Haber"
 
-    clr_df = haber_df.copy()
-    clr_df["model"] = "CLR"
+    clrt_df = haber_df.copy()
+    clrt_df["model"] = "CLR_ks"
 
-    ks_df = haber_df.copy()
-    ks_df["model"] = "KS"
+    t_df = haber_df.copy()
+    t_df["model"] = "KS"
 
     for j in range(len(r.data)):
         test_data = r.data[j]
@@ -402,39 +402,39 @@ for r in results:
         haber_df.loc[j, "tn"] = tn
         haber_df.loc[j, "fn"] = fn
 
-        clr_mod = om.CLRModel(test_data)
-        clr_mod.fit_model()
-        tp, tn, fp, fn = clr_mod.eval_model(alpha, True)
-        clr_df.loc[j, "tp"] = tp
-        clr_df.loc[j, "fp"] = fp
-        clr_df.loc[j, "tn"] = tn
-        clr_df.loc[j, "fn"] = fn
+        clrks_mod = om.CLR_ttest(test_data)
+        clrks_mod.fit_model()
+        tp, tn, fp, fn = clrks_mod.eval_model(alpha, True)
+        clrt_df.loc[j, "tp"] = tp
+        clrt_df.loc[j, "fp"] = fp
+        clrt_df.loc[j, "tn"] = tn
+        clrt_df.loc[j, "fn"] = fn
 
-        ks_mod = om.KSTest(test_data)
+        ks_mod = om.TTest(test_data)
         ks_mod.fit_model()
         tp, tn, fp, fn = ks_mod.eval_model(alpha, True)
-        ks_df.loc[j, "tp"] = tp
-        ks_df.loc[j, "fp"] = fp
-        ks_df.loc[j, "tn"] = tn
-        ks_df.loc[j, "fn"] = fn
+        t_df.loc[j, "tp"] = tp
+        t_df.loc[j, "fp"] = fp
+        t_df.loc[j, "tn"] = tn
+        t_df.loc[j, "fn"] = fn
 
     haber_fin = haber_fin.append(haber_df)
-    clr_fin = clr_fin.append(clr_df)
-    ks_fin = ks_fin.append(ks_df)
+    clrt_fin = clrt_fin.append(clrt_df)
+    t_fin = t_fin.append(t_df)
 
     k += 1
 
 print(haber_fin)
-print(clr_fin)
-print(ks_fin)
+print(clrt_fin)
+print(t_fin)
 
 #%%
 
 haber_fin_2 = get_scores(haber_fin)
-clr_fin_2 = get_scores(clr_fin)
-ks_fin_2 = get_scores(ks_fin)
+clrt_fin_2 = get_scores(clrt_fin)
+t_fin_2 = get_scores(t_fin)
 
-fin_dfs = pd.concat([haber_fin_2, clr_fin_2, ks_fin_2])
+fin_dfs = pd.concat([haber_fin_2, clrt_fin_2, t_fin_2])
 print(fin_dfs)
 
 #%%
@@ -472,14 +472,15 @@ print(fin_dfs)
 all_df = pd.concat([final_df, fin_dfs])
 
 plot_df = all_df.rename(columns={"b_count": "Base", "num_increase": "Increase", "model": "Model",
-                                   "log_fold_increase": "log-fold increase"})
+                                   "log_fold_increase": "log-fold increase"}).loc[~all_df["model"].isin(["Poisson (Haber et al.)", "CLR_ks"])]
 
+leg_labels = ["Simple DM", "SCDCdm", "scDC (Cao, Lin)", "Poisson regression", "T-test"]
 #%%
 
 # Plot for concept fig
 fig, ax = plt.subplots(figsize=(10, 6))
 sns.lineplot(data=plot_df, x="n_controls", y="mcc", hue="Model", palette="colorblind", ax=ax)
-plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., labels=leg_labels)
 ax.set(xlabel="Replicates per group", ylabel="MCC")
 
 plt.savefig(result_path + "\\model_comparison_replicates_confint_extended.svg", format="svg", bbox_inches="tight")
@@ -491,10 +492,63 @@ plt.show()
 
 fig, ax = plt.subplots(figsize=(10, 6))
 sns.lineplot(data=plot_df, x="log-fold increase", y="mcc", hue="Model", palette="colorblind", ax=ax)
-plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., labels=leg_labels)
 ax.set(xlabel="log-fold effect", ylabel="MCC")
 
 plt.savefig(result_path + "\\model_comparison_logfold_confint_extended.svg", format="svg", bbox_inches="tight")
 plt.savefig(result_path + "\\model_comparison_logfold_confint_extended.png", format="png", bbox_inches="tight")
 
 plt.show()
+
+
+#%%
+
+# Revision of clr model
+i = 150
+
+test_data = results[i].data[8]
+
+print(results[i].parameters)
+
+#%%
+
+importlib.reload(om)
+
+clr_mod = om.CLRModel(test_data)
+clr_mod.fit_model()
+print(clr_mod.p_val)
+res = clr_mod.eval_model(0.05, True)
+print(res)
+
+#%%
+
+print(test_data.X)
+p = np.prod(test_data.X, axis=1, keepdims=True)**(1/5)
+
+clr = np.log(test_data.X/p)
+print(clr)
+print(np.sum(clr, axis=1))
+
+#%%
+from statsmodels.formula.api import glm
+import statsmodels as sm
+
+data_ct = pd.DataFrame({"x": test_data.obs["x_0"],
+                        "y_0": clr[:, 0],
+                        "y_1": clr[:, 1],
+                        "y_2": clr[:, 2],
+                        "y_3": clr[:, 3],
+                        "y_4": clr[:, 4],})
+
+model_ct = glm('y_0 ~ x', data=data_ct, family=sm.genmod.families.Poisson()).fit()
+
+print(model_ct.summary())
+
+#%%
+importlib.reload(om)
+
+clr_mod = om.CLR_ttest(test_data)
+clr_mod.fit_model()
+print(clr_mod.p_val)
+res = clr_mod.eval_model(0.05, True)
+print(res)
