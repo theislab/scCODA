@@ -176,7 +176,7 @@ class CompositionalModel:
         hmc_kernel = tfp.mcmc.TransformedTransitionKernel(
             inner_kernel=hmc_kernel, bijector=constraining_bijectors)
         hmc_kernel = tfp.mcmc.SimpleStepSizeAdaptation(
-            inner_kernel=hmc_kernel, num_adaptation_steps=int(4000), target_accept_prob=0.8)
+            inner_kernel=hmc_kernel, num_adaptation_steps=int(0.8*n_burnin), target_accept_prob=0.8)
 
         # HMC sampling
         states, kernel_results, duration = self.sampling(num_results, n_burnin, hmc_kernel, self.params)

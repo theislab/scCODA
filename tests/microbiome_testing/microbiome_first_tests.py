@@ -103,13 +103,13 @@ print(data_nonrare.obs)
 
 
 #%%
+# No significances
 # Model with subject as covariate
 model_subject = mod.CompositionalAnalysis(data, "subject", baseline_index=None)
 
 result_subject = model_subject.sample_hmc(num_results=int(20000), n_burnin=5000)
 
 result_subject.summary_extended(hdi_prob=0.95)
-# No significances
 
 #%%
 az.plot_trace(result_subject, var_names=["beta"])
