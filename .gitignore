@@ -111,4 +111,4 @@ venv.bak/
 
 # Other
 prototyping/
-.pkl
+*.pkl
