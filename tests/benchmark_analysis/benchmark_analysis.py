@@ -120,9 +120,9 @@ print(all_study_params_2)
 result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
 
 with open(result_path + "\\normal_results_aggregated.pkl", "wb") as f:
-    pkl.dump(all_study_params_agg_2, file=f)
+    pkl.dump(all_study_params_agg_2, file=f, protocol=4)
 with open(result_path + "\\normal_results.pkl", "wb") as f:
-    pkl.dump(all_study_params_2, file=f)
+    pkl.dump(all_study_params_2, file=f, protocol=4)
 
 #%%
 # Exploration...
@@ -276,7 +276,7 @@ print(total_df_2)
 result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
 
 with open(result_path + "\\thresholds.pkl", "wb") as f:
-    pkl.dump(total_df_2, file=f)
+    pkl.dump(total_df_2, file=f, protocol=4)
 
 #%%
 # more plots
@@ -379,9 +379,9 @@ print(all_study_params_neg_agg)
 result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
 
 with open(result_path + "\\results_negative.pkl", "wb") as f:
-    pkl.dump(all_study_params_neg, file=f)
+    pkl.dump(all_study_params_neg, file=f, protocol=4)
 with open(result_path + "\\results_negative_aggregated.pkl", "wb") as f:
-    pkl.dump(all_study_params_neg_agg, file=f)
+    pkl.dump(all_study_params_neg_agg, file=f, protocol=4)
 #%%
 # Plots
 result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"

@@ -59,7 +59,7 @@ class CompositionalModel:
         if self.N != len(self.n_total):
             raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
 
-    def sampling(self, num_results, n_burnin, kernel, init_state):
+    def sampling(self, num_results, n_burnin, kernel, init_state, is_nuts=False):
         """
         MCMC sampling process
 
@@ -86,26 +86,31 @@ class CompositionalModel:
 
         # HMC sampling function
         @tf.function
-        def sample_mcmc(num_results_, n_burnin_, kernel_, current_state_):
+        def sample_mcmc(num_results_, n_burnin_, kernel_, current_state_, is_nuts=False):
+
+            if is_nuts:
+                trace_fn = lambda _, pkr: [pkr.inner_results.inner_results.log_accept_ratio]
+            else:
+                trace_fn = lambda _, pkr: [pkr.inner_results.inner_results.is_accepted,
+                                           pkr.inner_results.inner_results.accepted_results.step_size]
+
             return tfp.mcmc.sample_chain(
                 num_results=num_results_,
                 num_burnin_steps=n_burnin_,
                 kernel=kernel_,
                 current_state=current_state_,
-                # tace_fn=lambda _, pkr: pkr
-                trace_fn=lambda _, pkr: [pkr.inner_results.inner_results.is_accepted,
-                                         pkr.inner_results.inner_results.accepted_results.step_size]
-                )
+                trace_fn=trace_fn
+            )
 
         # The actual sampling process
         start = time.time()
-        states, kernel_results = sample_mcmc(num_results, n_burnin, kernel, init_state)
+        states, kernel_results = sample_mcmc(num_results, n_burnin, kernel, init_state, is_nuts)
         duration = time.time() - start
         print("MCMC sampling finished. ({:.3f} sec)".format(duration))
 
         return states, kernel_results, duration
 
-    def get_chains_after_burnin(self, samples, kernel_results, n_burnin):
+    def get_chains_after_burnin(self, samples, kernel_results, n_burnin, is_nuts=False):
         """
         Application of burnin after sampling
 
@@ -127,13 +132,17 @@ class CompositionalModel:
         """
         # Samples after burn-in
         states_burnin = []
-        acceptances = kernel_results[0].numpy()
 
         for s in samples:
             states_burnin.append(s[n_burnin:].numpy())
 
-        # Calculate acceptance rate
-        p_accept = sum(acceptances) / acceptances.shape[0]
+        if is_nuts:
+            p_accept = np.mean(np.exp(kernel_results[0].numpy()))
+        else:
+            acceptances = kernel_results[0].numpy()
+
+            # Calculate acceptance rate
+            p_accept = sum(acceptances) / acceptances.shape[0]
         print('Acceptance rate: %0.1f%%' % (100 * p_accept))
 
         return states_burnin, p_accept
@@ -175,8 +184,12 @@ class CompositionalModel:
             num_leapfrog_steps=num_leapfrog_steps)
         hmc_kernel = tfp.mcmc.TransformedTransitionKernel(
             inner_kernel=hmc_kernel, bijector=constraining_bijectors)
+        if n_burnin == 0:
+            adapt_steps = int(0.2*num_results)
+        else:
+            adapt_steps = int(0.8*n_burnin)
         hmc_kernel = tfp.mcmc.SimpleStepSizeAdaptation(
-            inner_kernel=hmc_kernel, num_adaptation_steps=int(4000), target_accept_prob=0.8)
+            inner_kernel=hmc_kernel, num_adaptation_steps=adapt_steps, target_accept_prob=0.8)
 
         # HMC sampling
         states, kernel_results, duration = self.sampling(num_results, n_burnin, hmc_kernel, self.params)
@@ -225,7 +238,98 @@ class CompositionalModel:
                                      coords=coords).to_result_data(sampling_stats=sampling_stats,
                                                                    model_specs=model_specs)
 
-    def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01):
+    def sample_hmc_da(self, num_results=int(20e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01, num_adapt_steps=4000):
+        """
+        HMC sampling
+
+        Parameters
+        ----------
+        num_results -- int
+            MCMC chain length (default 20000)
+        n_burnin -- int
+            Number of burnin iterations (default 5000)
+        num_leapfrog_steps --  int
+            HMC leapfrog steps (default 10)
+        step_size -- float
+            Initial step size (default 0.01)
+
+        Returns
+        -------
+        result -- scdcdm.util.result_data.CAResult object
+            Compositional analysis result
+        """
+
+        # (not in use atm)
+        constraining_bijectors = [
+            tfb.Identity(),
+            tfb.Identity(),
+            tfb.Identity(),
+            tfb.Identity(),
+            tfb.Identity(),
+        ]
+
+        # HMC transition kernel
+        hmc_kernel = tfp.mcmc.HamiltonianMonteCarlo(
+            target_log_prob_fn=self.target_log_prob_fn,
+            step_size=step_size,
+            num_leapfrog_steps=num_leapfrog_steps)
+        hmc_kernel = tfp.mcmc.TransformedTransitionKernel(
+            inner_kernel=hmc_kernel, bijector=constraining_bijectors)
+        # if n_burnin == 0:
+        #     adapt_steps = int(0.2*num_results)
+        # else:
+        #     adapt_steps = int(0.8*n_burnin)
+        hmc_kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
+            inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8)
+
+        # HMC sampling
+        states, kernel_results, duration = self.sampling(num_results, n_burnin, hmc_kernel, self.params)
+        states_burnin, acc_rate = self.get_chains_after_burnin(states, kernel_results, n_burnin)
+
+        y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
+
+        params = dict(zip(self.param_names, states_burnin))
+
+        # Result object generation setup
+        if self.baseline_index is not None:
+            cell_types_nb = self.cell_types[:self.baseline_index] + self.cell_types[self.baseline_index+1:]
+        else:
+            cell_types_nb = self.cell_types
+
+        posterior = {var_name: [var] for var_name, var in params.items() if
+                     "prediction" not in var_name}
+        posterior_predictive = {"prediction": [params["prediction"]]}
+        observed_data = {"y": self.y}
+        dims = {"alpha": ["cell_type"],
+                "mu_b": ["1"],
+                "sigma_b": ["1"],
+                "b_offset": ["covariate", "cell_type_nb"],
+                "ind_raw": ["covariate", "cell_type_nb"],
+                "ind": ["covariate", "cell_type_nb"],
+                "b_raw": ["covariate", "cell_type_nb"],
+                "beta": ["covariate", "cell_type"],
+                "concentration": ["sample", "cell_type"],
+                "prediction": ["sample", "cell_type"]
+                }
+        coords = {"cell_type": self.cell_types,
+                  "cell_type_nb": cell_types_nb,
+                  "covariate": self.covariate_names,
+                  "sample": range(self.y.shape[0])
+                  }
+
+        sampling_stats = {"chain_length": num_results, "n_burnin": n_burnin,
+                        "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
+
+        model_specs = {"baseline": self.baseline_index, "formula": self.formula}
+
+        return res.CAResultConverter(posterior=posterior,
+                                     posterior_predictive=posterior_predictive,
+                                     observed_data=observed_data,
+                                     dims=dims,
+                                     coords=coords).to_result_data(sampling_stats=sampling_stats,
+                                                                   model_specs=model_specs)
+
+    def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01, num_adapt_steps=4000):
         """
         NUTS sampling - WIP, DO NOT USE!!!
 
@@ -246,9 +350,6 @@ class CompositionalModel:
             NotImplementedError
         """
 
-        raise NotImplementedError
-
-        # (not in use atm)
         constraining_bijectors = [
             tfb.Identity(),
             tfb.Identity(),
@@ -263,9 +364,11 @@ class CompositionalModel:
             step_size=step_size,
             max_tree_depth=max_tree_depth)
         nuts_kernel = tfp.mcmc.TransformedTransitionKernel(
-            inner_kernel=nuts_kernel, bijector=constraining_bijectors)
-        nuts_kernel = tfp.mcmc.SimpleStepSizeAdaptation(
-            inner_kernel=nuts_kernel, num_adaptation_steps=int(4000), target_accept_prob=0.9,
+            inner_kernel=nuts_kernel,
+            bijector=constraining_bijectors
+        )
+        nuts_kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
+            inner_kernel=nuts_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8,
             step_size_setter_fn=lambda pkr, new_step_size: pkr._replace(
                 inner_results=pkr.inner_results._replace(step_size=new_step_size)
             ),
@@ -273,13 +376,19 @@ class CompositionalModel:
             log_accept_prob_getter_fn=lambda pkr: pkr.inner_results.log_accept_ratio,
         )
 
-        states, kernel_results = self.sampling(num_results, n_burnin, nuts_kernel, self.params)
-        states_burnin = self.get_chains_after_burnin(states, kernel_results, n_burnin)
+        # HMC sampling
+        states, kernel_results, duration = self.sampling(num_results, n_burnin, nuts_kernel, self.params, is_nuts=True)
+        states_burnin, acc_rate = self.get_chains_after_burnin(states, kernel_results, n_burnin, is_nuts=True)
+
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
         params = dict(zip(self.param_names, states_burnin))
+        # Result object generation setup
+        if self.baseline_index is not None:
+            cell_types_nb = self.cell_types[:self.baseline_index] + self.cell_types[self.baseline_index + 1:]
+        else:
+            cell_types_nb = self.cell_types
 
-        # Arviz setup
         posterior = {var_name: [var] for var_name, var in params.items() if
                      "prediction" not in var_name}
         posterior_predictive = {"prediction": [params["prediction"]]}
@@ -287,24 +396,31 @@ class CompositionalModel:
         dims = {"alpha": ["cell_type"],
                 "mu_b": ["1"],
                 "sigma_b": ["1"],
-                "b_offset": ["covariate", "cell_type"],
-                "ind_raw": ["covariate", "cell_type"],
-                "ind": ["covariate", "cell_type"],
-                "b_raw": ["covariate", "cell_type"],
-                "beta": ["cov", "cell_type"],
+                "b_offset": ["covariate", "cell_type_nb"],
+                "ind_raw": ["covariate", "cell_type_nb"],
+                "ind": ["covariate", "cell_type_nb"],
+                "b_raw": ["covariate", "cell_type_nb"],
+                "beta": ["covariate", "cell_type"],
                 "concentration": ["sample", "cell_type"],
                 "prediction": ["sample", "cell_type"]
                 }
         coords = {"cell_type": self.cell_types,
+                  "cell_type_nb": cell_types_nb,
                   "covariate": self.covariate_names,
                   "sample": range(self.y.shape[0])
                   }
+
+        sampling_stats = {"chain_length": num_results, "n_burnin": n_burnin,
+                          "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
+
+        model_specs = {"baseline": self.baseline_index, "formula": self.formula}
 
         return res.CAResultConverter(posterior=posterior,
                                      posterior_predictive=posterior_predictive,
                                      observed_data=observed_data,
                                      dims=dims,
-                                     coords=coords).to_result_data(y_hat, baseline=False)
+                                     coords=coords).to_result_data(sampling_stats=sampling_stats,
+                                                                   model_specs=model_specs)
 
 
 class NoBaselineModel(CompositionalModel):

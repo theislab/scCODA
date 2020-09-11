@@ -117,12 +117,12 @@ class CAResult(az.InferenceData):
         intercept_df = summ.loc[summ.index.str.match("|".join(["alpha"]))]
 
         # Build neat index
-        cell_types = self.posterior.coords["cell_type"]
-        covariates = self.posterior.coords["covariate"]
+        cell_types = self.posterior.coords["cell_type"].values
+        covariates = self.posterior.coords["covariate"].values
 
         intercept_df.index = pd.Index(cell_types, name="Cell Type")
         effect_df.index = pd.MultiIndex.from_product([covariates, cell_types],
-                                                    names=["Covariate", "Cell Type"])
+                                                     names=["Covariate", "Cell Type"])
 
         # Calculation of columns that are not from az.summary
         intercept_df = self.complete_alpha_df(intercept_df)
@@ -398,4 +398,5 @@ class CAResult(az.InferenceData):
 
     def save(self, path_to_file):
         with open(path_to_file, "wb") as f:
-            pkl.dump(self, file=f)
+            pkl.dump(self, file=f, protocol=4)
+

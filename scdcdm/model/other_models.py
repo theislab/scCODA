@@ -13,8 +13,9 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow_probability.python.experimental import edward2 as ed
 
-import statsmodels.api as sm
+import statsmodels as sm
 from statsmodels.formula.api import glm
+from scipy import stats
 
 from scdcdm.util import result_classes as res
 from scdcdm.model import dirichlet_models as dm
@@ -230,7 +231,7 @@ class PoissonModel:
             data_ct = pd.DataFrame({"x": self.x[:, 0],
                                     "y": self.y[:, k]})
 
-            model_ct = glm('y ~ x', data=data_ct, family=sm.families.Poisson(), offset=np.log(self.n_total)).fit()
+            model_ct = glm('y ~ x', data=data_ct, family=sm.api.families.Poisson(), offset=np.log(self.n_total)).fit()
             self.p_val[k] = model_ct.pvalues[1]
 
     def eval_model(self):
@@ -289,7 +290,7 @@ class scdney_model:
             subjects.append("Cond_1_sub_" + str(n))
 
         # produce lists to use in scdney
-        scdc_cellTypes = []
+        scdc_celltypes = []
         scdc_subject = []
         scdc_cond = []
         scdc_sample_cond = []
@@ -303,7 +304,7 @@ class scdney_model:
             scdc_sample_cond.append(current_condition)
 
             for j in range(int(current_count)):
-                scdc_cellTypes.append(current_type)
+                scdc_celltypes.append(current_type)
                 scdc_subject.append(current_subject)
                 scdc_cond.append(current_condition)
 
@@ -312,7 +313,7 @@ class scdney_model:
         # path = ""
 
         with open(path + "paper_simulation_scripts/scdc_r_data/scdc_cellTypes.txt", "w") as f:
-            for c in scdc_cellTypes:
+            for c in scdc_celltypes:
                 f.write(str(c) + "\n")
         with open(path + "paper_simulation_scripts/scdc_r_data/scdc_subject.txt", "w") as f:
             for c in scdc_subject:
@@ -357,4 +358,238 @@ class scdney_model:
         tn = np.sum(p_values[:-1] >= 0.05)
         fp = np.sum(p_values[:-1] < 0.05)
 
-        return (r_summary, (tp, tn, fp, fn))
+        return r_summary, (tp, tn, fp, fn)
+
+
+def make_clr_model(formula, data, *args, **kwargs):
+    """
+    Performs a CLR transform before outputting a statsmodels.glm model
+
+    Usage:
+    m = make_clr_model(formula="x_0 ~ c_1+c_2", data=data)
+    m_s = m.fit()
+    print(m_s.summary())
+
+    Parameters
+    ----------
+    data -- scdcdm data object
+        The data object
+    formula -- string
+        The model formula for the design matrix
+    args, kwargs -- For use in statsmodels.GLM
+
+    Returns
+    -------
+    a statsmodels.GLM object
+    """
+
+    n_total = np.sum(data.X, axis=1)
+
+    # Get data from data object
+    y = data.obs
+
+    # Get dimensions of data
+    N, D = data.X.shape
+
+    # Check input data
+    if N != data.obs.shape[0]:
+        raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(data.X.shape[0], data.obs.shape[0]))
+    if N != len(n_total):
+        raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(data.X.shape[0], len(n_total)))
+
+    # computes clr-transformed data matrix as a pandas DataFrame
+    geom_mean = np.prod(data.X, axis=1, keepdims=True)**(1/D)
+    x_clr = pd.DataFrame(np.log(data.X/geom_mean), columns=data.var.index, index=y.index)
+
+    return sm.api.GLM.from_formula(formula=formula,
+                               data=pd.concat([x_clr, y], axis=1),
+                               *args, **kwargs)
+
+
+#%%
+
+class FrequentistModel:
+    """
+    Superclass for making frequentist models in statsmodels from scdcdm data (for model comparison)
+    """
+
+    def __init__(self, data):
+
+        x = data.obs.to_numpy()
+        y = data.X
+        self.x = x
+        self.y = y
+        self.n_total = np.sum(y, axis=1)
+
+        self.p_val = {}
+
+        # Get dimensions of data
+        N = y.shape[0]
+
+        # Check input data
+        if N != x.shape[0]:
+            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(y.shape[0], x.shape[0]))
+        if N != len(self.n_total):
+            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(y.shape[0], len(self.n_total)))
+
+    def eval_model(self, alpha, fdr_correct=True):
+        """
+        Evaluates array of p-values.
+        It is assumed that the effect on the first cell type is significant, all others are not.
+
+        Returns
+        -------
+        tp, tn, fp, fn : Tuple
+            Number of True positive, ... effects
+        """
+
+        K = self.y.shape[1]
+        ks = list(range(K))[1:]
+
+        if fdr_correct:
+            reject, pvals, _, _ = sm.stats.multitest.multipletests(self.p_val, alpha, method="fdr_bh")
+            tp = sum([reject[0] == True])
+            fn = sum([reject[0] == False])
+            tn = sum([reject[k] == False for k in ks])
+            fp = sum([reject[k] == True for k in ks])
+        else:
+            tp = sum([self.p_val[0] < alpha])
+            fn = sum([self.p_val[0] >= alpha])
+            tn = sum([self.p_val[k] >= alpha for k in ks])
+            fp = sum([self.p_val[k] < alpha for k in ks])
+
+        return tp, tn, fp, fn
+
+
+class HaberModel(FrequentistModel):
+    """
+    Implements the Poisson regression model from Haber et al. into the scdcdm framework
+    (for model comparison purposes)
+    """
+    def fit_model(self):
+        """
+        Fits Poisson model
+
+        Returns
+        -------
+        p_val : list
+            p-values for differential abundance test of all cell types
+        """
+
+        p_val = []
+        K = self.y.shape[1]
+
+        if self.y.shape[0] == 2:
+            p_val = [0 for x in range(K)]
+        else:
+            for k in range(K):
+                data_ct = pd.DataFrame({"x": self.x[:, 0],
+                                        "y": self.y[:, k]})
+
+                model_ct = glm('y ~ x', data=data_ct, family=sm.genmod.families.Poisson(), offset=np.log(self.n_total)).fit()
+                p_val.append(model_ct.pvalues[1])
+
+        self.p_val = p_val
+
+
+class CLRModel(FrequentistModel):
+    """
+    Implements a CLR transform and subsequent linear model on each cell type into the scdcdm framework
+    (for model comparison purposes)
+    """
+    def fit_model(self):
+        """
+        Fits CLR model
+
+        Returns
+        -------
+        p_val : list
+            p-values for differential abundance test of all cell types
+        """
+
+        p_val = []
+        K = self.y.shape[1]
+        D = self.x.shape[1]
+
+        if self.y.shape[0] == 2:
+            p_val = [0 for x in range(K)]
+        else:
+            # computes clr-transformed data matrix as a pandas DataFrame
+            geom_mean = np.prod(self.y, axis=1, keepdims=True) ** (1 / K)
+            y_clr = np.log(self.y / geom_mean)
+
+            for k in range(K):
+                data_ct = pd.DataFrame({"x": self.x[:, 0],
+                                        "y": y_clr[:, k]})
+
+                model_ct = glm('y ~ x', data=data_ct).fit()
+                p_val.append(model_ct.pvalues[1])
+
+        self.p_val = p_val
+
+
+class TTest(FrequentistModel):
+    """
+        Implements a KS test one each cell type into the scdcdm framework
+        (for model comparison purposes)
+    """
+
+    def fit_model(self):
+        """
+        Fits KS test model
+
+        Returns
+        -------
+        p_val : list
+            p-values for differential abundance test of all cell types
+        """
+
+        p_val = []
+        N, K = self.y.shape
+
+        n_group = int(N/2)
+
+        if self.y.shape[0] == 2:
+            p_val = [0 for x in range(K)]
+        else:
+            for k in range(K):
+
+                test = stats.ttest_ind(self.y[0:n_group, k], self.y[n_group:, k])
+                p_val.append(test[1])
+
+        self.p_val = p_val
+
+
+class CLR_ttest(FrequentistModel):
+    """
+    Implements a CLR transform and subsequent linear model on each cell type into the scdcdm framework
+    (for model comparison purposes)
+    """
+    def fit_model(self):
+        """
+        Fits CLR model
+
+        Returns
+        -------
+        p_val : list
+            p-values for differential abundance test of all cell types
+        """
+
+        p_val = []
+        N, K = self.y.shape
+        D = self.x.shape[1]
+
+        n_group = int(N/2)
+
+        if self.y.shape[0] == 2:
+            p_val = [0 for x in range(K)]
+        else:
+            # computes clr-transformed data matrix as a pandas DataFrame
+            geom_mean = np.prod(self.y, axis=1, keepdims=True) ** (1 / K)
+            y_clr = np.log(self.y / geom_mean)
+
+            for k in range(K):
+                test = stats.ttest_ind(y_clr[0:n_group, k], y_clr[n_group:, k])
+                p_val.append(test[1])
+
+        self.p_val = p_val
