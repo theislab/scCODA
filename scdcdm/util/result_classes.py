@@ -270,7 +270,10 @@ class CAResult(az.InferenceData):
             effect_df = self.effect_df
 
         # Get number of samples, cell types
-        data_dims = self.sampling_stats["y_hat"].shape
+        if self.sampling_stats["y_hat"] is not None:
+            data_dims = self.sampling_stats["y_hat"].shape
+        else:
+            data_dims = (10, 5)
 
         # Cut down DataFrames to relevant info
         alphas_print = intercept_df.loc[:, ["Final Parameter", "Expected Sample"]]

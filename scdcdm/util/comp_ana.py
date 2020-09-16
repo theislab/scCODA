@@ -9,6 +9,7 @@ import importlib
 
 from scdcdm.model import dirichlet_models as dm
 from scdcdm.model import other_models as om
+from scdcdm.model import dirichlet_time_models as tm
 
 
 class CompositionalAnalysis:
@@ -16,7 +17,7 @@ class CompositionalAnalysis:
     Initializer class for compositional models. Please refer to the tutorial for using this class.
     """
 
-    def __new__(cls, data, formula, baseline_index=None):
+    def __new__(cls, data, formula, baseline_index=None, time_column=None):
         """
         Builds count and covariate matrix, returns a CompositionalModel object
 
@@ -58,8 +59,13 @@ class CompositionalAnalysis:
                                   cell_types=cell_types, covariate_names=covariate_names, formula=formula)
         # No baseline index
         elif baseline_index is None:
-            return dm.NoBaselineModel(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
-                                      cell_types=cell_types, covariate_names=covariate_names, formula=formula)
+            if time_column is None:
+                return dm.NoBaselineModel(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
+                                          cell_types=cell_types, covariate_names=covariate_names, formula=formula)
+            else:
+                return tm.NoBaselineModelTime(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
+                                              cell_types=cell_types, covariate_names=covariate_names, formula=formula,
+                                              time_matrix=data.obs[time_column].to_numpy())
         # Column name as baseline index
         elif baseline_index in cell_types:
             num_index = cell_types.index(baseline_index)

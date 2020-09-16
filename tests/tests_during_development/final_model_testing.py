@@ -78,7 +78,6 @@ print(ana.covariate_names)
 #%%
 importlib.reload(mod)
 params_mcmc = ana.sample_hmc(num_results=int(1000), n_burnin=500)
-print(params_mcmc)
 
 #%%
 params_mcmc.summary()
@@ -316,7 +315,7 @@ model_all = mod.CompositionalAnalysis(data_all, formula="C(Condition, Treatment(
 #%%
 
 # Run MCMC
-sim_results = model_all.sample_hmc()
+sim_results = model_all.sample_hmc(num_results=1000, n_burnin=500)
 sim_results.summary()
 
 #%%

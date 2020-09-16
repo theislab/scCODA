@@ -24,7 +24,7 @@ class CompositionalModel:
     Implements class framework for compositional data models
     """
 
-    def __init__(self, covariate_matrix, data_matrix, cell_types, covariate_names, formula, *args, **kwargs):
+    def __init__(self, covariate_matrix, data_matrix, cell_types, covariate_names, formula, time_matrix=None, *args, **kwargs):
         """
         Generalized Constructor of model class
 
@@ -48,6 +48,10 @@ class CompositionalModel:
         self.cell_types = cell_types
         self.covariate_names = covariate_names
         self.formula = formula
+
+        if time_matrix is not None:
+            self.time_matrix = tf.convert_to_tensor(time_matrix, dtype)
+
 
         # Get dimensions of data
         self.N, self.D = self.x.shape
@@ -169,13 +173,9 @@ class CompositionalModel:
         """
 
         # (not in use atm)
-        constraining_bijectors = [
-            tfb.Identity(),
-            tfb.Identity(),
-            tfb.Identity(),
-            tfb.Identity(),
-            tfb.Identity(),
-        ]
+        constraining_bijectors = [tfb.Identity() for x in range(len(self.params))]
+
+
 
         # HMC transition kernel
         hmc_kernel = tfp.mcmc.HamiltonianMonteCarlo(
@@ -184,10 +184,12 @@ class CompositionalModel:
             num_leapfrog_steps=num_leapfrog_steps)
         hmc_kernel = tfp.mcmc.TransformedTransitionKernel(
             inner_kernel=hmc_kernel, bijector=constraining_bijectors)
+
         if n_burnin == 0:
             adapt_steps = int(0.2*num_results)
         else:
             adapt_steps = int(0.8*n_burnin)
+
         hmc_kernel = tfp.mcmc.SimpleStepSizeAdaptation(
             inner_kernel=hmc_kernel, num_adaptation_steps=adapt_steps, target_accept_prob=0.8)
 
@@ -207,7 +209,12 @@ class CompositionalModel:
 
         posterior = {var_name: [var] for var_name, var in params.items() if
                      "prediction" not in var_name}
-        posterior_predictive = {"prediction": [params["prediction"]]}
+
+        if "prediction" in self.param_names:
+            posterior_predictive = {"prediction": [params["prediction"]]}
+        else:
+            posterior_predictive = {}
+
         observed_data = {"y": self.y}
         dims = {"alpha": ["cell_type"],
                 "mu_b": ["1"],
@@ -752,7 +759,7 @@ class NoBaselineModelNoEdward(CompositionalModel):
     without specification of a baseline cell type
     """
 
-    def __init__(self, covariate_matrix, data_matrix):
+    def __init__(self, *args, **kwargs):
         """
         Constructor of model class
 
@@ -764,108 +771,123 @@ class NoBaselineModelNoEdward(CompositionalModel):
         :return
         NotImplementedError
         """
-        raise NotImplementedError
 
-        dtype = tf.float32
-        self.x = tf.cast(covariate_matrix, dtype)
-        self.y = tf.cast(data_matrix, dtype)
-        sample_counts = np.sum(data_matrix, axis=1)
-        self.n_total = tf.cast(sample_counts, dtype)
+        super(self.__class__, self).__init__(*args, **kwargs)
+
         self.baseline_index = None
-
-        # Get dimensions of data
-        N, D = self.x.shape
-        K = self.y.shape[1]
-
-        # Check input data
-        if N != self.y.shape[0]:
-            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(self.x.shape[0], self.y.shape[0]))
-        if N != len(self.n_total):
-            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
+        dtype = tf.float32
 
         # All parameters that are returned for analysis
-        self.param_names = ["mu_b", "sigma_b", "b_offset", "ind_raw", "alpha", "beta"]
+        self.param_names = ["mu_b", "sigma_b", "b_offset", "ind_raw", "alpha",
+                            "ind", "b_raw", "beta", "concentration", "prediction"]
 
-        alpha_size = [1, K]
-        beta_size = [D, K]
+        alpha_size = [self.K]
+        beta_size = [self.D, self.K]
 
-        self.model_struct = tfd.JointDistributionSequential([
-            tfd.Independent(
+        Root = tfd.JointDistributionCoroutine.Root
+
+        def model():
+            mu_b = yield Root(tfd.Independent(
                 tfd.Normal(loc=tf.zeros(1, dtype=dtype),
                            scale=tf.ones(1, dtype=dtype),
                            name="mu_b"),
-                reinterpreted_batch_ndims=1),
+                reinterpreted_batch_ndims=1))
 
-            tfd.Independent(
+            sigma_b = yield Root(tfd.Independent(
                 tfd.HalfCauchy(tf.zeros(1, dtype=dtype),
                                tf.ones(1, dtype=dtype),
                                name="sigma_b"),
-                reinterpreted_batch_ndims=1),
+                reinterpreted_batch_ndims=1))
 
-            tfd.Independent(
+            b_offset = yield Root(tfd.Independent(
                 tfd.Normal(
-                    loc=tf.zeros([D, K], dtype=dtype),
-                    scale=tf.ones([D, K], dtype=dtype),
+                    loc=tf.zeros(beta_size, dtype=dtype),
+                    scale=tf.ones(beta_size, dtype=dtype),
                     name="b_offset"),
-                reinterpreted_batch_ndims=2),
+                reinterpreted_batch_ndims=2))
 
             # Spike-and-slab
-            tfd.Independent(
+            ind_raw = yield Root(tfd.Independent(
                 tfd.Normal(
-                    loc=tf.zeros(shape=[D, K], dtype=dtype),
-                    scale=tf.ones(shape=[D, K], dtype=dtype)*50,
+                    loc=tf.zeros(shape=beta_size, dtype=dtype),
+                    scale=tf.ones(shape=beta_size, dtype=dtype),
                     name='ind_raw'),
-                reinterpreted_batch_ndims=2),
+                reinterpreted_batch_ndims=2))
 
-            tfd.Independent(
+            ind = tf.exp(ind_raw * 50) / (1 + tf.exp(ind_raw * 50))
+
+            b_raw = mu_b + sigma_b * b_offset
+
+            beta = ind * b_raw
+
+            alpha = yield Root(tfd.Independent(
                 tfd.Normal(
                     loc=tf.zeros(alpha_size),
                     scale=tf.ones(alpha_size) * 5,
                     name="alpha"),
-                reinterpreted_batch_ndims=2),
+                reinterpreted_batch_ndims=1))
+
+            concentrations = tf.exp(alpha + tf.matmul(tf.cast(self.x, dtype), beta))
 
             # Cell count prediction via DirMult
-            lambda alpha, ind_raw, b_offset, sigma_b, mu_b: tfd.Independent(
+            predictions = yield Root(tfd.Independent(
                 tfd.DirichletMultinomial(
                     total_count=tf.cast(self.n_total, dtype),
-                    concentration=tf.exp(alpha
-                                         + tf.matmul(tf.cast(self.x, dtype),
-                                                     (1 / (1 + tf.exp(-ind_raw)))
-                                                     * (mu_b + sigma_b * b_offset)
-                                                     )),
+                    concentration=concentrations,
                     name="predictions"),
-                reinterpreted_batch_ndims=1),
-        ])
+                reinterpreted_batch_ndims=1))
+
+        self.model_struct = tfd.JointDistributionCoroutine(model)
 
         # Joint posterior distribution
-        self.target_log_prob_fn = lambda mu_b_, sigma_b_, b_offset_, ind_, alpha_:\
-            self.model_struct.log_prob((mu_b_, sigma_b_, b_offset_, ind_, alpha_, tf.cast(self.y, dtype)))
+        self.target_log_prob_fn = lambda *args:\
+            self.model_struct.log_prob(list(args) + [tf.cast(self.y, dtype)])
 
         # MCMC starting values
         self.params = [tf.zeros(1, name="init_mu_b", dtype=dtype),
                        tf.ones(1, name="init_sigma_b", dtype=dtype),
                        tf.zeros(beta_size, name='init_b_offset', dtype=dtype),
                        tf.zeros(beta_size, name='init_ind_raw', dtype=dtype),
-                       tf.zeros(alpha_size, name='init_alpha', dtype=dtype),
+                       tf.zeros(alpha_size, name='init_alpha', dtype=dtype)
                        ]
 
-        self.vars = [tf.Variable(v, trainable=True) for v in self.params]
+        #self.vars = [tf.Variable(v, trainable=True) for v in self.params]
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, n_burnin):
-        alphas_final = states_burnin[4].numpy().mean(axis=0)
+        chain_size_y = [num_results - n_burnin, self.N, self.K]
 
-        ind_raw = states_burnin[3].numpy() * 50
-        ind = np.exp(ind_raw) / (1 + np.exp(ind_raw))
+        alphas = states_burnin[4]
+        alphas_final = alphas.mean(axis=0)
 
-        b_raw = np.array([states_burnin[0].numpy()[i] + (states_burnin[1].numpy()[i] * states_burnin[2].numpy()[i])
-                          for i in range(num_results - n_burnin)])
+        ind_raw = states_burnin[3] * 50
+        mu_b = states_burnin[0]
+        sigma_b = states_burnin[1]
+        b_offset = states_burnin[2]
 
-        betas = ind * b_raw
-        betas_final = betas.mean(axis=0)
+        ind_ = np.exp(ind_raw) / (1 + np.exp(ind_raw))
 
-        states_burnin.append(betas)
+        b_raw_ = mu_b.reshape((num_results - n_burnin, 1, 1)) + np.einsum("...jk, ...j->...jk", b_offset, sigma_b)
 
-        return tfd.DirichletMultinomial(self.n_total,
-                                        concentration=tf.exp(tf.matmul(self.x, betas_final) + alphas_final)).mean()
+        beta_ = np.einsum("..., ...", ind_, b_raw_)
 
+        conc_ = np.exp(np.einsum("jk, ...kl->...jl", self.x, beta_)
+                       + alphas.reshape((num_results - n_burnin, 1, self.K)))
+
+        predictions_ = np.zeros(chain_size_y)
+        for i in range(num_results - n_burnin):
+            pred = tfd.DirichletMultinomial(self.n_total, conc_[i, :, :]).mean().numpy()
+            predictions_[i, :, :] = pred
+
+        betas_final = beta_.mean(axis=0)
+        states_burnin.append(ind_)
+        states_burnin.append(b_raw_)
+        states_burnin.append(beta_)
+        states_burnin.append(conc_)
+        states_burnin.append(predictions_)
+
+        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float32)
+
+        y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
+
+        return y_mean
