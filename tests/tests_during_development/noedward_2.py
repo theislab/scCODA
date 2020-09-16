@@ -9,6 +9,8 @@ import tensorflow_probability as tfp
 import importlib
 import pandas as pd
 from tensorflow_probability.python.experimental import edward2 as ed
+import arviz as az
+import matplotlib.pyplot as plt
 
 from scdcdm.util import result_classes as res
 from scdcdm.model import dirichlet_models as mod
@@ -158,9 +160,7 @@ print(data.obs)
 
 model_t_2 = ca.CompositionalAnalysis(data, "x_0", baseline_index=None, time_column="time")
 
-result_t_2 = model_t_2.sample_hmc(num_results=int(1000), n_burnin=500)
-
-#%%
+result_t_2 = model_t_2.sample_hmc(num_results=int(20000), n_burnin=5000)
 
 result_t_2.summary()
 
@@ -168,5 +168,8 @@ result_t_2.summary()
 
 print(result_t_2.posterior["phi"])
 
+#%%
 
+az.plot_trace(result_t_2, var_names=["phi", "beta"], combined=True)
+plt.show()
 

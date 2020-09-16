@@ -91,7 +91,7 @@ class NoBaselineModelTime(CompositionalModel):
 
             phi = yield Root(tfd.Independent(
                 tfd.Normal(tf.ones(beta_size, dtype=dtype),
-                               tf.ones(beta_size, dtype=dtype),
+                               tf.ones(beta_size, dtype=dtype) * 0.1,
                                name="phi"),
                 reinterpreted_batch_ndims=2))
 
