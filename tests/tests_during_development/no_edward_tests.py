@@ -12,6 +12,7 @@ from tensorflow_probability.python.experimental import edward2 as ed
 
 from scdcdm.util import result_classes as res
 from scdcdm.model import dirichlet_models as mod
+from scdcdm.util import comp_ana as ca
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -40,22 +41,36 @@ print(y)
 #%%
 importlib.reload(mod)
 importlib.reload(res)
+import patsy as pt
+
+cell_types = data.var.index.to_list()
+
+formula = "x_0"
+
+# Get count data
+data_matrix = data.X.astype("float32")
+
+# Build covariate matrix from R-like formula
+covariate_matrix = pt.dmatrix(formula, data.obs)
+covariate_names = covariate_matrix.design_info.column_names[1:]
+covariate_matrix = covariate_matrix[:, 1:]
 
 
-model = mod.NoBaselineModelNoEdward(x, y)
-result = model.sample_hmc(num_results=int(10000), n_burnin=5000)
+model = mod.NoBaselineModelNoEdward(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
+                                    cell_types=cell_types, covariate_names=covariate_names, formula=formula)
+print(model.target_log_prob_fn(model.params["mu_b"], model.params["sigma_b"], model.params["b_offset"], model.params["ind_raw"], model.params["alpha"]))
+
+#%%
+result = model.sample_hmc(num_results=int(1000), n_burnin=500)
 
 result.summary()
 
 #%%
-model_2 = mod.NoBaselineModel(x, y)
+model_2 = ca.CompositionalAnalysis(data, "x_0", baseline_index=None)
 print(model_2.target_log_prob_fn(model_2.params[0], model_2.params[1], model_2.params[2], model_2.params[3], model_2.params[4]))
 
 #%%
-params_mcmc_2, y_hat_2 = model_2.sample_hmc(num_results=int(10000), n_burnin=5000)
-res_2 = res.CompAnaResult(params=params_mcmc_2, y_hat=y_hat_2, y=y, baseline=False,
-                                     cell_types=["type0", "type1", "type2", "type3", "type4"], covariate_names=["x0"])
-
+res_2 = model_2.sample_hmc(num_results=int(1000), n_burnin=500)
 res_2.summary()
 
 
