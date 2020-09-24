@@ -76,11 +76,32 @@ print(col)
 
 counts_bal = data_bal.iloc[:, :-33]
 
-counts_bal = counts_bal.loc[:, np.sum(counts_bal, axis=0) >= 100]
+counts_bal = counts_bal.loc[:, np.sum(counts_bal, axis=0) > 0]
 
 #%%
 
-data_bal_expr = pd.merge(counts_bal, data_bal.loc[:, col], right_index=True, left_index=True)
+seq_depths = []
+for n in range(counts_bal.shape[1]):
+    seq_depths.append(np.sum(counts_bal.iloc[:, n]>0))
+
+print(seq_depths)
+
+plt.hist(seq_depths, bins=np.max(seq_depths))
+plt.xlabel("sequencing depth")
+plt.ylabel("count")
+plt.show()
+
+#%%
+cum_seq = [np.sum([y>x for y in seq_depths]) for x in range(np.max(seq_depths))]
+print(cum_seq)
+# --> Take seq. depth >= 10; 239 OTUs
+
+counts_bal_depth10 = counts_bal.iloc[:, np.where(np.array(seq_depths) >= 10)[0]]
+print(counts_bal_depth10.shape)
+
+#%%
+
+data_bal_expr = pd.merge(counts_bal_depth10, data_bal.loc[:, col], right_index=True, left_index=True)
 
 print(data_bal_expr)
 
@@ -96,7 +117,7 @@ print(data_scdcdm.X.shape)
 
 # Free up some memory
 
-del([counts_bal, data, data_bal, metadata, meta_rel, file, otus, split])
+del([counts_bal, data, data_bal, metadata, meta_rel, file, otus, split, counts_bal_depth10])
 
 
 
@@ -241,7 +262,7 @@ importlib.reload(mod)
 
 model_mbs = mod.CompositionalAnalysis(data_scdcdm, "mbs_consolidated", baseline_index=None)
 
-result_mbs_nuts = model_mbs.sample_nuts(num_results=int(10000), n_burnin=0, num_adapt_steps=4000)
+result_mbs_nuts = model_mbs.sample_nuts(num_results=int(1000), n_burnin=0, num_adapt_steps=400)
 
 
 #%%
@@ -261,7 +282,7 @@ print(result_mbs_nuts.effect_df.loc[result_mbs_nuts.effect_df.index.get_level_va
 
 #%%
 
-coords = {"cell_type": names_int, "cell_type_nb": names_int, "draw": [x for x in range(100)]}
+coords = {"cell_type": names_int, "cell_type_nb": names_int, "draw": [x for x in range(1000)]}
 vn = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw", "ind", "b_raw", "beta"]
 
 az.plot_trace(result_mbs_nuts, coords=coords, var_names=vn, compact=True)
@@ -280,4 +301,21 @@ plt.show()
 #%%
 
 print(result_mbs_nuts.posterior["beta"].sel(cell_type=names_int[[2, 3]]))
+
+#%%
+result_mbs_nuts.save("C:/Users/Johannes/Documents/PhD/scdcdm/data/harrison_nuts_230920")
+
+#%%
+
+plt.plot(result_mbs_nuts.sample_stats['step_size'][0])
+plt.xlabel("sample")
+plt.ylabel("step size")
+plt.show()
+
+#%%
+
+plt.plot(result_mbs_nuts.sample_stats['leapfrogs_taken'][0])
+plt.xlabel("sample")
+plt.ylabel("No. of leapfrog steps")
+plt.show()
 

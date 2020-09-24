@@ -113,8 +113,8 @@ class CAResult(az.InferenceData):
         """
         # initialize summary df
         summ = az.summary(self, *args, **kwargs, kind="stats", var_names=["alpha", "beta"])
-        effect_df = summ.loc[summ.index.str.match("|".join(["beta"]))]
-        intercept_df = summ.loc[summ.index.str.match("|".join(["alpha"]))]
+        effect_df = summ.loc[summ.index.str.match("|".join(["beta"]))].copy()
+        intercept_df = summ.loc[summ.index.str.match("|".join(["alpha"]))].copy()
 
         # Build neat index
         cell_types = self.posterior.coords["cell_type"].values
@@ -132,14 +132,14 @@ class CAResult(az.InferenceData):
         hdis = intercept_df.columns[intercept_df.columns.str.contains("hdi")]
         hdis_new = hdis.str.replace("hdi_", "HDI ")
 
-        intercept_df = intercept_df.loc[:, ["final_parameter", hdis[0], hdis[1], "sd", "expected_sample"]]
+        intercept_df = intercept_df.loc[:, ["final_parameter", hdis[0], hdis[1], "sd", "expected_sample"]].copy()
         intercept_df = intercept_df.rename(columns=dict(zip(
             intercept_df.columns,
             ["Final Parameter", hdis_new[0], hdis_new[1], "SD", "Expected Sample"]
         )))
 
         effect_df = effect_df.loc[:, ["final_parameter", hdis[0], hdis[1], "sd", "inclusion_prob",
-                                       "expected_sample", "log_fold"]]
+                                       "expected_sample", "log_fold"]].copy()
         effect_df = effect_df.rename(columns=dict(zip(
             effect_df.columns,
             ["Final Parameter", hdis_new[0], hdis_new[1], "SD", "Inclusion probability",
@@ -190,8 +190,8 @@ class CAResult(az.InferenceData):
         self.model_specs["threshold_prob"] = threshold
 
         # Decide whether betas are significant or not
-        effect_df.loc[:, "final_parameter"] = np.where(effect_df["inclusion_prob"] > threshold,
-                                                      effect_df["mean_nonzero"],
+        effect_df.loc[:, "final_parameter"] = np.where(effect_df.loc[:, "inclusion_prob"] > threshold,
+                                                      effect_df.loc[:, "mean_nonzero"],
                                                       0)
 
         # Get expected sample, log-fold change
@@ -199,7 +199,7 @@ class CAResult(az.InferenceData):
         K = len(effect_df.index.levels[1])
 
         y_bar = np.mean(np.sum(np.array(self.observed_data.y), axis=1))
-        alpha_par = intercept_df["final_parameter"]
+        alpha_par = intercept_df.loc[:, "final_parameter"]
         alphas_exp = np.exp(alpha_par)
         alpha_sample = (alphas_exp / np.sum(alphas_exp) * y_bar).values
 
@@ -208,7 +208,7 @@ class CAResult(az.InferenceData):
         log_sample = []
 
         for d in range(D):
-            beta_d = effect_df["final_parameter"].values[(d*K):((d+1)*K)]
+            beta_d = effect_df.loc[:, "final_parameter"].values[(d*K):((d+1)*K)]
             beta_d = (beta_mean + beta_d)
             beta_d = np.exp(beta_d)
             beta_d = beta_d / np.sum(beta_d) * y_bar
@@ -236,11 +236,11 @@ class CAResult(az.InferenceData):
             Summary DataFrame with expected sample, final parameters
         """
 
-        intercept_df.loc[:, "final_parameter"] = intercept_df["mean"]
+        intercept_df = intercept_df.rename(columns={"mean": "final_parameter"})
 
         # Get expected sample
         y_bar = np.mean(np.sum(np.array(self.observed_data.y), axis=1))
-        alphas_exp = np.exp(intercept_df["final_parameter"])
+        alphas_exp = np.exp(intercept_df.loc[:, "final_parameter"])
         alpha_sample = (alphas_exp / np.sum(alphas_exp) * y_bar).values
         intercept_df.loc[:, "expected_sample"] = alpha_sample
 

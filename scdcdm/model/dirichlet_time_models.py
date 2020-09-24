@@ -3,15 +3,13 @@ import time
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow_probability.python.experimental import edward2 as ed
 from scdcdm.model.dirichlet_models import CompositionalModel
-
-from scdcdm.util import result_classes as res
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
 #%%
+
 
 class NoBaselineModelTime(CompositionalModel):
 
@@ -91,8 +89,8 @@ class NoBaselineModelTime(CompositionalModel):
 
             phi = yield Root(tfd.Independent(
                 tfd.Normal(tf.ones(beta_size, dtype=dtype),
-                               tf.ones(beta_size, dtype=dtype),
-                               name="phi"),
+                           tf.ones(beta_size, dtype=dtype) * 0.1,
+                           name="phi"),
                 reinterpreted_batch_ndims=2))
 
             phi_ = tf.repeat(phi[tf.newaxis, :], self.N, axis=0)

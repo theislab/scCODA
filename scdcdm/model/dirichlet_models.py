@@ -52,7 +52,6 @@ class CompositionalModel:
         if time_matrix is not None:
             self.time_matrix = tf.convert_to_tensor(time_matrix, dtype)
 
-
         # Get dimensions of data
         self.N, self.D = self.x.shape
         self.K = self.y.shape[1]
@@ -63,7 +62,7 @@ class CompositionalModel:
         if self.N != len(self.n_total):
             raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
 
-    def sampling(self, num_results, n_burnin, kernel, init_state, is_nuts=False):
+    def sampling(self, num_results, n_burnin, kernel, init_state, trace_fn):
         """
         MCMC sampling process
 
@@ -90,13 +89,7 @@ class CompositionalModel:
 
         # HMC sampling function
         @tf.function
-        def sample_mcmc(num_results_, n_burnin_, kernel_, current_state_, is_nuts=False):
-
-            if is_nuts:
-                trace_fn = lambda _, pkr: [pkr.inner_results.inner_results.log_accept_ratio]
-            else:
-                trace_fn = lambda _, pkr: [pkr.inner_results.inner_results.is_accepted,
-                                           pkr.inner_results.inner_results.accepted_results.step_size]
+        def sample_mcmc(num_results_, n_burnin_, kernel_, current_state_, trace_fn):
 
             return tfp.mcmc.sample_chain(
                 num_results=num_results_,
@@ -108,7 +101,7 @@ class CompositionalModel:
 
         # The actual sampling process
         start = time.time()
-        states, kernel_results = sample_mcmc(num_results, n_burnin, kernel, init_state, is_nuts)
+        states, kernel_results = sample_mcmc(num_results, n_burnin, kernel, init_state, trace_fn)
         duration = time.time() - start
         print("MCMC sampling finished. ({:.3f} sec)".format(duration))
 
@@ -136,22 +129,26 @@ class CompositionalModel:
         """
         # Samples after burn-in
         states_burnin = []
+        stats = {}
 
         for s in samples:
             states_burnin.append(s[n_burnin:].numpy())
 
+        for k, v in kernel_results.items():
+            stats[k] = v[n_burnin:].numpy()
+
         if is_nuts:
-            p_accept = np.mean(np.exp(kernel_results[0].numpy()))
+            p_accept = np.mean(np.exp(kernel_results["log_accept_ratio"].numpy()))
         else:
-            acceptances = kernel_results[0].numpy()
+            acceptances = kernel_results["is_accepted"].numpy()
 
             # Calculate acceptance rate
             p_accept = sum(acceptances) / acceptances.shape[0]
         print('Acceptance rate: %0.1f%%' % (100 * p_accept))
 
-        return states_burnin, p_accept
+        return states_burnin, stats, p_accept
 
-    def sample_hmc(self, num_results=int(20e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01):
+    def sample_hmc(self, num_results=int(20e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01, num_adapt_steps=None):
         """
         HMC sampling
 
@@ -172,10 +169,8 @@ class CompositionalModel:
             Compositional analysis result
         """
 
-        # (not in use atm)
+        # bijectors (not in use atm, therefore identity)
         constraining_bijectors = [tfb.Identity() for x in range(len(self.params))]
-
-
 
         # HMC transition kernel
         hmc_kernel = tfp.mcmc.HamiltonianMonteCarlo(
@@ -185,23 +180,36 @@ class CompositionalModel:
         hmc_kernel = tfp.mcmc.TransformedTransitionKernel(
             inner_kernel=hmc_kernel, bijector=constraining_bijectors)
 
-        if n_burnin == 0:
-            adapt_steps = int(0.2*num_results)
-        else:
-            adapt_steps = int(0.8*n_burnin)
+        # Set default value for adaptation steps
+        if num_adapt_steps is None:
+            num_adapt_steps = int(0.8 * n_burnin)
 
+        # Add step size adaptation
         hmc_kernel = tfp.mcmc.SimpleStepSizeAdaptation(
-            inner_kernel=hmc_kernel, num_adaptation_steps=adapt_steps, target_accept_prob=0.8)
+            inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8)
+
+        # tracing function
+        def trace_fn(_, pkr):
+            return {
+                'target_log_prob': pkr.inner_results.inner_results.accepted_results.target_log_prob,
+                'diverging': (pkr.inner_results.inner_results.log_accept_ratio < -1000.),
+                'is_accepted': pkr.inner_results.inner_results.is_accepted,
+                'step_size': pkr.inner_results.inner_results.accepted_results.step_size,
+            }
 
         # HMC sampling
-        states, kernel_results, duration = self.sampling(num_results, n_burnin, hmc_kernel, self.params)
-        states_burnin, acc_rate = self.get_chains_after_burnin(states, kernel_results, n_burnin)
+        states, kernel_results, duration = self.sampling(num_results, n_burnin, hmc_kernel, self.params, trace_fn)
 
+        # apply burnin
+        states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, n_burnin)
+
+        # Calculate posterior predictive
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
         params = dict(zip(self.param_names, states_burnin))
 
         # Result object generation setup
+        # Get names of cell types that are not the baseline
         if self.baseline_index is not None:
             cell_types_nb = self.cell_types[:self.baseline_index] + self.cell_types[self.baseline_index+1:]
         else:
@@ -242,10 +250,11 @@ class CompositionalModel:
                                      posterior_predictive=posterior_predictive,
                                      observed_data=observed_data,
                                      dims=dims,
+                                     sample_stats=sample_stats,
                                      coords=coords).to_result_data(sampling_stats=sampling_stats,
                                                                    model_specs=model_specs)
 
-    def sample_hmc_da(self, num_results=int(20e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01, num_adapt_steps=4000):
+    def sample_hmc_da(self, num_results=int(20e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01, num_adapt_steps=None):
         """
         HMC sampling
 
@@ -267,13 +276,7 @@ class CompositionalModel:
         """
 
         # (not in use atm)
-        constraining_bijectors = [
-            tfb.Identity(),
-            tfb.Identity(),
-            tfb.Identity(),
-            tfb.Identity(),
-            tfb.Identity(),
-        ]
+        constraining_bijectors = [tfb.Identity() for x in range(len(self.params))]
 
         # HMC transition kernel
         hmc_kernel = tfp.mcmc.HamiltonianMonteCarlo(
@@ -282,16 +285,28 @@ class CompositionalModel:
             num_leapfrog_steps=num_leapfrog_steps)
         hmc_kernel = tfp.mcmc.TransformedTransitionKernel(
             inner_kernel=hmc_kernel, bijector=constraining_bijectors)
-        # if n_burnin == 0:
-        #     adapt_steps = int(0.2*num_results)
-        # else:
-        #     adapt_steps = int(0.8*n_burnin)
+
+        # Set default value for adaptation steps
+        if num_adapt_steps is None:
+            num_adapt_steps = int(0.8*n_burnin)
+
+        # Add step size adaptation
         hmc_kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
-            inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8)
+            inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8, decay_rate=0.5)
+
+        # tracing function
+        def trace_fn(_, pkr):
+            return {
+                'target_log_prob': pkr.inner_results.inner_results.accepted_results.target_log_prob,
+                'diverging': (pkr.inner_results.inner_results.log_accept_ratio < -1000.),
+                "log_acc_ratio": pkr.inner_results.inner_results.log_accept_ratio,
+                'is_accepted': pkr.inner_results.inner_results.is_accepted,
+                'step_size': tf.exp(pkr.log_averaging_step[0]),
+            }
 
         # HMC sampling
-        states, kernel_results, duration = self.sampling(num_results, n_burnin, hmc_kernel, self.params)
-        states_burnin, acc_rate = self.get_chains_after_burnin(states, kernel_results, n_burnin)
+        states, kernel_results, duration = self.sampling(num_results, n_burnin, hmc_kernel, self.params, trace_fn)
+        states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, n_burnin)
 
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
@@ -305,7 +320,12 @@ class CompositionalModel:
 
         posterior = {var_name: [var] for var_name, var in params.items() if
                      "prediction" not in var_name}
-        posterior_predictive = {"prediction": [params["prediction"]]}
+
+        if "prediction" in self.param_names:
+            posterior_predictive = {"prediction": [params["prediction"]]}
+        else:
+            posterior_predictive = {}
+
         observed_data = {"y": self.y}
         dims = {"alpha": ["cell_type"],
                 "mu_b": ["1"],
@@ -324,6 +344,7 @@ class CompositionalModel:
                   "sample": range(self.y.shape[0])
                   }
 
+        # build dicionary with sampling statistics
         sampling_stats = {"chain_length": num_results, "n_burnin": n_burnin,
                         "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
 
@@ -333,10 +354,11 @@ class CompositionalModel:
                                      posterior_predictive=posterior_predictive,
                                      observed_data=observed_data,
                                      dims=dims,
+                                     sample_stats=sample_stats,
                                      coords=coords).to_result_data(sampling_stats=sampling_stats,
                                                                    model_specs=model_specs)
 
-    def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01, num_adapt_steps=4000):
+    def sample_nuts(self, num_results=int(10e3), n_burnin=int(5e3), max_tree_depth=10, step_size=0.01, num_adapt_steps=None):
         """
         NUTS sampling - WIP, DO NOT USE!!!
 
@@ -357,13 +379,8 @@ class CompositionalModel:
             NotImplementedError
         """
 
-        constraining_bijectors = [
-            tfb.Identity(),
-            tfb.Identity(),
-            tfb.Identity(),
-            tfb.Identity(),
-            tfb.Identity(),
-        ]
+        # bijectors (not in use atm, therefore identity)
+        constraining_bijectors = [tfb.Identity() for x in range(len(self.params))]
 
         # NUTS transition kernel
         nuts_kernel = tfp.mcmc.NoUTurnSampler(
@@ -374,6 +391,12 @@ class CompositionalModel:
             inner_kernel=nuts_kernel,
             bijector=constraining_bijectors
         )
+
+        # Set default value for adaptation steps
+        if num_adapt_steps is None:
+            num_adapt_steps = int(0.8 * n_burnin)
+
+        # Step size adaptation
         nuts_kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
             inner_kernel=nuts_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8,
             step_size_setter_fn=lambda pkr, new_step_size: pkr._replace(
@@ -383,14 +406,29 @@ class CompositionalModel:
             log_accept_prob_getter_fn=lambda pkr: pkr.inner_results.log_accept_ratio,
         )
 
+        # trace function
+        def trace_fn(_, pkr):
+            return {
+                "target_log_prob": pkr.inner_results.inner_results.target_log_prob,
+                "leapfrogs_taken": pkr.inner_results.inner_results.leapfrogs_taken,
+                "diverging": pkr.inner_results.inner_results.has_divergence,
+                "energy": pkr.inner_results.inner_results.energy,
+                "log_accept_ratio": pkr.inner_results.inner_results.log_accept_ratio,
+                'step_size': pkr.inner_results.inner_results.step_size[0],
+                "reach_max_depth": pkr.inner_results.inner_results.reach_max_depth,
+                "is_accepted": pkr.inner_results.inner_results.is_accepted,
+            }
+
         # HMC sampling
-        states, kernel_results, duration = self.sampling(num_results, n_burnin, nuts_kernel, self.params, is_nuts=True)
-        states_burnin, acc_rate = self.get_chains_after_burnin(states, kernel_results, n_burnin, is_nuts=True)
+        states, kernel_results, duration = self.sampling(num_results, n_burnin, nuts_kernel, self.params, trace_fn)
+        states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, n_burnin, is_nuts=True)
 
         y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
 
         params = dict(zip(self.param_names, states_burnin))
+
         # Result object generation setup
+        # Get names of cell types that are not the baseline
         if self.baseline_index is not None:
             cell_types_nb = self.cell_types[:self.baseline_index] + self.cell_types[self.baseline_index + 1:]
         else:
@@ -398,7 +436,12 @@ class CompositionalModel:
 
         posterior = {var_name: [var] for var_name, var in params.items() if
                      "prediction" not in var_name}
-        posterior_predictive = {"prediction": [params["prediction"]]}
+
+        if "prediction" in self.param_names:
+            posterior_predictive = {"prediction": [params["prediction"]]}
+        else:
+            posterior_predictive = {}
+
         observed_data = {"y": self.y}
         dims = {"alpha": ["cell_type"],
                 "mu_b": ["1"],
@@ -426,6 +469,7 @@ class CompositionalModel:
                                      posterior_predictive=posterior_predictive,
                                      observed_data=observed_data,
                                      dims=dims,
+                                     sample_stats=sample_stats,
                                      coords=coords).to_result_data(sampling_stats=sampling_stats,
                                                                    model_specs=model_specs)
 
@@ -640,7 +684,7 @@ class BaselineModel(CompositionalModel):
                 loc=tf.zeros(shape=[D, K-1], dtype=dtype),
                 scale=tf.ones(shape=[D, K-1], dtype=dtype),
                 name='sigma_ind_raw')
-            ind_t = sigma_ind_raw * 50
+            ind_t = sigma_ind_raw * 10
             ind = tf.exp(ind_t) / (1 + tf.exp(ind_t))
 
             # Calculate betas
@@ -712,7 +756,7 @@ class BaselineModel(CompositionalModel):
         alphas = states_burnin[0]
         alphas_final = alphas.mean(axis=0)
 
-        ind_raw = states_burnin[4] * 50
+        ind_raw = states_burnin[4] * 10
         mu_b = states_burnin[1]
         sigma_b = states_burnin[2]
         b_offset = states_burnin[3]
@@ -814,7 +858,8 @@ class NoBaselineModelNoEdward(CompositionalModel):
                     name='ind_raw'),
                 reinterpreted_batch_ndims=2))
 
-            ind = tf.exp(ind_raw * 50) / (1 + tf.exp(ind_raw * 50))
+            ind_scaled = ind_raw * 50
+            ind = tf.exp(ind_scaled) / (1 + tf.exp(ind_scaled))
 
             b_raw = mu_b + sigma_b * b_offset
 
@@ -852,6 +897,155 @@ class NoBaselineModelNoEdward(CompositionalModel):
                        ]
 
         #self.vars = [tf.Variable(v, trainable=True) for v in self.params]
+
+    # Calculate predicted cell counts (for analysis purposes)
+    def get_y_hat(self, states_burnin, num_results, n_burnin):
+        chain_size_y = [num_results - n_burnin, self.N, self.K]
+
+        alphas = states_burnin[4]
+        alphas_final = alphas.mean(axis=0)
+
+        ind_raw = states_burnin[3] * 50
+        mu_b = states_burnin[0]
+        sigma_b = states_burnin[1]
+        b_offset = states_burnin[2]
+
+        ind_ = np.exp(ind_raw) / (1 + np.exp(ind_raw))
+
+        b_raw_ = mu_b.reshape((num_results - n_burnin, 1, 1)) + np.einsum("...jk, ...j->...jk", b_offset, sigma_b)
+
+        beta_ = np.einsum("..., ...", ind_, b_raw_)
+
+        conc_ = np.exp(np.einsum("jk, ...kl->...jl", self.x, beta_)
+                       + alphas.reshape((num_results - n_burnin, 1, self.K)))
+
+        predictions_ = np.zeros(chain_size_y)
+        for i in range(num_results - n_burnin):
+            pred = tfd.DirichletMultinomial(self.n_total, conc_[i, :, :]).mean().numpy()
+            predictions_[i, :, :] = pred
+
+        betas_final = beta_.mean(axis=0)
+        states_burnin.append(ind_)
+        states_burnin.append(b_raw_)
+        states_burnin.append(beta_)
+        states_burnin.append(conc_)
+        states_burnin.append(predictions_)
+
+        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float32)
+
+        y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
+
+        return y_mean
+
+
+class BaselineModelNoEdward(CompositionalModel):
+
+    """
+    WIP! DO NOT USE!!!
+
+    implements statistical model and
+    test statistics for compositional differential change analysis
+    without specification of a baseline cell type
+    """
+
+    def __init__(self, baseline_index, *args, **kwargs):
+        """
+        Constructor of model class
+
+        :param covariate_matrix: numpy array [NxD] - covariate matrix
+        :param data_matrix: numpy array [NxK] - cell count matrix
+        :param sample_counts: numpy array [N] - number of cells per sample
+        :param dtype: data type for all numbers (for tensorflow)
+
+        :return
+        NotImplementedError
+        """
+
+        super(self.__class__, self).__init__(*args, **kwargs)
+
+        self.baseline_index = baseline_index
+        dtype = tf.float32
+
+        # All parameters that are returned for analysis
+        self.param_names = ["mu_b", "sigma_b", "b_offset", "ind_raw", "alpha",
+                            "ind", "b_raw", "beta", "concentration", "prediction"]
+
+        alpha_size = [self.K]
+        beta_size = [self.D, self.K]
+        beta_nobl_size = [self.D, self.K-1]
+
+        Root = tfd.JointDistributionCoroutine.Root
+
+        def model():
+            mu_b = yield Root(tfd.Independent(
+                tfd.Normal(loc=tf.zeros(1, dtype=dtype),
+                           scale=tf.ones(1, dtype=dtype),
+                           name="mu_b"),
+                reinterpreted_batch_ndims=1))
+
+            sigma_b = yield Root(tfd.Independent(
+                tfd.HalfCauchy(tf.zeros(1, dtype=dtype),
+                               tf.ones(1, dtype=dtype),
+                               name="sigma_b"),
+                reinterpreted_batch_ndims=1))
+
+            b_offset = yield Root(tfd.Independent(
+                tfd.Normal(
+                    loc=tf.zeros(beta_nobl_size, dtype=dtype),
+                    scale=tf.ones(beta_nobl_size, dtype=dtype),
+                    name="b_offset"),
+                reinterpreted_batch_ndims=2))
+
+            # Spike-and-slab
+            ind_raw = yield Root(tfd.Independent(
+                tfd.Normal(
+                    loc=tf.zeros(shape=beta_nobl_size, dtype=dtype),
+                    scale=tf.ones(shape=beta_nobl_size, dtype=dtype),
+                    name='ind_raw'),
+                reinterpreted_batch_ndims=2))
+
+            ind_scaled = ind_raw * 50
+            ind = tf.exp(ind_scaled) / (1 + tf.exp(ind_scaled))
+
+            b_raw = mu_b + sigma_b * b_offset
+
+            beta = ind * b_raw
+
+            # Include slope 0 for baseline cell type
+            beta = tf.concat(axis=1, values=[beta[:, :baseline_index],
+                                             tf.fill(value=0., dims=[self.D, 1]),
+                                             beta[:, baseline_index:]])
+
+            alpha = yield Root(tfd.Independent(
+                tfd.Normal(
+                    loc=tf.zeros(alpha_size),
+                    scale=tf.ones(alpha_size) * 5,
+                    name="alpha"),
+                reinterpreted_batch_ndims=1))
+
+            concentrations = tf.exp(alpha + tf.matmul(self.x, beta))
+
+            # Cell count prediction via DirMult
+            predictions = yield Root(tfd.Independent(
+                tfd.DirichletMultinomial(
+                    total_count=tf.cast(self.n_total, dtype),
+                    concentration=concentrations,
+                    name="predictions"),
+                reinterpreted_batch_ndims=1))
+
+        self.model_struct = tfd.JointDistributionCoroutine(model)
+
+        # Joint posterior distribution
+        self.target_log_prob_fn = lambda *args:\
+            self.model_struct.log_prob(list(args) + [tf.cast(self.y, dtype)])
+
+        # MCMC starting values
+        self.params = [tf.zeros(1, name="init_mu_b", dtype=dtype),
+                       tf.ones(1, name="init_sigma_b", dtype=dtype),
+                       tf.random.normal(beta_nobl_size, 0, 1, name='init_b_offset', dtype=dtype),
+                       tf.zeros(beta_nobl_size, name='init_ind_raw', dtype=dtype),
+                       tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype)
+                       ]
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, n_burnin):

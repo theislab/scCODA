@@ -1,14 +1,10 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import numpy as np
-
 import tensorflow as tf
 import tensorflow_probability as tfp
 import importlib
 import pandas as pd
-from tensorflow_probability.python.experimental import edward2 as ed
+import arviz as az
+import matplotlib.pyplot as plt
 
 from scdcdm.util import result_classes as res
 from scdcdm.model import dirichlet_models as mod
@@ -86,22 +82,33 @@ print(params)
 
 importlib.reload(mod)
 importlib.reload(res)
-import patsy as pt
 
 formula = "x_0"
 
-model = mod.NoBaselineModelNoEdward(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
+model = mod.NoBaselineModel(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
                                     cell_types=cell_types, covariate_names=covariate_names, formula=formula)
-#print(model.target_log_prob_fn(*(params.values())))
 
 #%%
-result = model.sample_hmc(num_results=int(1000), n_burnin=500)
+result = model.sample_hmc_da(num_results=int(1000), n_burnin=0, num_adapt_steps=400)
 
 result.summary()
 
+
+#%%
+
+print(result.sample_stats["log_acc_ratio"])
+#%%
+az.plot_trace(result, combined=True, compact=True,
+              #coords={"draw": np.arange(5000, 10000)}
+              )
+plt.show()
+
+#%%
+plt.plot(result.sample_stats['step_size'][0])
+plt.show()
+
 #%%
 model_2 = ca.CompositionalAnalysis(data, "x_0", baseline_index=None)
-print(model_2.target_log_prob_fn(model_2.params[0], model_2.params[1], model_2.params[2], model_2.params[3], model_2.params[4]))
 
 #%%
 res_2 = model_2.sample_hmc(num_results=int(20000), n_burnin=5000)
