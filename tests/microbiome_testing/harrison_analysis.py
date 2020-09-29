@@ -82,7 +82,7 @@ counts_bal = counts_bal.loc[:, np.sum(counts_bal, axis=0) > 0]
 
 seq_depths = []
 for n in range(counts_bal.shape[1]):
-    seq_depths.append(np.sum(counts_bal.iloc[:, n]>0))
+    seq_depths.append(np.sum(counts_bal.iloc[:, n] > 0))
 
 print(seq_depths)
 
@@ -92,8 +92,9 @@ plt.ylabel("count")
 plt.show()
 
 #%%
-cum_seq = [np.sum([y>x for y in seq_depths]) for x in range(np.max(seq_depths))]
-print(cum_seq)
+cum_seq = [np.sum([y > x for y in seq_depths]) for x in range(np.max(seq_depths))]
+for i in range(len(cum_seq)):
+    print(f"{i}: {cum_seq[i]}")
 # --> Take seq. depth >= 10; 239 OTUs
 
 counts_bal_depth10 = counts_bal.iloc[:, np.where(np.array(seq_depths) >= 10)[0]]
@@ -104,8 +105,6 @@ print(counts_bal_depth10.shape)
 data_bal_expr = pd.merge(counts_bal_depth10, data_bal.loc[:, col], right_index=True, left_index=True)
 
 print(data_bal_expr)
-
-
 
 #%%
 
@@ -118,9 +117,6 @@ print(data_scdcdm.X.shape)
 # Free up some memory
 
 del([counts_bal, data, data_bal, metadata, meta_rel, file, otus, split, counts_bal_depth10])
-
-
-
 
 #%%
 importlib.reload(mod)
@@ -317,5 +313,36 @@ plt.show()
 plt.plot(result_mbs_nuts.sample_stats['leapfrogs_taken'][0])
 plt.xlabel("sample")
 plt.ylabel("No. of leapfrog steps")
+plt.show()
+
+
+
+#%%
+depths = [36, 35, 34, 33, 32, 31, 30, 29, 28]
+
+results = []
+
+for i in depths:
+    counts_bal_ = counts_bal.iloc[:, np.where(np.array(seq_depths) > i)[0]]
+    print(f"sequencing depth: {i+1}")
+    print(f"{counts_bal_.shape[1]} OTUs")
+
+    data_bal_expr = pd.merge(counts_bal_, data_bal.loc[:, col], right_index=True, left_index=True)
+    data_scdcdm = dat.from_pandas(data_bal_expr, col)
+
+    model_mbs = mod.CompositionalAnalysis(data_scdcdm, "mbs_consolidated", baseline_index=None)
+    result_mbs_nuts = model_mbs.sample_nuts(num_results=int(50), n_burnin=0, num_adapt_steps=45)
+
+    results.append(result_mbs_nuts)
+
+#%%
+
+fig, ax = plt.subplots(ncols=9, sharey=True, figsize=(20, 5))
+for i in range(9):
+    ax[i].plot(results[i].sample_stats['step_size'][0])
+    ax[i].set_title(f"{cum_seq[depths[i]]} OTUs")
+
+    ax[i].set_xlabel("sample")
+ax[0].set_ylabel("step size")
 plt.show()
 

@@ -896,8 +896,6 @@ class NoBaselineModelNoEdward(CompositionalModel):
                        tf.zeros(alpha_size, name='init_alpha', dtype=dtype)
                        ]
 
-        #self.vars = [tf.Variable(v, trainable=True) for v in self.params]
-
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, n_burnin):
         chain_size_y = [num_results - n_burnin, self.N, self.K]
