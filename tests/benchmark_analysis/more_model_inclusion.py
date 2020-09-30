@@ -70,11 +70,11 @@ extract_all_generated_data(results, dataset_path)
 
 
 
-
+importlib.reload(om)
 
 dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets\\"
 
-results = add.model_all_datasets(dataset_path, "Haber", alpha=0.05)
+results = add.model_all_datasets(dataset_path, "ALDEx2", fit_args={"method": "we.eBH", "mc_samples": 128})
 
 #%%
 

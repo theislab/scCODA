@@ -10,7 +10,7 @@ from scdcdm.util import data_generation as gen
 from scdcdm.model import other_models as om
 
 
-def model_on_one_datafile(file_path, model_name, *args, **kwargs):
+def model_on_one_datafile(file_path, model_name, fit_args={}, *args, **kwargs):
     with open(file_path, "rb") as f:
         data = pkl.load(f)
 
@@ -38,6 +38,11 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
             mod.fit_model()
             tp, tn, fp, fn = mod.eval_model(*args, **kwargs)
 
+        elif model_name == "ALDEx2":
+            mod = om.ALDEx2Model(data["datasets"][d])
+            mod.fit_model(**fit_args)
+            tp, tn, fp, fn = mod.eval_model(*args, **kwargs)
+
         else:
             raise ValueError("Invalid model name specified!")
 
@@ -49,7 +54,7 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
     return fin_df
 
 
-def model_all_datasets(directory,  model_name, *args, **kwargs):
+def model_all_datasets(directory, model_name, fit_args={}, *args, **kwargs):
 
     file_names = os.listdir(directory)
 
@@ -63,7 +68,7 @@ def model_all_datasets(directory,  model_name, *args, **kwargs):
     for name in file_names:
         print(f"{k}/{l}")
 
-        res = model_on_one_datafile(directory+name, model_name, *args, **kwargs)
+        res = model_on_one_datafile(directory+name, model_name, fit_args, *args, **kwargs)
 
         results = results.append(res)
         k += 1

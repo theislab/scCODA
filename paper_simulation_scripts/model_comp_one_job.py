@@ -11,7 +11,13 @@ save_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/resu
 model_name = sys.argv[1]
 print("model name:", model_name)
 
-results = add.model_all_datasets(dataset_path, model_name, alpha=0.05, fdr_correct=True)
+if model_name == "ALDEx2":
+    results = add.model_all_datasets(dataset_path, "ALDEx2",
+                                     fit_args={"server": True, "method": "we.eBH", "mc_samples": 128},
+                                     alpha=0.05, fdr_correct=True)
+
+else:
+    results = add.model_all_datasets(dataset_path, model_name, alpha=0.05, fdr_correct=True)
 
 results = add.get_scores(results)
 

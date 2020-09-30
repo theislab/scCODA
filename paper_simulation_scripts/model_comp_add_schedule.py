@@ -1,7 +1,7 @@
 # Create bash script to execute model_comp_one_job.py
 import os
 
-models = ["Haber", "ttest", "clr_ttest"]
+models = ["ALDEx2"]
 
 count = 0
 
@@ -18,7 +18,7 @@ for m in models:
         fh.writelines("#SBATCH --nice=100\n")
         fh.writelines("#SBATCH -t 2-00:00:00\n")
         fh.writelines("/home/icb/johannes.ostner/anaconda3/bin/python /home/icb/johannes.ostner/compositional_diff/benchmark_scripts/paper_simulation_scripts/model_comp_one_job.py " +
-                str(m).replace(" ", "")
+                      str(m).replace(" ", "")
                       )
 
     os.system("sbatch /home/icb/johannes.ostner/compositional_diff/benchmark_scripts/paper_simulation_scripts/comp_add_script_" + str(count) + ".sh")

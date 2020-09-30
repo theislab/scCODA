@@ -23,6 +23,7 @@ from scdcdm.model import dirichlet_models as dm
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
+import os
 
 class SimpleModel(dm.CompositionalModel):
     """
@@ -432,7 +433,7 @@ class FrequentistModel:
         if N != len(self.n_total):
             raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(y.shape[0], len(self.n_total)))
 
-    def eval_model(self, alpha, fdr_correct=True):
+    def eval_model(self, alpha=0.05, fdr_correct=True):
         """
         Evaluates array of p-values.
         It is assumed that the effect on the first cell type is significant, all others are not.
@@ -593,3 +594,46 @@ class CLR_ttest(FrequentistModel):
                 p_val.append(test[1])
 
         self.p_val = p_val
+
+
+class ALDEx2Model(FrequentistModel):
+
+    def fit_model(self, method="we.eBH", server=False, *args, **kwargs):
+
+        if server:
+            os.environ["R_HOME"] = "/home/icb/johannes.ostner/anaconda3/lib/R"
+            os.environ["PATH"] = r"/home/icb/johannes.ostner/anaconda3/lib/R/bin" + ";" + os.environ["PATH"]
+        else:
+            os.environ["R_HOME"] = "C:\\Program Files\\R\\R-4.0.2"
+            os.environ["PATH"] = r"C:\\Program Files\\R\\R-4.0.2\\bin\\x64" + ";" + os.environ["PATH"]
+
+        K = self.y.shape[1]
+
+        if self.y.shape[0] == 2:
+            p_val = [0 for x in range(K)]
+            self.result = None
+        else:
+
+            import rpy2.robjects as rp
+            from rpy2.robjects import numpy2ri, pandas2ri
+            numpy2ri.activate()
+            pandas2ri.activate()
+            import rpy2.robjects.packages as rpackages
+            aldex2 = rpackages.importr("ALDEx2")
+
+            cond = rp.vectors.FloatVector(self.x.astype("str").flatten().tolist())
+
+            X_t = self.y.T
+            nr, nc = X_t.shape
+            X_r = rp.r.matrix(X_t, nrow=nr, ncol=nc)
+
+            aldex_out = aldex2.aldex(X_r, cond, *args, **kwargs)
+            aldex_out = pd.DataFrame(aldex_out)
+
+            p_val = aldex_out.loc[:, method]
+
+            self.result = aldex_out
+
+        self.p_val = p_val
+
+
