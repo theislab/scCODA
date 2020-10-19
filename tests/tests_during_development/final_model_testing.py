@@ -132,6 +132,7 @@ params_mcmc.traceplots()
 #%%
 importlib.reload(mod)
 
+model = mod.CompositionalAnalysis(data, "x_0", baseline_index=None)
 params_nuts = model.sample_nuts(num_results=int(1e4), n_burnin=5000)
 print(params_nuts)
 
@@ -269,7 +270,7 @@ for i in range(9):
 
 #%% Haber data on multiple categories
 
-cell_counts = pd.read_csv("C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\haber_counts.csv")
+cell_counts = pd.read_csv("C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\haber_counts.csv")
 
 print(cell_counts)
 
@@ -335,3 +336,33 @@ m_s = m.fit()
 
 #%%
 print(m_s.summary())
+
+
+#%% Haber data on multiple categories
+
+cell_counts = pd.read_csv("C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\haber_counts.csv")
+
+print(cell_counts)
+
+# Convert data to anndata object
+
+# Filter out salmonella data
+
+data_salm = dat.from_pandas(cell_counts, covariate_columns=["Mouse"])
+
+# Extract condition from mouse name and add it as an extra column to the covariates
+data_salm.obs["Condition"] = data_salm.obs["Mouse"].str.replace(r"_[0-9]", "")
+print(data_salm.X)
+print(data_salm.obs)
+
+#%%
+
+salm_df.index = pd.Series([0, 1, 2, 3, 4, 5])
+print(salm_df.index)
+data_salm_2 = dat.from_pandas(salm_df, covariate_columns=["Mouse"])
+data_salm_2.obs["Condition"] = data_salm_2.obs["Mouse"].str.replace(r"_[0-9]", "")
+
+#%%
+from scdcdm.util import data_visualization as viz
+
+viz.plot_feature_stackbars(data_salm, ["Condition"])

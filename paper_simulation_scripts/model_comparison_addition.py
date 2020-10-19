@@ -3,6 +3,7 @@ import pandas as pd
 import pickle as pkl
 import os
 import sys
+import patsy as pt
 
 sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/SCDCdm/')
 
@@ -38,10 +39,65 @@ def model_on_one_datafile(file_path, model_name, fit_args={}, *args, **kwargs):
             mod.fit_model()
             tp, tn, fp, fn = mod.eval_model(*args, **kwargs)
 
-        elif model_name == "ALDEx2":
+        elif model_name in ["ALDEx2", "ALDEx2_alr"]:
             mod = om.ALDEx2Model(data["datasets"][d])
             mod.fit_model(**fit_args)
             tp, tn, fp, fn = mod.eval_model(*args, **kwargs)
+
+        elif model_name == "alr_ttest":
+            mod = om.ALRModel_ttest(data["datasets"][d])
+            mod.fit_model(reference_index=4)
+            tp, tn, fp, fn = mod.eval_model(*args, **kwargs)
+
+        elif model_name == "alr_wilcoxon":
+            mod = om.ALRModel_wilcoxon(data["datasets"][d])
+            mod.fit_model(reference_index=4)
+            tp, tn, fp, fn = mod.eval_model(*args, **kwargs)
+
+        elif model_name == "ancom":
+            mod = om.AncomModel(data["datasets"][d])
+            mod.fit_model()
+            tp, tn, fp, fn = mod.eval_model()
+
+        elif model_name == "dirichreg":
+            mod = om.DirichRegModel(data["datasets"][d])
+            mod.fit_model()
+            tp, tn, fp, fn = mod.eval_model()
+
+        elif model_name == "simple_dm":
+            dat = data["datasets"][d]
+            K = dat.X.shape[1]
+            formula = "x_0"
+
+            cell_types = dat.var.index.to_list()
+
+            # Get count data
+            data_matrix = dat.X.astype("float32")
+
+            # Build covariate matrix from R-like formula
+            covariate_matrix = pt.dmatrix(formula, dat.obs)
+            covariate_names = covariate_matrix.design_info.column_names[1:]
+            covariate_matrix = covariate_matrix[:, 1:]
+
+            mod = om.SimpleModel(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
+                           cell_types=cell_types, covariate_names=covariate_names, formula=formula,
+                                 baseline_index=K-1)
+
+            result_temp = mod.sample_hmc(*args, **kwargs)
+            alphas_df, betas_df = result_temp.summary_prepare(credible_interval=0.95)
+
+
+            final_betas = np.where((betas_df.loc[:, "HDI 3%"] < 0) &
+                                   (betas_df.loc[:, "HDI 97%"] > 0),
+                                   0,
+                                   betas_df.loc[:, "Final Parameter"])
+
+            ks = list(range(K))[1:]
+
+            tp = sum([final_betas[0] != 0])
+            fn = sum([final_betas[0] == 0])
+            tn = sum([final_betas[k] == 0 for k in ks])
+            fp = sum([final_betas[k] != 0 for k in ks])
 
         else:
             raise ValueError("Invalid model name specified!")

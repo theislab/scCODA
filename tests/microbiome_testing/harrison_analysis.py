@@ -86,10 +86,10 @@ for n in range(counts_bal.shape[1]):
 
 print(seq_depths)
 
-plt.hist(seq_depths, bins=np.max(seq_depths))
-plt.xlabel("sequencing depth")
-plt.ylabel("count")
-plt.show()
+# plt.hist(seq_depths, bins=np.max(seq_depths))
+# plt.xlabel("sequencing depth")
+# plt.ylabel("count")
+# plt.show()
 
 #%%
 cum_seq = [np.sum([y > x for y in seq_depths]) for x in range(np.max(seq_depths))]
@@ -346,3 +346,24 @@ for i in range(9):
 ax[0].set_ylabel("step size")
 plt.show()
 
+
+
+#%%
+
+counts_bal_ = counts_bal.iloc[:, np.where(np.array(seq_depths) > 49)[0]]
+print(f"{counts_bal_.shape[1]} OTUs")
+
+data_bal_expr = pd.merge(counts_bal_, data_bal.loc[:, col], right_index=True, left_index=True)
+data_scdcdm = dat.from_pandas(data_bal_expr, col)
+
+model_mbs = mod.CompositionalAnalysis(data_scdcdm, "mbs_consolidated", baseline_index=None)
+result_mbs_nuts = model_mbs.sample_hmc(num_results=int(10000), n_burnin=0, num_adapt_steps=1000)
+
+#%%
+
+#coords = {"cell_type": names_int[[2, 3, 5]], "cell_type_nb": names_int[[2, 3, 5]], "draw": [x for x in range(200)]}
+vn = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw", "ind", "b_raw", "beta"]
+
+az.plot_trace(result_mbs_nuts, var_names=vn, compact=True, divergences=None)
+
+plt.show()

@@ -23,13 +23,15 @@ utils.chooseCRANmirror(ind=1) # select the first mirror in the list
 
 aldex2 = rpackages.importr("ALDEx2")
 tv = rpackages.importr("tidyverse")
+dirreg = rpackages.importr("DirichletReg")
+r_base = rpackages.importr("base")
 
 #%%
 
 # r install procedure
 
 utils = rpackages.importr('utils')
-utils.install_packages("tidyverse")
+utils.install_packages("DirichletReg")
 
 #%%
 
@@ -62,8 +64,12 @@ X_t = data.X.T
 nr, nc = X_t.shape
 X_r = rp.r.matrix(X_t, nrow=nr, ncol=nc)
 
-aldex_out = aldex2.aldex(X_r, cond, mc_samples=128)
-aldex_out = pd.DataFrame(aldex_out)
+denom = rp.vectors.FloatVector([5])
+
+aldex_out = aldex2.aldex_clr(X_r, cond, mc_samples=128, denom=denom)
+aldex_out_2 = aldex2.aldex_ttest(aldex_out)
+# aldex_out = pd.DataFrame(aldex_out)
+print(aldex_out_2)
 
 #%%
 
@@ -99,7 +105,7 @@ results = []
 simulation_parameters = ["cases", "K", "n_total", "n_samples", "b_true", "w_true", "num_results"]
 params = pd.DataFrame(columns=simulation_parameters)
 
-for name in file_names[:5]:
+for name in file_names[:3]:
     with open(dataset_path + name, "rb") as f:
         data = pkl.load(f)
 
@@ -107,7 +113,7 @@ for name in file_names[:5]:
 
         for d in range(len(data["datasets"])):
             mod = om.ALDEx2Model(data["datasets"][d])
-            mod.fit_model("we.eBH", mc_samples=128)
+            mod.fit_model("we.eBH", mc_samples=128, denom=rp.vectors.FloatVector([5]))
 
             results.append(mod.result)
 
@@ -118,3 +124,103 @@ pd.set_option('display.max_columns', 500)
 for r in range(len(results)):
     print(params.iloc[r,:])
     print(results[r])
+
+
+
+#%%
+
+importlib.reload(om)
+importlib.reload(add)
+dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets\\"
+
+file_names = os.listdir(dataset_path)
+
+results = []
+
+model_name = "dirichreg"
+
+simulation_parameters = ["cases", "K", "n_total", "n_samples", "b_true", "w_true", "num_results"]
+params = pd.DataFrame(columns=simulation_parameters)
+
+col_names = simulation_parameters + ["tp", "tn", "fp", "fn", "model"]
+results = pd.DataFrame(columns=col_names)
+
+for name in file_names[:1]:
+
+    res = add.model_on_one_datafile(dataset_path+name, model_name)
+
+    results = results.append(res)
+
+
+
+
+
+
+
+
+#%%
+
+# try DirichletReg
+
+# generate some data
+
+np.random.seed(1234)
+
+n = 3
+
+cases = 1
+K = 5
+n_samples = [n, n]
+n_total = np.full(shape=[2*n], fill_value=1000)
+
+data = gen.generate_case_control(cases, K, n_total[0], n_samples,
+                                 w_true=np.array([[1, 0, 0, 0, 0]]),
+                                 b_true=np.log(np.repeat(0.2, K)).tolist())
+
+print(data.uns["w_true"])
+print(data.uns["b_true"])
+
+print(data.X)
+print(data.obs)
+
+#%%
+
+counts = dirreg.DR_data(data.X)
+
+r_df = pd.DataFrame(counts, columns=["counts." + i for i in data.var.index])
+
+r_data = pandas2ri.py2rpy_pandasdataframe(r_df)
+
+r_data = r_base.cbind(r_data, pandas2ri.py2rpy_pandasdataframe(data.obs))
+
+print(rp.r("r_data[1]"))
+
+formula = rp.Formula("counts ~ x_0")
+
+fit = dirreg.DirichReg(formula, data=r_data)
+
+print(fit)
+
+#%%
+
+fit = rp.r(f"""
+library(DirichletReg)
+
+counts = {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(data.X, columns=data.var.index)).r_repr()}
+counts$counts = DR_data(counts)
+print(counts)
+data = cbind(counts, {pandas2ri.py2rpy_pandasdataframe(data.obs).r_repr()})
+print(data)
+
+fit = DirichReg(counts ~ x_0, data)
+u = summary(fit)
+pvals = u$coef.mat[grep('Intercept', rownames(u$coef.mat), invert=T), 4]
+v = names(pvals)
+pvals = matrix(pvals, ncol=length(u$varnames))
+rownames(pvals) = gsub('condition', '', v[1:nrow(pvals)])
+colnames(pvals) = u$varnames
+pvals[,1]
+""")
+
+#%%
+print(fit)

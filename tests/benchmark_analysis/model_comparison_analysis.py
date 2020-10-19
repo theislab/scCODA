@@ -27,7 +27,7 @@ importlib.reload(ana)
 # all_study_params: One line per data point
 # all_study_params_agg: Combine identical simulation parameters
 
-path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\model_comparison"
+path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison"
 
 results, all_study_params, all_study_params_agg = ana.multi_run_study_analysis_prepare(path)
 
