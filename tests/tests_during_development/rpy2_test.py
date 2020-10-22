@@ -9,7 +9,7 @@ import pickle as pkl
 
 from scdcdm.util import data_generation as gen
 from scdcdm.model import other_models as om
-from paper_simulation_scripts import model_comparison_addition as add
+from paper_simulation_scripts import benchmark_utils as add
 
 import rpy2.robjects as rp
 from rpy2.robjects import numpy2ri, pandas2ri
@@ -25,13 +25,20 @@ aldex2 = rpackages.importr("ALDEx2")
 tv = rpackages.importr("tidyverse")
 dirreg = rpackages.importr("DirichletReg")
 r_base = rpackages.importr("base")
+scdney = rpackages.importr("scdney")
 
 #%%
 
 # r install procedure
 
 utils = rpackages.importr('utils')
-utils.install_packages("DirichletReg")
+utils.install_packages("Rtools")
+
+#%%
+
+devtools = rpackages.importr("devtools")
+rtools = rpackages.importr("Rtools")
+devtools.install_github("SydneyBioX/scdney", build_opts = ["--no-resave-data", "--no-manual"])
 
 #%%
 

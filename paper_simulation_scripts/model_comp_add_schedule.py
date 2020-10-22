@@ -1,17 +1,20 @@
-# Create bash script to execute model_comp_one_job.py
+# Create bash script to execute model_one_job.py
 import os
 
 models = ["simple_dm"]
 
+# For models that take some time for inference (more than 10 seconds per run), we batch the calculation (one job per file)
+batched_models = ["simple_dm", "scdcdm", "scDC"]
+
 for m in models:
-    if m == "simple_dm":
+    if m in batched_models:
         dataset_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/generated_datasets/"
         num_files = len(os.listdir(dataset_path))
 
         for count in range(num_files):
 
             with open(
-                    "/home/icb/johannes.ostner/compositional_diff/benchmark_scripts/paper_simulation_scripts/comp_add_script_" + str(m) + str(count) + ".sh", "w") as fh:
+                    "paper_simulation_scripts/comp_add_script_" + str(m) + str(count) + ".sh", "w") as fh:
                 fh.writelines("#!/bin/bash\n")
                 fh.writelines("#SBATCH -o /home/icb/johannes.ostner/compositional_diff/benchmark_results/out_add_" + str(m) + str(count) + ".o\n")
                 fh.writelines("#SBATCH -e /home/icb/johannes.ostner/compositional_diff/benchmark_results/error_add_" + str(m) + str(count) + ".e\n")
@@ -23,7 +26,7 @@ for m in models:
                 fh.writelines("#SBATCH --nice=100\n")
                 fh.writelines("#SBATCH -t 2-00:00:00\n")
                 fh.writelines(
-                    "/home/icb/johannes.ostner/anaconda3/bin/python /home/icb/johannes.ostner/compositional_diff/benchmark_scripts/paper_simulation_scripts/model_comp_one_job_batched.py " +
+                    "/home/icb/johannes.ostner/anaconda3/bin/python /home/icb/johannes.ostner/compositional_diff/benchmark_scripts/paper_simulation_scripts/model_one_job_batched.py " +
                     str(m).replace(" ", "") + " " +
                     str(count).replace(" ", "")
                     )
@@ -43,7 +46,7 @@ for m in models:
             fh.writelines("#SBATCH --mem=5000\n")
             fh.writelines("#SBATCH --nice=100\n")
             fh.writelines("#SBATCH -t 2-00:00:00\n")
-            fh.writelines("/home/icb/johannes.ostner/anaconda3/bin/python /home/icb/johannes.ostner/compositional_diff/benchmark_scripts/paper_simulation_scripts/model_comp_one_job.py " +
+            fh.writelines("/home/icb/johannes.ostner/anaconda3/bin/python /home/icb/johannes.ostner/compositional_diff/benchmark_scripts/paper_simulation_scripts/model_one_job.py " +
                           str(m).replace(" ", "")
                           )
 

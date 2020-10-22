@@ -11,7 +11,7 @@ import subprocess as sp
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-#import skbio
+import skbio
 from tensorflow_probability.python.experimental import edward2 as ed
 
 import statsmodels as sm
@@ -334,10 +334,10 @@ class scdney_model:
             subjects.append("Cond_1_sub_" + str(n))
 
         # produce lists to use in scdney
-        scdc_celltypes = []
-        scdc_subject = []
-        scdc_cond = []
-        scdc_sample_cond = []
+        self.scdc_celltypes = []
+        self.scdc_subject = []
+        self.scdc_cond = []
+        self.scdc_sample_cond = []
 
         for i in range(len(x_vec)):
             current_count = x_vec[i]
@@ -345,31 +345,15 @@ class scdney_model:
             current_subject = subjects[i // k]
             current_condition = conditions[i // (k * ns[0])]
 
-            scdc_sample_cond.append(current_condition)
+            self.scdc_sample_cond.append(current_condition)
 
             for j in range(int(current_count)):
-                scdc_celltypes.append(current_type)
-                scdc_subject.append(current_subject)
-                scdc_cond.append(current_condition)
+                self.scdc_celltypes.append(current_type)
+                self.scdc_subject.append(current_subject)
+                self.scdc_cond.append(current_condition)
 
-        # save lists as csv
-        path = "/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/"
-        # path = ""
 
-        with open(path + "paper_simulation_scripts/scdc_r_data/scdc_cellTypes.txt", "w") as f:
-            for c in scdc_celltypes:
-                f.write(str(c) + "\n")
-        with open(path + "paper_simulation_scripts/scdc_r_data/scdc_subject.txt", "w") as f:
-            for c in scdc_subject:
-                f.write(str(c) + "\n")
-        with open(path + "paper_simulation_scripts/scdc_r_data/scdc_condition.txt", "w") as f:
-            for c in scdc_cond:
-                f.write(str(c) + "\n")
-        with open(path + "paper_simulation_scripts/scdc_r_data/scdc_short_conditions.txt", "w") as f:
-            for c in scdc_sample_cond:
-                f.write(str(c) + "\n")
-
-    def analyze(self):
+    def analyze(self, server):
         """
         Analyzes results from R script for SCDC from scdney packege.
         It is assumed that the effect on the first cell type is significant, all others are not.
@@ -379,15 +363,20 @@ class scdney_model:
         Tuple:
             Tuple(raw summary from R, True positive...)
         """
-        server = True
-
         if server:
-            rscript = "/home/icb/johannes.ostner/anaconda3/lib/R/bin/Rscript"
-            path = "/home/icb/johannes.ostner/compositional_diff/compositionalDiff-johannes_tests_2/"
-
+            os.environ["R_HOME"] = "/home/icb/johannes.ostner/anaconda3/lib/R"
+            os.environ["PATH"] = r"/home/icb/johannes.ostner/anaconda3/lib/R/bin" + ";" + os.environ["PATH"]
         else:
-            rscript = 'C:/Program Files/R/R-3.6.3/bin/Rscript'
-            path = ""
+            os.environ["R_HOME"] = "C:\\Program Files\\R\\R-4.0.2"
+            if "C:\\Program Files\\R\\R-4.0.2\\bin\\x64" not in os.environ["PATH"]:
+                os.environ["PATH"] = r"C:\\Program Files\\R\\R-4.0.2\\bin\\x64" + ";" + os.environ["PATH"]
+
+        import rpy2.robjects as rp
+        from rpy2.robjects import numpy2ri, pandas2ri
+        numpy2ri.activate()
+        pandas2ri.activate()
+        import rpy2.robjects.packages as rpackages
+        scdney = rpackages.importr("scdney")
 
         sp.call([rscript, path + 'paper_simulation_scripts/scdc_r_data/scdney_server_script.R'])
 
@@ -858,9 +847,7 @@ class DirichRegModel(FrequentistModel):
 
             counts = {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.y, columns=self.var.index)).r_repr()}
             counts$counts = DR_data(counts)
-            print(counts)
             data = cbind(counts, {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.x, columns=["x_0"])).r_repr()})
-            print(data)
 
             fit = DirichReg(counts ~ x_0, data)
             if(fit$optimization$convergence > 2L) {{

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from scdcdm.util import multi_parameter_analysis_functions as ana
 from scdcdm.util import data_generation as gen
 from scdcdm.model import other_models as om
-from paper_simulation_scripts import model_comparison_addition as add
+from paper_simulation_scripts import benchmark_utils as add
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
