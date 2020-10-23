@@ -1,3 +1,4 @@
+# Utility functions for benchmarks on SCDCdm
 import numpy as np
 import pandas as pd
 import pickle as pkl
@@ -5,16 +6,42 @@ import os
 import sys
 import patsy as pt
 
+# For running on server
 sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/SCDCdm/')
 
 from scdcdm.util import data_generation as gen
 from scdcdm.model import other_models as om
+from scdcdm.model import dirichlet_models as model
 
 
-def benchmark(data_path, save_path, models, benchmark_name, server=False):
+def benchmark(data_path, save_path, models, benchmark_name="", server=False):
+    """
+    Run a benchmark. All models in parameter "models" are applied to all datasets in "data_path".
 
+    Parameters
+    ----------
+    data_path: str
+        Path to folder where datasets are saved
+    save_path: str
+        Path to folder where results are saved
+    models: list
+        List of models to include in the benchmark
+    benchmark_name: str
+        prefix for meta files when executing on server.
+    server: bool
+        Execute on ICB server
+
+    Returns
+    -------
+    Saves pickled DataFrames to disk that contain generation parameters, model name and  effect discovery results.
+
+    """
+
+    # Models that need batched execution due to calculation time (One data file at a time, also one results file per data file).
+    # For all other models, only one results file with all results is generated
     batched_models = ["simple_dm", "scdcdm", "scDC"]
 
+    # Parameters for each model
     for model_name in models:
         print(model_name)
 
@@ -45,13 +72,17 @@ def benchmark(data_path, save_path, models, benchmark_name, server=False):
         elif model_name in ["Haber", "ttest", "clr_ttest", "dirichreg"]:
             kwargs = {"alpha": 0.05,
                       "fdr_correct": True}
+        elif model_name == "scdc":
+            kwargs = {"server": server}
         else:
             kwargs = {}
 
+        # For each batched model, run one datafile at a time:
         if model_name in batched_models:
             num_files = len(os.listdir(data_path))
 
             for count in range(num_files):
+                # On server, generate bash file and push to queue
                 if server:
                     bash_loc = f"/home/icb/johannes.ostner/compositional_diff/benchmark_scripts/{benchmark_name}"
                     bash_name = f"{benchmark_name}_{model_name}_{count}"
@@ -59,7 +90,7 @@ def benchmark(data_path, save_path, models, benchmark_name, server=False):
                     arguments = [data_path, save_path, model_name, count]
 
                     execute_on_server(bash_loc, bash_name, script_location, arguments)
-
+                # Locally, just execute and save
                 else:
                     file_name = os.listdir(data_path)[count]
                     results = model_on_one_datafile(data_path + file_name, model_name, **kwargs)
@@ -68,8 +99,9 @@ def benchmark(data_path, save_path, models, benchmark_name, server=False):
 
                     with open(save_path + model_name + "_results_" + str(count) + ".pkl", "wb") as f:
                         pkl.dump(results, f)
-
+        # For unbatched models, run all datasets at once
         else:
+            # On server, generate bash file and push to queue
             if server:
                 bash_loc = f"/home/icb/johannes.ostner/compositional_diff/benchmark_scripts/{benchmark_name}"
                 bash_name = f"{benchmark_name}_{model_name}"
@@ -77,7 +109,7 @@ def benchmark(data_path, save_path, models, benchmark_name, server=False):
                 arguments = [data_path, save_path, model_name]
 
                 execute_on_server(bash_loc, bash_name, script_location, arguments)
-
+            # Locally, just execute and save
             else:
                 results = model_all_datasets(data_path, model_name, **kwargs)
 
@@ -88,9 +120,31 @@ def benchmark(data_path, save_path, models, benchmark_name, server=False):
 
 
 def model_on_one_datafile(file_path, model_name, *args, **kwargs):
+    """
+    Run a model on one datafile from generate_data.generate_compositional_datasets
+
+    Parameters
+    ----------
+    file_path: str
+        path to dataset
+    model_name: str
+        model name
+    args:
+        Passed to the model execution function
+    kwargs:
+        Passed to the model execution function
+
+
+    Returns
+    -------
+    fin_df: DataFrame
+        contains generation parameters, model name and  effect discovery results
+
+    """
     with open(file_path, "rb") as f:
         data = pkl.load(f)
 
+    # Initialize output df
     fin_df = data["parameters"]
     fin_df["tp"] = 0
     fin_df["tn"] = 0
@@ -98,9 +152,11 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
     fin_df["fn"] = 0
     fin_df["model"] = model_name
 
+    # Parameters for model evaluation, not execution
     alpha = kwargs.pop("alpha", 0.05)
     fdr_correct = kwargs.pop("fdr_correct", True)
 
+    # Select right model to execute. For most models, just init model, run fit, run eval
     for d in range(len(data["datasets"])):
 
         if model_name == "Haber":
@@ -144,8 +200,10 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
             tp, tn, fp, fn = mod.eval_model(alpha=alpha, fdr_correct=fdr_correct)
 
         elif model_name == "simple_dm":
+            # Build covariance matrix for simple dm and extract comp. data
             dat = data["datasets"][d]
             K = dat.X.shape[1]
+            # Only one covariate
             formula = "x_0"
 
             cell_types = dat.var.index.to_list()
@@ -158,18 +216,23 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
             covariate_names = covariate_matrix.design_info.column_names[1:]
             covariate_matrix = covariate_matrix[:, 1:]
 
+            # Init model. Baseline index is always the last cell type
             mod = om.SimpleModel(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
                                  cell_types=cell_types, covariate_names=covariate_names, formula=formula,
                                  baseline_index=K-1)
 
+            # Run HMC sampling
             result_temp = mod.sample_hmc(*args, **kwargs)
             alphas_df, betas_df = result_temp.summary_prepare(credible_interval=0.95)
 
+            # Effects are significant if 0 not in 95% HDI, set non-sig. effects to 0
             final_betas = np.where((betas_df.loc[:, "HDI 3%"] < 0) &
                                    (betas_df.loc[:, "HDI 97%"] > 0),
                                    0,
                                    betas_df.loc[:, "Final Parameter"])
 
+            # Compare found significances to ground truth (only first cell type significant)
+            # Get true positives, true negatives, false positives, false negatives
             ks = list(range(K))[1:]
 
             tp = sum([final_betas[0] != 0])
@@ -178,8 +241,10 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
             fp = sum([final_betas[k] != 0 for k in ks])
 
         elif model_name == "scdcdm":
+            # Build covariance matrix for SCDCdm and extract comp. data
             dat = data["datasets"][d]
             K = dat.X.shape[1]
+            # Only one covariate
             formula = "x_0"
 
             cell_types = dat.var.index.to_list()
@@ -192,25 +257,32 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
             covariate_names = covariate_matrix.design_info.column_names[1:]
             covariate_matrix = covariate_matrix[:, 1:]
 
-            mod = om.SimpleModel(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
-                                 cell_types=cell_types, covariate_names=covariate_names, formula=formula,
-                                 baseline_index=K-1)
+            # Init model. Baseline index is always the last cell type
+            mod = model.BaselineModel(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
+                                      cell_types=cell_types, covariate_names=covariate_names, formula=formula,
+                                      baseline_index=K-1)
 
+            # Run HMC sampling, get results
             result_temp = mod.sample_hmc(*args, **kwargs)
             alphas_df, betas_df = result_temp.summary_prepare(credible_interval=0.95)
-
             final_betas = np.where(betas_df.loc[:, "Final Parameter"])
 
+            # Compare found significances to ground truth (only first cell type significant)
+            # Get true positives, true negatives, false positives, false negatives
             ks = list(range(K))[1:]
 
             tp = sum([final_betas[0] != 0])
             fn = sum([final_betas[0] == 0])
             tn = sum([final_betas[k] == 0 for k in ks])
             fp = sum([final_betas[k] != 0 for k in ks])
+        elif model_name == "scdc":
+            mod = om.scdney_model(data["datasets"][d])
+            tp, tn, fp, fn = mod.analyze(server=kwargs["server"])[1]
 
         else:
             raise ValueError("Invalid model name specified!")
 
+        # Add to result df
         fin_df.loc[d, "tp"] = tp
         fin_df.loc[d, "fp"] = fp
         fin_df.loc[d, "tn"] = tn
@@ -220,12 +292,32 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
 
 
 def model_all_datasets(directory, model_name, *args, **kwargs):
+    """
+    Runs one model on all dataset files in a directory
+
+    Parameters
+    ----------
+    directory: str
+        path to directory
+    model_name: str
+        model name
+    args:
+        Passed to the model execution function
+    kwargs:
+        Passed to the model execution function
+
+    Returns
+    -------
+    results: DataFrame
+        contains generation parameters, model name and  effect discovery results
+    """
 
     file_names = os.listdir(directory)
 
     l = len(file_names)
     k = 1
 
+    # Initialize result df
     simulation_parameters = ['n_cell_types', 'n_cells',
                              'n_controls', 'n_cases',
                              'Base', 'Increase', 'log-fold increase',
@@ -233,6 +325,7 @@ def model_all_datasets(directory, model_name, *args, **kwargs):
     col_names = simulation_parameters + ["tp", "tn", "fp", "fn", "model"]
     results = pd.DataFrame(columns=col_names)
 
+    # Run model on all files, coerce results
     for name in file_names:
         print(f"{k}/{l}")
 
@@ -246,8 +339,17 @@ def model_all_datasets(directory, model_name, *args, **kwargs):
 
 def get_scores(df):
     """
-    Calculates extended summary statistics, such as TPR, TNR, youden index, f1-score, MCC
+    Calculates extended binary classification summary statistics, such as TPR, TNR, youden index, f1-score, MCC
 
+    Parameters
+    ----------
+    df: DataFrame
+        Must contain columns tp, tn, fp, fn
+
+    Returns
+    -------
+    df: DataFrame
+        Same df with added columns tpr, tnr, precision, accuracy, younden, f1_score, mcc
     """
     tp = df["tp"].astype("float64")
     tn = df["tn"].astype("float64")
@@ -272,6 +374,17 @@ def get_scores(df):
 
 
 def complete_results(results_df):
+    """
+
+
+    Parameters
+    ----------
+    results_df
+
+    Returns
+    -------
+
+    """
 
     # Find relations between numerical values and compsition/inrease vectors
     b = []
@@ -331,7 +444,28 @@ def complete_results(results_df):
     return results_df
 
 
-def execute_on_server(bash_loction, bash_name, script_location, arguments):
+def execute_on_server(bash_loction, bash_name, script_location, arguments,
+                      python_path="/home/icb/johannes.ostner/anaconda3/bin/python"):
+    """
+    Script to make a bash script that pushes a job to the ICB CPU servers where another python script is executed.
+
+    Parameters
+    ----------
+    bash_loction: str
+        path to the folder where bash file, out and error files are written
+    bash_name: str
+        name of your job. The bash file, out and error files will have this name (with respective suffixes)
+    script_location: str
+        path to the python script
+    arguments: list
+        list of arguments that is passed to the script
+
+    Returns
+    -------
+
+    """
+
+    # Build bash file
     bash_file = bash_loction + bash_name + "_script.sh"
     with open(bash_file, "w") as fh:
         fh.writelines("#!/bin/bash\n")
@@ -350,4 +484,5 @@ def execute_on_server(bash_loction, bash_name, script_location, arguments):
             execute_line = execute_line + str(arg).replace(" ", "") + " "
         fh.writelines(execute_line)
 
+    # Run the bash file you just generated
     os.system(f"sbatch {bash_file}")

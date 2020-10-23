@@ -39,6 +39,8 @@ elif model_name in ["alr_ttest", "alr_wilcoxon"]:
 elif model_name in ["Haber", "ttest", "clr_ttest", "dirichreg"]:
     kwargs = {"alpha": 0.05,
               "fdr_correct": True}
+elif model_name == "scdc":
+    kwargs = {"server": True}
 else:
     kwargs = {}
 

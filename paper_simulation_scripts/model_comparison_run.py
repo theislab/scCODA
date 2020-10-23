@@ -1,15 +1,15 @@
+# Run model comparison benchmark for SCDCdm paper
 import numpy as np
 import pandas as pd
 import pickle as pkl
 import os
 import sys
-import patsy as pt
 import seaborn as sns
 import matplotlib.pyplot as plt
 
 import importlib
 
-# only need if on server
+# only need if on server:
 # sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/SCDCdm/')
 
 # if running on server, delete "paper_simulation_scripts."
@@ -25,6 +25,7 @@ dataset_path_new = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm
 save_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\results\\"
 save_path_new = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\results_test\\"
 
+# Use all 10 models for comparison
 models = ["simple_dm"]
 
 #util.benchmark(dataset_path, save_path, models, "comp", server=False)
@@ -109,8 +110,8 @@ plot_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\
 fig, ax = plt.subplots(figsize=(10, 6))
 sns.lineplot(data=plot_df, x="n_controls", y="mcc",
              hue="color",
+             # palette=palette,
              style="linestyle",
-             # dashes=[(1, 0), (2, 2, 2, 2, 2, 5, 5, 2, 5, 2, 5, 5, 2, 2, 2, 2, 2, 10), (5, 2, 2, 2)],
              # dashes=[(1,0), (4, 4), (7, 2, 2, 2)],
              ax=ax,
              )
@@ -129,7 +130,6 @@ fig, ax = plt.subplots(figsize=(10, 6))
 sns.lineplot(data=plot_df, x="log-fold increase", y="mcc",
              hue="color",
              style="linestyle",
-             # dashes=[(1, 0), (2, 2, 2, 2, 2, 5, 5, 2, 5, 2, 5, 5, 2, 2, 2, 2, 2, 10), (5, 2, 2, 2)],
              # dashes=[(1,0), (4, 4), (7, 2, 2, 2)],
              ax=ax,
              )

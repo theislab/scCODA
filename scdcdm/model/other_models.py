@@ -224,87 +224,12 @@ class SimpleModel(dm.CompositionalModel):
         return y_mean
 
 
-class PoissonModel:
-    """
-    Implements the Poisson regression model from Haber et al. into the scdcdm framework
-    (for model comparison purposes)
-    """
-
-    def __init__(self, covariate_matrix, data_matrix):
-        """
-        Constructor of model class
-
-        Parameters
-        ----------
-        covariate_matrix -- numpy array [NxD]
-            covariate matrix
-        data_matrix -- numpy array [NxK]
-            cell count matrix
-        cell_types -- list
-            list of cell type names
-        covariate_names -- list
-            List of covariate names
-        """
-
-        self.x = covariate_matrix
-        self.y = data_matrix
-        self.n_total = np.sum(data_matrix, axis=1)
-
-        self.p_val = {}
-
-        # Get dimensions of data
-        self.N, self.D = self.x.shape
-        self.K = self.y.shape[1]
-
-        # Check input data
-        if self.N != self.y.shape[0]:
-            raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(self.x.shape[0], self.y.shape[0]))
-        if self.N != len(self.n_total):
-            raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
-
-    def fit_model(self):
-        """
-        Fits Poisson model
-
-        Returns
-        -------
-
-        """
-
-        for k in range(self.K):
-            data_ct = pd.DataFrame({"x": self.x[:, 0],
-                                    "y": self.y[:, k]})
-
-            model_ct = glm('y ~ x', data=data_ct, family=sm.api.families.Poisson(), offset=np.log(self.n_total)).fit()
-            self.p_val[k] = model_ct.pvalues[1]
-
-    def eval_model(self):
-        """
-        Evaluates Poisson model.
-        It is assumed that the effect on the first cell type is significant, all others are not.
-
-        Returns
-        -------
-        tp, tn, fp, fn : Tuple
-            Number of True positive, ... effects
-        """
-
-        ks = list(range(self.K))[1:]
-
-        tp = sum([self.p_val[0] < 1e-10])
-        fn = sum([self.p_val[0] >= 1e-10])
-        tn = sum([self.p_val[k] >= 1e-10 for k in ks])
-        fp = sum([self.p_val[k] < 1e-10 for k in ks])
-
-        return tp, tn, fp, fn
-
-
 class scdney_model:
     """
     wrapper for using the scdney package for R with scdcdm data
     """
 
-    def __init__(self, data, ns):
+    def __init__(self, data):
         """
         Prepares R sampling
 
@@ -321,11 +246,15 @@ class scdney_model:
         """
 
         # prepare list generation
-        k = data.X.shape[1]
+        n, k = data.X.shape
         x_vec = data.X.flatten()
         cell_types = ["cell_" + x for x in data.var.index.tolist()]
         cell_types[0] = "cell_" + str(k)
         conditions = ["Cond_0", "Cond_1"]
+
+        # get number of samples for both conditionas
+        ns_0 = int(sum(data.obs["x_0"]))
+        ns = [ns_0, n-ns_0]
 
         subjects = []
         for n in range(ns[0]):
@@ -352,8 +281,7 @@ class scdney_model:
                 self.scdc_subject.append(current_subject)
                 self.scdc_cond.append(current_condition)
 
-
-    def analyze(self, server):
+    def analyze(self, server=False):
         """
         Analyzes results from R script for SCDC from scdney packege.
         It is assumed that the effect on the first cell type is significant, all others are not.
@@ -367,24 +295,34 @@ class scdney_model:
             os.environ["R_HOME"] = "/home/icb/johannes.ostner/anaconda3/lib/R"
             os.environ["PATH"] = r"/home/icb/johannes.ostner/anaconda3/lib/R/bin" + ";" + os.environ["PATH"]
         else:
-            os.environ["R_HOME"] = "C:\\Program Files\\R\\R-4.0.2"
-            if "C:\\Program Files\\R\\R-4.0.2\\bin\\x64" not in os.environ["PATH"]:
-                os.environ["PATH"] = r"C:\\Program Files\\R\\R-4.0.2\\bin\\x64" + ";" + os.environ["PATH"]
+            os.environ["R_HOME"] = "C:\\Program Files\\R\\R-4.0.3"
+            if "C:\\Program Files\\R\\R-4.0.3\\bin\\x64" not in os.environ["PATH"]:
+                os.environ["PATH"] = r"C:\\Program Files\\R\\R-4.0.3\\bin\\x64" + ";" + os.environ["PATH"]
 
         import rpy2.robjects as rp
         from rpy2.robjects import numpy2ri, pandas2ri
         numpy2ri.activate()
         pandas2ri.activate()
-        import rpy2.robjects.packages as rpackages
-        scdney = rpackages.importr("scdney")
 
-        sp.call([rscript, path + 'paper_simulation_scripts/scdc_r_data/scdney_server_script.R'])
+        r_summary = rp.r(f"""
+            library(scdney)
+            library(tidyverse)
+            library(broom.mixed)
+            clust = scDC_noClustering({rp.vectors.StrVector(self.scdc_celltypes).r_repr()}, 
+                                      {rp.vectors.StrVector(self.scdc_subject).r_repr()},
+                                             calCI=TRUE,
+                                             calCI_method=c("BCa"),
+                                             nboot=100)
 
-        # read-in results
-        with open(path + "paper_simulation_scripts/scdc_r_data/scdc_summary.csv", "r") as f:
-            r_summary = pd.read_csv(f, header=0, index_col=1)
+            glm = fitGLM(clust, {rp.vectors.StrVector(self.scdc_sample_cond).r_repr()}, pairwise=FALSE)
+            sum = summary(glm$pool_res_random)
+            print(sum)
+            sum
+            """)
 
-        p_values = r_summary.loc[r_summary.index.str.contains("condCond_1"), "p.value"].values
+        r_summary = pd.DataFrame(r_summary)
+
+        p_values = r_summary.loc[r_summary["term"].str.contains("condCond_1"), "p.value"].values
 
         tp = np.sum(p_values[-1] < 0.05)
         fn = np.sum(p_values[-1] >= 0.05)
@@ -393,53 +331,6 @@ class scdney_model:
 
         return r_summary, (tp, tn, fp, fn)
 
-
-def make_clr_model(formula, data, *args, **kwargs):
-    """
-    Performs a CLR transform before outputting a statsmodels.glm model
-
-    Usage:
-    m = make_clr_model(formula="x_0 ~ c_1+c_2", data=data)
-    m_s = m.fit()
-    print(m_s.summary())
-
-    Parameters
-    ----------
-    data -- scdcdm data object
-        The data object
-    formula -- string
-        The model formula for the design matrix
-    args, kwargs -- For use in statsmodels.GLM
-
-    Returns
-    -------
-    a statsmodels.GLM object
-    """
-
-    n_total = np.sum(data.X, axis=1)
-
-    # Get data from data object
-    y = data.obs
-
-    # Get dimensions of data
-    N, D = data.X.shape
-
-    # Check input data
-    if N != data.obs.shape[0]:
-        raise ValueError("Wrong input dimensions X[{},:] != y[{},:]".format(data.X.shape[0], data.obs.shape[0]))
-    if N != len(n_total):
-        raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(data.X.shape[0], len(n_total)))
-
-    # computes clr-transformed data matrix as a pandas DataFrame
-    geom_mean = np.prod(data.X, axis=1, keepdims=True)**(1/D)
-    x_clr = pd.DataFrame(np.log(data.X/geom_mean), columns=data.var.index, index=y.index)
-
-    return sm.api.GLM.from_formula(formula=formula,
-                               data=pd.concat([x_clr, y], axis=1),
-                               *args, **kwargs)
-
-
-#%%
 
 class FrequentistModel:
     """
@@ -638,8 +529,8 @@ class ALDEx2Model(FrequentistModel):
             os.environ["R_HOME"] = "/home/icb/johannes.ostner/anaconda3/lib/R"
             os.environ["PATH"] = r"/home/icb/johannes.ostner/anaconda3/lib/R/bin" + ";" + os.environ["PATH"]
         else:
-            os.environ["R_HOME"] = "C:\\Program Files\\R\\R-4.0.2"
-            os.environ["PATH"] = r"C:\\Program Files\\R\\R-4.0.2\\bin\\x64" + ";" + os.environ["PATH"]
+            os.environ["R_HOME"] = "C:\\Program Files\\R\\R-4.0.3"
+            os.environ["PATH"] = r"C:\\Program Files\\R\\R-4.0.3\\bin\\x64" + ";" + os.environ["PATH"]
 
         K = self.y.shape[1]
 
@@ -826,9 +717,9 @@ class DirichRegModel(FrequentistModel):
             os.environ["R_HOME"] = "/home/icb/johannes.ostner/anaconda3/lib/R"
             os.environ["PATH"] = r"/home/icb/johannes.ostner/anaconda3/lib/R/bin" + ";" + os.environ["PATH"]
         else:
-            os.environ["R_HOME"] = "C:\\Program Files\\R\\R-4.0.2"
-            if "C:\\Program Files\\R\\R-4.0.2\\bin\\x64" not in os.environ["PATH"]:
-                os.environ["PATH"] = r"C:\\Program Files\\R\\R-4.0.2\\bin\\x64" + ";" + os.environ["PATH"]
+            os.environ["R_HOME"] = "C:\\Program Files\\R\\R-4.0.3"
+            if "C:\\Program Files\\R\\R-4.0.3\\bin\\x64" not in os.environ["PATH"]:
+                os.environ["PATH"] = r"C:\\Program Files\\R\\R-4.0.3\\bin\\x64" + ";" + os.environ["PATH"]
 
         K = self.y.shape[1]
 

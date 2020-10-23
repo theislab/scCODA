@@ -1,6 +1,6 @@
 import os
-os.environ["R_HOME"] = "C:\\Program Files\\R\\R-4.0.2"
-os.environ["PATH"] = r"C:\\Program Files\\R\\R-4.0.2\\bin\\x64" + ";" + os.environ["PATH"]
+os.environ["R_HOME"] = "C:\\Program Files\\R\\R-4.0.3"
+os.environ["PATH"] = r"C:\\Program Files\\R\\R-4.0.3\\bin\\x64" + ";" + os.environ["PATH"]
 
 import numpy as np
 import pandas as pd
@@ -21,6 +21,7 @@ import rpy2.robjects.packages as rpackages
 utils = rpackages.importr('utils')
 utils.chooseCRANmirror(ind=1) # select the first mirror in the list
 
+#%%
 aldex2 = rpackages.importr("ALDEx2")
 tv = rpackages.importr("tidyverse")
 dirreg = rpackages.importr("DirichletReg")
@@ -64,33 +65,38 @@ print(data.X)
 print(data.obs)
 
 #%%
+importlib.reload(om)
 
-cond = rp.vectors.FloatVector(data.obs["x_0"].astype("string").tolist())
+mod = om.scdney_model(data)
 
-X_t = data.X.T
-nr, nc = X_t.shape
-X_r = rp.r.matrix(X_t, nrow=nr, ncol=nc)
+ct = rp.vectors.StrVector(mod.scdc_celltypes)
+sub = rp.vectors.StrVector(mod.scdc_subject)
+cond = rp.vectors.StrVector(mod.scdc_cond)
+sc = rp.vectors.StrVector(mod.scdc_sample_cond)
 
-denom = rp.vectors.FloatVector([5])
-
-aldex_out = aldex2.aldex_clr(X_r, cond, mc_samples=128, denom=denom)
-aldex_out_2 = aldex2.aldex_ttest(aldex_out)
-# aldex_out = pd.DataFrame(aldex_out)
-print(aldex_out_2)
 
 #%%
 
-sig_effects = (aldex_out.loc[:, "we.eBH"] < 0.05)
+sum = rp.r(f"""
+    library(scdney)
+    library(tidyverse)
+    library(broom.mixed)
+    clust = scDC_noClustering({ct.r_repr()}, {sub.r_repr()},
+                                     calCI=TRUE,
+                                     calCI_method=c("BCa"),
+                                     nboot=10)
+    
+    glm = fitGLM(clust, {sc.r_repr()}, pairwise=FALSE)
+    sum = summary(glm$pool_res_random)
+    print(sum)
+    sum
+    """)
 
-K = data.X.shape[1]
-ks = list(range(K))[1:]
+print(sum)
 
-tp = sum([sig_effects.loc[0] == True])
-fn = sum([sig_effects.loc[0] == False])
-tn = sum([sig_effects.loc[k] == False for k in ks])
-fp = sum([sig_effects.loc[k] == True for k in ks])
-
-print((tp, tn, fp, fn))
+#%%
+out = mod.analyze()
+print(out)
 
 #%%
 importlib.reload(om)
@@ -144,7 +150,7 @@ file_names = os.listdir(dataset_path)
 
 results = []
 
-model_name = "dirichreg"
+model_name = "scdc"
 
 simulation_parameters = ["cases", "K", "n_total", "n_samples", "b_true", "w_true", "num_results"]
 params = pd.DataFrame(columns=simulation_parameters)
@@ -154,7 +160,7 @@ results = pd.DataFrame(columns=col_names)
 
 for name in file_names[:1]:
 
-    res = add.model_on_one_datafile(dataset_path+name, model_name)
+    res = add.model_on_one_datafile(dataset_path+name, model_name, server=False)
 
     results = results.append(res)
 
