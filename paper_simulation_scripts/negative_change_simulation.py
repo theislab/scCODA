@@ -6,7 +6,6 @@ The first part specifies the parameter sequences as nested lists.
 The second part builds a bash script that submits a job to the slurm queue.
 """
 
-import sys
 import numpy as np
 import os
 

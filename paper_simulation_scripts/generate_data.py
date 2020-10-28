@@ -103,9 +103,11 @@ def generate_compositional_datasets(n_cell_types, n_cells, n_samples,
 
         # Generate n_repetitions datasets, add to parameter df and dataset list
         for j in range(n_repetitions):
+            sigma = np.identity(n_cell_types_) * 0.05
             temp_data = gen.generate_case_control(cases=1, K=n_cell_types_,
                                                   n_total=n_cells_, n_samples=n_samples_,
-                                                  b_true=b_t, w_true=[w])
+                                                  b_true=b_t, w_true=[w],
+                                                  sigma=sigma)
             datasets.append(temp_data)
 
             params = [n_cell_types_, n_cells_,
@@ -134,7 +136,7 @@ def generate_compositional_datasets(n_cell_types, n_cells, n_samples,
 
 #%%
 
-# generate data for overall benchamark
+"""# generate data for overall benchamark
 
 np.random.seed(1234)
 
@@ -154,12 +156,12 @@ overall_data = generate_compositional_datasets(n_cell_types=n_cell_types, n_cell
                                                n_repetitions=n_repetitions, mode="absolute",
                                                write_path=write_path, file_name=file_name)
 
-
+"""
 #%%
 
 # generate data for model comparison benchamark
 
-np.random.seed(1234)
+"""np.random.seed(1234)
 
 n_cell_types = [5]
 n_cells = [5000]
@@ -168,7 +170,7 @@ fct_base = [200, 400, 600, 800, 1000]
 fct_change = [1/3, 1/2, 1, 2, 3]
 n_repetitions = 20
 
-write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_test\\"
+write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_new_005\\"
 # write_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/model_comparison_data/"
 file_name = "model_comp_data"
 
@@ -176,3 +178,4 @@ comp_data = generate_compositional_datasets(n_cell_types=n_cell_types, n_cells=n
                                             n_samples=n_samples, fct_base=fct_base, fct_change=fct_change,
                                             n_repetitions=n_repetitions, mode="relative",
                                             write_path=write_path, file_name=file_name)
+"""

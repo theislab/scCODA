@@ -13,6 +13,7 @@ from scdcdm.util import multi_parameter_analysis_functions as ana
 from scdcdm.util import data_generation as gen
 from scdcdm.model import other_models as om
 from paper_simulation_scripts import benchmark_utils as add
+from paper_simulation_scripts.generate_data import generate_compositional_datasets
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
@@ -25,11 +26,11 @@ importlib.reload(ana)
 # all_study_params: One line per data point
 # all_study_params_agg: Combine identical simulation parameters
 
-path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison"
+path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\overall_benchmark"
 
 results, all_study_params, all_study_params_agg = ana.multi_run_study_analysis_prepare(path)
 
-
+#%%
 def extract_all_generated_data(results, save_path):
     simulation_parameters = ["cases", "K", "n_total", "n_samples", "b_true", "w_true", "num_results"]
 
@@ -45,6 +46,7 @@ def extract_all_generated_data(results, save_path):
 
         generated_data["parameters"] = r.parameters.loc[:, simulation_parameters]
 
+        print(r)
         for j in range(len(r.data)):
             generated_data["datasets"].append(r.data[j])
 
@@ -58,7 +60,7 @@ def extract_all_generated_data(results, save_path):
 #%%
 
 
-dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets\\"
+dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\overall_benchmark\\generated_datasets\\"
 
 #%%
 extract_all_generated_data(results, dataset_path)
@@ -273,15 +275,128 @@ ancom_out = skbio.stats.composition.ancom(df, data.obs["x_0"])
 
 print(ancom_out[0]["Reject null hypothesis"])
 
+#%%
+
+#result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\extra_comparisons\\results\\"
+result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\model_comparison_new_005\\"
+
+results = []
+
+for f in os.listdir(result_path):
+    print(f)
+    with open(result_path + f, "rb") as file:
+        r = pkl.load(file)
+        if f == "ALDEx2_alr_results.pkl":
+            r.loc[:, "model"] = "ALDEx2_alr"
+            results.append(r)
+        elif f == "old_results":
+            old_results = r
+        else:
+            results.append(r)
+
+#%%
+
+all_res = pd.concat(results)
+
+all_res = add.complete_results(all_res)
+
+all_res = pd.concat([all_res, old_results])
+
+# Get only relevant models for plots
+models_rel = ["scdcdm", "simple_dm", "scDC (SydneyBioX)", "ancom", "ALDEx2_alr", "alr_ttest", "alr_wilcoxon", "dirichreg", "Haber", "ttest"]
+plot_df = all_res.loc[all_res["Model"].isin(models_rel)]
+
+#%%
+
+print(plot_df.groupby(["Base", "Increase"]).count())
+
+#%%
+n_cell_types = [5]
+n_cells = [5000]
+n_samples = [[i+1, i+1] for i in range(10)]
+
+write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_test\\"
+# write_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/model_comparison_data/"
+
+base_change_n = [[200, 1/3, 4], [200, 1/2, 2], [200, 1, 1], [200, 2, 3],
+                 [400, 1/3, 1], [400, 1/2, 1],
+                 [600, 2, 1],
+                 [800, 1/3, 3], [800, 1/2, 1], [800, 2, 2]]
+
+i = 1
+for b, c, n in base_change_n:
+    file_name = f"comp_add_data_{i}"
+
+    comp_data = generate_compositional_datasets(n_cell_types=n_cell_types, n_cells=n_cells,
+                                                n_samples=n_samples, fct_base=[b], fct_change=[c],
+                                                n_repetitions=n, mode="relative",
+                                                write_path=write_path, file_name=file_name)
+
+    i +=1
 
 
 
+#%%
+def extract_all_generated_data(save_path):
+    files = os.listdir(save_path)
+
+    l = len(files)
+    k = 1
+
+    generated_data = []
+
+    for f in files:
+        print(f"{k}/{l}")
+
+        with open(save_path+f, "rb") as temp:
+            data = pkl.load(temp)
+
+        for d in data["datasets"]:
+            generated_data.append(d)
+
+        k += 1
+
+    return generated_data
+
+#%%
+dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_test_2\\"
+
+data_new = extract_all_generated_data(dataset_path)
+
+#%%
+vars_cont = []
+vars_case = []
+
+for d in data_new:
+
+    x = d.X
+    n = int(x.shape[0]/2)
+
+    vars_cont = vars_cont + np.var(x[:n, :], axis=0).tolist()
+    vars_case = vars_case + np.var(x[n:, :], axis=0).tolist()
+print(np.mean(vars_cont))
+print(np.mean(vars_case))
 
 
 
+#%%
 
+dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets\\"
 
+data_old = extract_all_generated_data(dataset_path)
 
+#%%
+vars_cont_old = []
+vars_case_old = []
 
+for d in data_old:
+
+    x = d.X
+    n = int(x.shape[0]/2)
+
+    vars_cont_old = vars_cont_old + np.var(x[:n, :], axis=0).tolist()
+    vars_case_old = vars_case_old + np.var(x[n:, :], axis=0).tolist()
+print(np.mean(vars_cont_old))
+print(np.mean(vars_case_old))
 
 

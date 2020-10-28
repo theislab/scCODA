@@ -265,7 +265,7 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
             # Run HMC sampling, get results
             result_temp = mod.sample_hmc(*args, **kwargs)
             alphas_df, betas_df = result_temp.summary_prepare(credible_interval=0.95)
-            final_betas = np.where(betas_df.loc[:, "Final Parameter"])
+            final_betas = betas_df.loc[:, "Final Parameter"].tolist()
 
             # Compare found significances to ground truth (only first cell type significant)
             # Get true positives, true negatives, false positives, false negatives
