@@ -7,11 +7,10 @@ These models are otherwise not part of SCDCdm
 """
 import numpy as np
 import pandas as pd
-import subprocess as sp
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-import skbio
+# import skbio
 from tensorflow_probability.python.experimental import edward2 as ed
 
 import statsmodels as sm

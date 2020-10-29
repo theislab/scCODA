@@ -131,7 +131,8 @@ def grouped_boxplot(data, feature, log_scale=False, *args, **kwargs):
 
     loc, labels = plt.xticks()
     d.set_xticklabels(labels, rotation=90)
-    plt.show()
+
+    return d
 
 
 def boxplot_facets(data, feature, log_scale=False, args_boxplot={}, args_swarmplot={}):
@@ -168,7 +169,6 @@ def boxplot_facets(data, feature, log_scale=False, args_boxplot={}, args_swarmpl
     count_df = pd.DataFrame(X, columns=data.var.index, index=data.obs.index).merge(data.obs, left_index=True,
                                                                                    right_index=True)
     plot_df = pd.melt(count_df, id_vars=data.obs.columns, var_name="Cell type", value_name=value_name)
-    print(plot_df)
 
     if "hue" in args_swarmplot:
         hue = args_swarmplot.pop("hue")
@@ -181,4 +181,4 @@ def boxplot_facets(data, feature, log_scale=False, args_boxplot={}, args_swarmpl
         g.map(sns.swarmplot, feature, value_name, color="black", **args_swarmplot).set_titles("{col_name}")
     else:
         g.map(sns.swarmplot, feature, value_name, hue, **args_swarmplot).set_titles("{col_name}")
-    plt.show()
+    return g

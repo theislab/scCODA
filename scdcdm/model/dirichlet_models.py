@@ -684,7 +684,7 @@ class BaselineModel(CompositionalModel):
                 loc=tf.zeros(shape=[D, K-1], dtype=dtype),
                 scale=tf.ones(shape=[D, K-1], dtype=dtype),
                 name='sigma_ind_raw')
-            ind_t = sigma_ind_raw * 10
+            ind_t = sigma_ind_raw * 50
             ind = tf.exp(ind_t) / (1 + tf.exp(ind_t))
 
             # Calculate betas
@@ -756,7 +756,7 @@ class BaselineModel(CompositionalModel):
         alphas = states_burnin[0]
         alphas_final = alphas.mean(axis=0)
 
-        ind_raw = states_burnin[4] * 10
+        ind_raw = states_burnin[4] * 50
         mu_b = states_burnin[1]
         sigma_b = states_burnin[2]
         b_offset = states_burnin[3]

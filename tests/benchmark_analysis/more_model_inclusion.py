@@ -12,8 +12,10 @@ import matplotlib.pyplot as plt
 from scdcdm.util import multi_parameter_analysis_functions as ana
 from scdcdm.util import data_generation as gen
 from scdcdm.model import other_models as om
+from scdcdm.model import dirichlet_models as mod
 from paper_simulation_scripts import benchmark_utils as add
 from paper_simulation_scripts.generate_data import generate_compositional_datasets
+import patsy as pt
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
@@ -381,22 +383,52 @@ print(np.mean(vars_case))
 
 #%%
 
-dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets\\"
+dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_new_005\\"
 
-data_old = extract_all_generated_data(dataset_path)
+file_names = os.listdir(dataset_path)
+
+results = []
+
+simulation_parameters = ["cases", "K", "n_total", "n_samples", "b_true", "w_true", "num_results"]
+params = pd.DataFrame(columns=simulation_parameters)
+
+# for name in file_names[23]:
+name = file_names[28]
+with open(dataset_path + name, "rb") as f:
+    data = pkl.load(f)
+    print(data["parameters"])
+
+    params = params.append(data["parameters"])
+
+    for d in range(3):
+        dat = data["datasets"][d]
+        K = dat.X.shape[1]
+        # Only one covariate
+        formula = "x_0"
+
+        cell_types = dat.var.index.to_list()
+
+        # Get count data
+        data_matrix = dat.X.astype("float32")
+
+        # Build covariate matrix from R-like formula
+        covariate_matrix = pt.dmatrix(formula, dat.obs)
+        covariate_names = covariate_matrix.design_info.column_names[1:]
+        covariate_matrix = covariate_matrix[:, 1:]
+
+        # Init model. Baseline index is always the last cell type
+        m = mod.BaselineModel(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
+                                  cell_types=cell_types, covariate_names=covariate_names, formula=formula,
+                                  baseline_index=K - 1)
+
+        # Run HMC sampling, get results
+        result_temp = m.sample_hmc(num_results=20000, n_burnin=5000, num_adapt_steps=4000)
+        results.append(result_temp.effect_df)
 
 #%%
-vars_cont_old = []
-vars_case_old = []
 
-for d in data_old:
+print(results[0])
 
-    x = d.X
-    n = int(x.shape[0]/2)
+#%%
 
-    vars_cont_old = vars_cont_old + np.var(x[:n, :], axis=0).tolist()
-    vars_case_old = vars_case_old + np.var(x[n:, :], axis=0).tolist()
-print(np.mean(vars_cont_old))
-print(np.mean(vars_case_old))
-
-
+az.
