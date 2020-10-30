@@ -1,8 +1,6 @@
 # Run model comparison benchmark for SCDCdm paper
 import sys
 
-import importlib
-
 # only need if on server:
 sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/SCDCdm/')
 
@@ -11,9 +9,6 @@ sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/SCDCdm/')
 # else:
 import paper_simulation_scripts.benchmark_utils as util
 
-#%%
-
-importlib.reload(util)
 
 dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_new_001\\"
 dataset_path_server = '/home/icb/johannes.ostner/compositional_diff/benchmark_data/model_comparison/generated_datasets_new_001/'

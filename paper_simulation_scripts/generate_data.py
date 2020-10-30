@@ -135,46 +135,65 @@ def generate_compositional_datasets(n_cell_types, n_cells, n_samples,
 
 
 #%%
+if __name__ == "main":
+    # generate data for overall benchamark
 
-"""# generate data for overall benchamark
+    np.random.seed(1234)
 
-np.random.seed(1234)
+    n_cell_types = [5]
+    n_cells = [5000]
+    n_samples = [[i+1, j+1] for i in range(10) for j in range(10)]
+    fct_base = [20, 30, 50, 75, 115, 180, 280, 430, 667, 1000]
+    fct_change = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 400, 600, 800, 1000]
+    n_repetitions = 10
 
-n_cell_types = [5]
-n_cells = [5000]
-n_samples = [[i+1, j+1] for i in range(10) for j in range(10)]
-fct_base = [20, 30, 50, 75, 115, 180, 280, 430, 667, 1000]
-fct_change = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 400, 600, 800, 1000]
-n_repetitions = 10
+    write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\overall_benchmark\\generated_data\\"
+    # write_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/overall_benchmark_data/"
+    file_name = "overall_data"
 
-write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\overall_benchmark\\generated_data\\"
-# write_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/overall_benchmark_data/"
-file_name = "overall_data"
+    overall_data = generate_compositional_datasets(n_cell_types=n_cell_types, n_cells=n_cells,
+                                                   n_samples=n_samples, fct_base=fct_base, fct_change=fct_change,
+                                                   n_repetitions=n_repetitions, mode="absolute",
+                                                   write_path=write_path, file_name=file_name)
 
-overall_data = generate_compositional_datasets(n_cell_types=n_cell_types, n_cells=n_cells,
-                                               n_samples=n_samples, fct_base=fct_base, fct_change=fct_change,
-                                               n_repetitions=n_repetitions, mode="absolute",
-                                               write_path=write_path, file_name=file_name)
 
-"""
-#%%
+    # generate data for model comparison benchamark
 
-# generate data for model comparison benchamark
+    np.random.seed(1234)
 
-np.random.seed(1234)
+    n_cell_types = [5]
+    n_cells = [5000]
+    n_samples = [[i+1, i+1] for i in range(10)]
+    fct_base = [200, 400, 600, 800, 1000]
+    fct_change = [1/3, 1/2, 1, 2, 3]
+    n_repetitions = 20
 
-n_cell_types = [5]
-n_cells = [5000]
-n_samples = [[i+1, i+1] for i in range(10)]
-fct_base = [200, 400, 600, 800, 1000]
-fct_change = [1/3, 1/2, 1, 2, 3]
-n_repetitions = 20
+    write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_new_001\\"
+    # write_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/model_comparison_data/"
+    file_name = "model_comp_data"
 
-write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_new_001\\"
-# write_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/model_comparison_data/"
-file_name = "model_comp_data"
+    comp_data = generate_compositional_datasets(n_cell_types=n_cell_types, n_cells=n_cells,
+                                                n_samples=n_samples, fct_base=fct_base, fct_change=fct_change,
+                                                n_repetitions=n_repetitions, mode="relative",
+                                                write_path=write_path, file_name=file_name)
 
-comp_data = generate_compositional_datasets(n_cell_types=n_cell_types, n_cells=n_cells,
-                                            n_samples=n_samples, fct_base=fct_base, fct_change=fct_change,
-                                            n_repetitions=n_repetitions, mode="relative",
-                                            write_path=write_path, file_name=file_name)
+
+    # generate data for threshold determination benchamark
+
+    np.random.seed(1234)
+
+    n_cell_types = np.arange(2, 16, 1).tolist()
+    n_cells = [5000]
+    n_samples = [[i+1, i+1] for i in range(10)]
+    fct_base = [1000]
+    fct_change = [0.25, 0.5, 1]
+    n_repetitions = 20
+
+    write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\threshold_determination\\generated_datasets\\"
+    # write_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/model_comparison_data/"
+    file_name = "threshold_data"
+
+    treshold_data = generate_compositional_datasets(n_cell_types=n_cell_types, n_cells=n_cells,
+                                                    n_samples=n_samples, fct_base=fct_base, fct_change=fct_change,
+                                                    n_repetitions=n_repetitions, mode="relative",
+                                                    write_path=write_path, file_name=file_name)
