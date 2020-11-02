@@ -31,7 +31,13 @@ class RenameUnpickler(pkl.Unpickler):
         if module == "SCDCpy.util":
             renamed_module = "scdcdm.util"
 
-        return super(RenameUnpickler, self).find_class(renamed_module, name)
+        renamed_name = name
+        if name == 'Multi_param_simulation':
+            renamed_name = "MultiParamSimulation"
+        if name == 'MCMCResult':
+            renamed_name = "CAResult"
+
+        return super(RenameUnpickler, self).find_class(renamed_module, renamed_name)
 
 
 def renamed_load(file_obj):

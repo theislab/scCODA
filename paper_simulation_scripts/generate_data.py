@@ -64,12 +64,21 @@ def generate_compositional_datasets(n_cell_types, n_cells, n_samples,
         temp_params = list(itertools.product(n_cell_types, n_cells, n_samples, fct_base))
         simulation_params = []
         for p in temp_params:
+            p = list(p)
+
+            # Balanced base generation
+            if p[3] == "balanced":
+                p[3] = p[1] * (1 / p[0])
             for c in fct_change:
-                p = list(p)
                 base = p[3]
                 change = base * c
+                # bugfix if ct1 makes up all the cells
+                if base + change == p[1]:
+                    change = change - 1
                 p_ = p + [change]
+                p_ = tuple(p_)
                 simulation_params.append(p_)
+
     else:
         raise ValueError("Wrong mode specified!")
 
@@ -103,7 +112,7 @@ def generate_compositional_datasets(n_cell_types, n_cells, n_samples,
 
         # Generate n_repetitions datasets, add to parameter df and dataset list
         for j in range(n_repetitions):
-            sigma = np.identity(n_cell_types_) * 0.01
+            sigma = np.identity(n_cell_types_) * 0.05
             temp_data = gen.generate_case_control(cases=1, K=n_cell_types_,
                                                   n_total=n_cells_, n_samples=n_samples_,
                                                   b_true=b_t, w_true=[w],
@@ -185,11 +194,11 @@ if __name__ == "main":
     n_cell_types = np.arange(2, 16, 1).tolist()
     n_cells = [5000]
     n_samples = [[i+1, i+1] for i in range(10)]
-    fct_base = [1000]
+    fct_base = ["balanced"]
     fct_change = [0.25, 0.5, 1]
     n_repetitions = 20
 
-    write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\threshold_determination\\generated_datasets\\"
+    write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\threshold_determination\\generated_datasets_005_balanced\\"
     # write_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/model_comparison_data/"
     file_name = "threshold_data"
 

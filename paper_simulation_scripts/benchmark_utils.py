@@ -14,7 +14,7 @@ from scdcdm.model import other_models as om
 from scdcdm.model import dirichlet_models as model
 
 
-def benchmark(data_path, save_path, models, benchmark_name="", server=False):
+def benchmark(data_path, save_path, models, benchmark_name="", server=False, keep_scdcdm_results=False):
     """
     Run a benchmark. All models in parameter "models" are applied to all datasets in "data_path".
 
@@ -63,7 +63,8 @@ def benchmark(data_path, save_path, models, benchmark_name="", server=False):
         elif model_name in ["simple_dm", "scdcdm"]:
             kwargs = {"num_results": 20000,
                       "n_burnin": 5000,
-                      "num_adapt_steps": 4000}
+                      "num_adapt_steps": 4000,
+                      "keep_scdcdm_results": keep_scdcdm_results}
 
         elif model_name in ["alr_ttest", "alr_wilcoxon"]:
             kwargs = {"reference_index": 4,
@@ -87,18 +88,27 @@ def benchmark(data_path, save_path, models, benchmark_name="", server=False):
                     bash_loc = f"/home/icb/johannes.ostner/compositional_diff/benchmark_scripts/{benchmark_name}"
                     bash_name = f"{benchmark_name}_{model_name}_{count}"
                     script_location = "/home/icb/johannes.ostner/compositional_diff/benchmark_scripts/paper_simulation_scripts/model_one_job_batched.py"
-                    arguments = [data_path, save_path, model_name, count]
+                    arguments = [data_path, save_path, model_name, count, keep_scdcdm_results]
 
                     execute_on_server(bash_loc, bash_name, script_location, arguments)
                 # Locally, just execute and save
                 else:
                     file_name = os.listdir(data_path)[count]
-                    results = model_on_one_datafile(data_path + file_name, model_name, **kwargs)
 
-                    results = get_scores(results)
+                    if keep_scdcdm_results:
+                        results, effects = model_on_one_datafile(data_path + file_name, model_name, **kwargs)
+                        results = get_scores(results)
+                        save = {"results": results, "effects": effects}
+                        print(save)
+
+                    else:
+                        results = model_on_one_datafile(data_path + file_name, model_name, **kwargs)
+
+                        results = get_scores(results)
+                        save = results
 
                     with open(save_path + model_name + "_results_" + str(count) + ".pkl", "wb") as f:
-                        pkl.dump(results, f)
+                        pkl.dump(save, f)
         # For unbatched models, run all datasets at once
         else:
             # On server, generate bash file and push to queue
@@ -119,7 +129,7 @@ def benchmark(data_path, save_path, models, benchmark_name="", server=False):
                     pkl.dump(results, f)
 
 
-def model_on_one_datafile(file_path, model_name, *args, **kwargs):
+def model_on_one_datafile(file_path, model_name, keep_scdcdm_results=False, *args, **kwargs):
     """
     Run a model on one datafile from generate_data.generate_compositional_datasets
 
@@ -129,6 +139,8 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
         path to dataset
     model_name: str
         model name
+    keep_scdcdm_results: bool
+        Whether betas_df from the scdcdm result should be returned as well (for threshold benchmark)
     args:
         Passed to the model execution function
     kwargs:
@@ -155,6 +167,9 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
     # Parameters for model evaluation, not execution
     alpha = kwargs.pop("alpha", 0.05)
     fdr_correct = kwargs.pop("fdr_correct", True)
+
+    # initialize list for beta_dfs
+    effect_dfs = []
 
     # Select right model to execute. For most models, just init model, run fit, run eval
     for d in range(len(data["datasets"])):
@@ -240,6 +255,10 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
             tn = sum([final_betas[k] == 0 for k in ks])
             fp = sum([final_betas[k] != 0 for k in ks])
 
+            # append betas_df to output list
+            if keep_scdcdm_results:
+                effect_dfs.append(betas_df)
+
         elif model_name == "scdcdm":
             # Build covariance matrix for SCDCdm and extract comp. data
             dat = data["datasets"][d]
@@ -275,6 +294,11 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
             fn = sum([final_betas[0] == 0])
             tn = sum([final_betas[k] == 0 for k in ks])
             fp = sum([final_betas[k] != 0 for k in ks])
+
+            # append betas_df to output list
+            if keep_scdcdm_results:
+                effect_dfs.append(betas_df)
+
         elif model_name == "scdc":
             mod = om.scdney_model(data["datasets"][d])
             tp, tn, fp, fn = mod.analyze(server=kwargs["server"])[1]
@@ -288,7 +312,10 @@ def model_on_one_datafile(file_path, model_name, *args, **kwargs):
         fin_df.loc[d, "tn"] = tn
         fin_df.loc[d, "fn"] = fn
 
-    return fin_df
+    if keep_scdcdm_results:
+        return fin_df, effect_dfs
+    else:
+        return fin_df
 
 
 def model_all_datasets(directory, model_name, *args, **kwargs):
@@ -477,7 +504,7 @@ def execute_on_server(bash_loction, bash_name, script_location, arguments,
         fh.writelines("#SBATCH -c 1\n")
         fh.writelines("#SBATCH --mem=5000\n")
         fh.writelines("#SBATCH --nice=100\n")
-        fh.writelines("#SBATCH -t 2-00:00:00\n")
+        fh.writelines("#SBATCH -t 4:00:00\n")
 
         execute_line = f"/home/icb/johannes.ostner/anaconda3/bin/python {script_location} "
         for arg in arguments:

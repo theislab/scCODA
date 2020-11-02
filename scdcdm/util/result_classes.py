@@ -185,7 +185,7 @@ class CAResult(az.InferenceData):
         if self.model_specs["baseline"] is None:
             threshold_factor = 0.87
         else:
-            threshold_factor = 0.98
+            threshold_factor = 1.19
         threshold = 1 - threshold_factor / np.sqrt(beta_raw.shape[2])
         self.model_specs["threshold_prob"] = threshold
 
