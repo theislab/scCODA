@@ -144,7 +144,7 @@ for r in range(len(results)):
 
 importlib.reload(om)
 importlib.reload(add)
-dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets\\"
+dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_new_005\\"
 
 file_names = os.listdir(dataset_path)
 
@@ -158,7 +158,10 @@ params = pd.DataFrame(columns=simulation_parameters)
 col_names = simulation_parameters + ["tp", "tn", "fp", "fn", "model"]
 results = pd.DataFrame(columns=col_names)
 
-for name in file_names[:1]:
+for name in file_names[7:8]:
+
+    with open(dataset_path+name, "rb") as f:
+        data = pkl.load(f)
 
     res = add.model_on_one_datafile(dataset_path+name, model_name, server=False)
 

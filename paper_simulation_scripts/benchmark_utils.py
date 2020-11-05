@@ -39,9 +39,9 @@ def benchmark(data_path, save_path, models, benchmark_name="", server=False, kee
 
     # Models that need batched execution due to calculation time (One data file at a time, also one results file per data file).
     # For all other models, only one results file with all results is generated
-    batched_models = ["simple_dm", "scdcdm", "scDC"]
+    batched_models = ["simple_dm", "scdcdm", "scdc"]
 
-    # Parameters for each model
+    # Parameters for each modelsc
     for model_name in models:
         print(model_name)
 
@@ -503,8 +503,8 @@ def execute_on_server(bash_loction, bash_name, script_location, arguments,
         fh.writelines("#SBATCH --constraint='opteron_6378'")
         fh.writelines("#SBATCH -c 1\n")
         fh.writelines("#SBATCH --mem=5000\n")
-        fh.writelines("#SBATCH --nice=100\n")
-        fh.writelines("#SBATCH -t 4:00:00\n")
+        fh.writelines("#SBATCH --nice=10000\n")
+        fh.writelines("#SBATCH -t 2-00:00:00\n")
 
         execute_line = f"/home/icb/johannes.ostner/anaconda3/bin/python {script_location} "
         for arg in arguments:

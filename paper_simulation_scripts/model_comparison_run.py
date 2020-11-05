@@ -17,10 +17,11 @@ save_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\
 save_path_server = '/home/icb/johannes.ostner/compositional_diff/benchmark_results/model_comparison_new_005/'
 
 # Use all 10 models for comparison
-models = ["scdcdm"]
-# models = ["simple_dm", "alr_ttest", "ALDEx2_alr", "alr_wilcoxon", "dirichreg", "Haber", "ttest"]
+# models = ["scdcdm"]
+# models = ["simple_dm", "alr_ttest", "ALDEx2_alr", "alr_wilcoxon", "Haber", "ttest"]
 # models = ["ancom"]
-# models = ["scdc"]
+models = ["scdc"]
+# models = ["dirichreg"]
 
 # util.benchmark(dataset_path, save_path, models, "comp", server=False)
 util.benchmark(dataset_path_server, save_path_server, models, "comp", server=True)

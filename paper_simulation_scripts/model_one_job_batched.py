@@ -8,7 +8,10 @@ dataset_path = sys.argv[1]
 save_path = sys.argv[2]
 model_name = sys.argv[3]
 count = int(sys.argv[4])
-keep_scdcdm_results = bool(sys.argv[5])
+if sys.argv[5] == "True":
+    keep_scdcdm_results = True
+else:
+    keep_scdcdm_results = False
 print("model name:", model_name)
 
 file_name = os.listdir(dataset_path)[count]
