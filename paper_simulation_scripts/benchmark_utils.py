@@ -389,6 +389,8 @@ def get_scores(df):
     df["tnr"] = tnr
     precision = (tp / (tp + fp)).fillna(0)
     df["precision"] = precision
+    fdr = (fp / (tp + fp)).fillna(0)
+    df["fdr"] = fdr
     acc = (tp + tn) / (tp + tn + fp + fn).fillna(0)
     df["accuracy"] = acc
 
