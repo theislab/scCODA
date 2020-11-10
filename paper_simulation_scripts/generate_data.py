@@ -8,7 +8,7 @@ import itertools
 import sys
 
 # Insert path to scCODA package for running on server
-sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/SCDCdm/')
+sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/scCODA/')
 
 from sccoda.util import data_generation as gen
 

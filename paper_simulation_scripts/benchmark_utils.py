@@ -8,7 +8,7 @@ import patsy as pt
 import rpy2
 
 # For running on server
-sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/SCDCdm/')
+sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/scCODA/')
 
 from sccoda.util import data_generation as gen
 from sccoda.model import other_models as om

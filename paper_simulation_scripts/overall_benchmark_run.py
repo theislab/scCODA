@@ -2,7 +2,7 @@
 import sys
 
 # only need if on server:
-sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/SCDCdm/')
+sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/scCODA/')
 
 # if running on server:
 # import benchmark_utils as util
