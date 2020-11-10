@@ -1,21 +1,21 @@
-scdcdm.model package
+sccoda.model package
 ====================
 
 Submodules
 ----------
 
-scdcdm.model.dirichlet\_models module
+sccoda.model.dirichlet\_models module
 -------------------------------------
 
-.. automodule:: scdcdm.model.dirichlet_models
+.. automodule:: sccoda.model.dirichlet_models
    :members:
    :undoc-members:
    :show-inheritance:
 
-scdcdm.model.other\_models module
+sccoda.model.other\_models module
 ---------------------------------
 
-.. automodule:: scdcdm.model.other_models
+.. automodule:: sccoda.model.other_models
    :members:
    :undoc-members:
    :show-inheritance:
@@ -24,7 +24,7 @@ scdcdm.model.other\_models module
 Module contents
 ---------------
 
-.. automodule:: scdcdm.model
+.. automodule:: sccoda.model
    :members:
    :undoc-members:
    :show-inheritance:

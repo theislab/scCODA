@@ -7,11 +7,11 @@ import arviz as az
 import pickle as pkl
 from matplotlib.pyplot import cm
 
-from scdcdm.util import data_generation as gen
-from scdcdm.util import comp_ana as mod
-from scdcdm.util import result_classes as res
-from scdcdm.util import multi_parameter_sampling as mult
-from scdcdm.util import cell_composition_data as dat
+from sccoda.util import data_generation as gen
+from sccoda.util import comp_ana as mod
+from sccoda.util import result_classes as res
+from sccoda.util import multi_parameter_sampling as mult
+from sccoda.util import cell_composition_data as dat
 
 pd.options.display.float_format = '{:10,.3f}'.format
 pd.set_option('display.max_columns', None)

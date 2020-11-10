@@ -1,7 +1,7 @@
-scdcdm.util.data\_generation
+sccoda.util.data\_generation
 ============================
 
-.. automodule:: scdcdm.util.data_generation
+.. automodule:: sccoda.util.data_generation
 
    
    

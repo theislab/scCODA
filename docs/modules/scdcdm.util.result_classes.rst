@@ -1,7 +1,7 @@
-scdcdm.util.result\_classes
+sccoda.util.result\_classes
 ===========================
 
-.. automodule:: scdcdm.util.result_classes
+.. automodule:: sccoda.util.result_classes
 
    
    

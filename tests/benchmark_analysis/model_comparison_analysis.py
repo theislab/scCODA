@@ -8,18 +8,18 @@ import anndata as ad
 import ast
 
 import matplotlib.pyplot as plt
-from scdcdm.util import result_classes as res
-from scdcdm.util import multi_parameter_sampling as mult
-from scdcdm.util import multi_parameter_analysis_functions as ana
-from scdcdm.util import data_generation as gen
-from scdcdm.model import other_models as om
+from sccoda.util import result_classes as res
+from sccoda.util import multi_parameter_sampling as mult
+from sccoda.util import multi_parameter_analysis_functions as ana
+from sccoda.util import data_generation as gen
+from sccoda.model import other_models as om
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
 sns.set_style("ticks")
 sns.set_context("paper", font_scale=1.4)
 
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+result_path = "C:/Users/Johannes/Documents/Uni/Master's_Thesis/compositionalDiff-johannes_tests_2/data/benchmark_results"
 
 #%%
 importlib.reload(ana)
@@ -27,7 +27,7 @@ importlib.reload(ana)
 # all_study_params: One line per data point
 # all_study_params_agg: Combine identical simulation parameters
 
-path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison"
+path = "../../data/model_comparison"
 
 results, all_study_params, all_study_params_agg = ana.multi_run_study_analysis_prepare(path)
 
@@ -125,17 +125,17 @@ print(all_study_params)
 
 #%%
 
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+result_path = "C:/Users/Johannes/Documents/Uni/Master's_Thesis/compositionalDiff-johannes_tests_2/data/benchmark_results"
 
-with open(result_path + "\\model_comparison_results_aggregated.pkl", "wb") as f:
+with open(result_path + "/model_comparison_results_aggregated.pkl", "wb") as f:
     pkl.dump(all_study_params_agg, file=f, protocol=4)
-with open(result_path + "\\model_comparison_results.pkl", "wb") as f:
+with open(result_path + "/model_comparison_results.pkl", "wb") as f:
     pkl.dump(all_study_params, file=f, protocol=4)
 
 #%%
 # Convert data from wide to long
 
-models = ["Poisson (Haber et al.)", "Simple DM", "scdcdm", "scDC (SydneyBioX)"]
+models = ["Poisson (Haber et al.)", "Simple DM", "scCODA", "scDC (SydneyBioX)"]
 param_cols = ["b_count", "num_increase", "n_controls", "n_cases", "log_fold_increase"]
 metrics = ["tpr", "tnr", "precision", "accuracy", "youden", "f1_score", "mcc"]
 
@@ -175,8 +175,8 @@ fg.fig.set_size_inches(17, 12)
 fg.axes[-1, 2].set_xlabel('Replicates per group')
 fg.axes[2, 0].set_ylabel('MCC')
 fg.add_legend()
-plt.savefig(result_path + "\\model_comparison_grouped.svg", format="svg", bbox_inces="tight")
-plt.savefig(result_path + "\\model_comparison_grouped.png", format="png", bbox_inces="tight")
+plt.savefig(result_path + "/model_comparison_grouped.svg", format="svg", bbox_inces="tight")
+plt.savefig(result_path + "/model_comparison_grouped.png", format="png", bbox_inces="tight")
 
 plt.show()
 
@@ -194,8 +194,8 @@ fg.fig.set_size_inches(17, 12)
 fg.axes[-1, 2].set_xlabel('Replicates per group')
 fg.axes[2, 0].set_ylabel('MCC')
 fg.add_legend()
-plt.savefig(result_path + "\\model_comparison_grouped_confint.svg", format="svg", bbox_inces="tight")
-plt.savefig(result_path + "\\model_comparison_grouped_confint.png", format="png", bbox_inces="tight")
+plt.savefig(result_path + "/model_comparison_grouped_confint.svg", format="svg", bbox_inces="tight")
+plt.savefig(result_path + "/model_comparison_grouped_confint.png", format="png", bbox_inces="tight")
 
 plt.show()
 
@@ -214,8 +214,8 @@ sns.lineplot(data=plot_df, x="n_controls", y="mcc", hue="Model", palette="colorb
 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 ax.set(xlabel="Replicates per group", ylabel="MCC")
 
-plt.savefig(result_path + "\\model_comparison_total_confint.svg", format="svg", bbox_inches="tight")
-plt.savefig(result_path + "\\model_comparison_total_confint.png", format="png", bbox_inches="tight")
+plt.savefig(result_path + "/model_comparison_total_confint.svg", format="svg", bbox_inches="tight")
+plt.savefig(result_path + "/model_comparison_total_confint.png", format="png", bbox_inches="tight")
 
 plt.show()
 
@@ -225,8 +225,8 @@ fg = sns.FacetGrid(data=plot_df_agg, row="Base",
 fg.map_dataframe(sns.lineplot, x='n_controls', y='mcc', hue='Model', palette="colorblind")
 
 fg.add_legend()
-# plt.savefig(result_path + "\\model_comparison.svg", format="svg", bbox_inces="tight")
-# plt.savefig(result_path + "\\model_comparison.png", format="png", bbox_inces="tight")
+# plt.savefig(result_path + "/model_comparison.svg", format="svg", bbox_inces="tight")
+# plt.savefig(result_path + "/model_comparison.png", format="png", bbox_inces="tight")
 
 plt.show()
 
@@ -238,8 +238,8 @@ fg.map_dataframe(sns.lineplot, x='n_controls', y='mcc', hue='Model', palette="co
 
 
 fg.add_legend()
-plt.savefig(result_path + "\\model_comparison.svg", format="svg", bbox_inces="tight")
-plt.savefig(result_path + "\\model_comparison.png", format="png", bbox_inces="tight")
+plt.savefig(result_path + "/model_comparison.svg", format="svg", bbox_inces="tight")
+plt.savefig(result_path + "/model_comparison.png", format="png", bbox_inces="tight")
 
 plt.show()
 
@@ -325,7 +325,7 @@ importlib.reload(ana)
 # all_study_params: One line per data point
 # all_study_params_agg: Combine identical simulation parameters
 
-path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\model_comparison"
+path = "C:/Users/Johannes/Documents/Uni/Master's_Thesis/compositionalDiff-johannes_tests_2/data/model_comparison"
 
 
 results, all_study_params, all_study_params_agg = ana.multi_run_study_analysis_prepare(path)
@@ -474,7 +474,7 @@ all_df = pd.concat([final_df, fin_dfs])
 plot_df = all_df.rename(columns={"b_count": "Base", "num_increase": "Increase", "model": "Model",
                                    "log_fold_increase": "log-fold increase"}).loc[~all_df["model"].isin(["Poisson (Haber et al.)", "CLR_ks"])]
 
-leg_labels = ["Simple DM", "SCDCdm", "scDC (Cao, Lin)", "Poisson regression", "T-test"]
+leg_labels = ["Simple DM", "scCODA", "scDC (Cao, Lin)", "Poisson regression", "T-test"]
 #%%
 
 # Plot for concept fig
@@ -483,8 +483,8 @@ sns.lineplot(data=plot_df, x="n_controls", y="mcc", hue="Model", palette="colorb
 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., labels=leg_labels)
 ax.set(xlabel="Replicates per group", ylabel="MCC")
 
-plt.savefig(result_path + "\\model_comparison_replicates_confint_extended.svg", format="svg", bbox_inches="tight")
-plt.savefig(result_path + "\\model_comparison_replicates_confint_extended.png", format="png", bbox_inches="tight")
+plt.savefig(result_path + "/model_comparison_replicates_confint_extended.svg", format="svg", bbox_inches="tight")
+plt.savefig(result_path + "/model_comparison_replicates_confint_extended.png", format="png", bbox_inches="tight")
 
 plt.show()
 
@@ -495,8 +495,8 @@ sns.lineplot(data=plot_df, x="log-fold increase", y="mcc", hue="Model", palette=
 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., labels=leg_labels)
 ax.set(xlabel="log-fold effect", ylabel="MCC")
 
-plt.savefig(result_path + "\\model_comparison_logfold_confint_extended.svg", format="svg", bbox_inches="tight")
-plt.savefig(result_path + "\\model_comparison_logfold_confint_extended.png", format="png", bbox_inches="tight")
+plt.savefig(result_path + "/model_comparison_logfold_confint_extended.svg", format="svg", bbox_inches="tight")
+plt.savefig(result_path + "/model_comparison_logfold_confint_extended.png", format="png", bbox_inches="tight")
 
 plt.show()
 

@@ -7,10 +7,10 @@ import pandas as pd
 import itertools
 import sys
 
-# Insert path to SCDCdm package for running on server
+# Insert path to scCODA package for running on server
 sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/SCDCdm/')
 
-from scdcdm.util import data_generation as gen
+from sccoda.util import data_generation as gen
 
 
 def generate_compositional_datasets(n_cell_types, n_cells, n_samples,
@@ -51,7 +51,7 @@ def generate_compositional_datasets(n_cell_types, n_cells, n_samples,
     If writing to disk is chosen, writes one pickled file per combination of parameters to disk.
     Each file contains n_repetitions datasets.
     They are structured a dict with "parameters" being a DataFrame that contains the generation parameters
-    and "datasets" being a list of scdcdm datasets (see the scdcdm documentation for details)
+    and "datasets" being a list of scCODA datasets (see the scCODA documentation for details)
 
     Otherwise, all generated datasets are returned in one dict with the same structure as described above
     """
@@ -156,7 +156,7 @@ if __name__ == "main":
     fct_change = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 400, 600, 800, 1000]
     n_repetitions = 10
 
-    write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\overall_benchmark\\generated_datasets_005\\"
+    write_path = "../data/overall_benchmark/generated_datasets_005/"
     # write_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/overall_benchmark_data/"
     file_name = "overall_data"
 
@@ -177,7 +177,7 @@ if __name__ == "main":
     fct_change = [1/3, 1/2, 1, 2, 3]
     n_repetitions = 20
 
-    write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_new_001\\"
+    write_path = "../data/model_comparison/generated_datasets_new_001/"
     # write_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/model_comparison_data/"
     file_name = "model_comp_data"
 
@@ -198,7 +198,7 @@ if __name__ == "main":
     fct_change = [0.25, 0.5, 1]
     n_repetitions = 20
 
-    write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\threshold_determination\\generated_datasets_005_balanced\\"
+    write_path = "../data/threshold_determination/generated_datasets_005_balanced/"
     # write_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/model_comparison_data/"
     file_name = "threshold_data"
 

@@ -2,9 +2,9 @@ import arviz as az
 import pandas as pd
 import numpy as np
 import importlib
-from scdcdm.util import result_classes as res
-from scdcdm.util import comp_ana as mod
-from scdcdm.util import data_generation as gen
+from sccoda.util import result_classes as res
+from sccoda.util import comp_ana as mod
+from sccoda.util import data_generation as gen
 import matplotlib.pyplot as plt
 
 pd.options.display.float_format = '{:10,.3f}'.format

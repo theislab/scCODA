@@ -12,7 +12,7 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = 'scdcdm'
+NAME = 'scCODA'
 DESCRIPTION = 'A Dirichlet-Multinomial approach to identify compositional changes in count data.'
 URL = 'https://github.com/theislab/SCDCpy'
 EMAIL = 'benjamin.schubert@helmholtz-muenchen.de'

@@ -9,10 +9,10 @@ import anndata as ad
 import ast
 
 import matplotlib.pyplot as plt
-from scdcdm.util import multi_parameter_analysis_functions as ana
-from scdcdm.util import data_generation as gen
-from scdcdm.model import other_models as om
-from scdcdm.model import dirichlet_models as mod
+from sccoda.util import multi_parameter_analysis_functions as ana
+from sccoda.util import data_generation as gen
+from sccoda.model import other_models as om
+from sccoda.model import dirichlet_models as mod
 from paper_simulation_scripts import benchmark_utils as add
 from paper_simulation_scripts.generate_data import generate_compositional_datasets
 import patsy as pt
@@ -28,7 +28,7 @@ importlib.reload(ana)
 # all_study_params: One line per data point
 # all_study_params_agg: Combine identical simulation parameters
 
-path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\overall_benchmark"
+path = "../../data/overall_benchmark"
 
 results, all_study_params, all_study_params_agg = ana.multi_run_study_analysis_prepare(path)
 
@@ -62,7 +62,7 @@ def extract_all_generated_data(results, save_path):
 #%%
 
 
-dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\overall_benchmark\\generated_datasets\\"
+dataset_path = "../../data/overall_benchmark/generated_datasets/"
 
 #%%
 extract_all_generated_data(results, dataset_path)
@@ -77,7 +77,7 @@ importlib.reload(add)
 
 model_name = "dirichreg"
 
-dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets\\"
+dataset_path = "../../data/model_comparison/generated_datasets/"
 
 # results = add.model_all_datasets(dataset_path, "ALDEx2", fit_args={"method": "we.eBH", "mc_samples": 128})
 results = add.model_all_datasets(dataset_path, model_name)
@@ -85,7 +85,7 @@ results = add.model_all_datasets(dataset_path, model_name)
 
 results = add.get_scores(results)
 
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\extra_comparisons\\results\\"
+result_path = "../../data/extra_comparisons/results/"
 
 with open(result_path + model_name + "_results.pkl", "wb") as f:
     pkl.dump(results, f)
@@ -99,7 +99,7 @@ results = add.complete_results(results)
 
 
 #%%
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\extra_comparisons\\results\\"
+result_path = "../../data/extra_comparisons/results/"
 
 results = []
 
@@ -130,7 +130,7 @@ all_res = pd.concat([all_res, old_results])
 #%%
 
 # Get only relevant models for plots
-models_rel = ["scdcdm", "simple_dm", "scDC (SydneyBioX)", "ancom", "ALDEx2_alr", "alr_ttest", "alr_wilcoxon", "dirichreg", "Haber", "ttest"]
+models_rel = ["scCODA", "simple_dm", "scDC (SydneyBioX)", "ancom", "ALDEx2_alr", "alr_ttest", "alr_wilcoxon", "dirichreg", "Haber", "ttest"]
 plot_df = all_res.loc[all_res["Model"].isin(models_rel)]
 
 #%%
@@ -145,13 +145,13 @@ plot_df.loc[:, "color"] = [colors[x] for x in plot_df["Model"]]
 
 #%%
 
-leg_labels = ["SCDCdm", "Simple DM", "scDC (SydneyBioX)", "ancom", "ALDEx2",
+leg_labels = ["scCODA", "Simple DM", "scDC (SydneyBioX)", "ancom", "ALDEx2",
               "ALR + t", "ALR + Wilcoxon", "Dirichlet regression", "Poisson regression", "t-test"]
 print(leg_labels)
 
 
 #%%
-plot_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\benchmark_results"
+plot_path = "../../data/benchmark_results"
 palette = sns.color_palette(['#e41a1c','#377eb8','#4daf4a','#984ea3'])
 
 # Plot for concept fig
@@ -166,8 +166,8 @@ sns.lineplot(data=plot_df, x="n_controls", y="mcc",
 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., labels=leg_labels)
 ax.set(xlabel="Replicates per group", ylabel="MCC", ylim=[0,1])
 
-plt.savefig(plot_path + "\\model_comparison_replicates_confint_extended.svg", format="svg", bbox_inches="tight")
-plt.savefig(plot_path + "\\model_comparison_replicates_confint_extended.png", format="png", bbox_inches="tight")
+plt.savefig(plot_path + "/model_comparison_replicates_confint_extended.svg", format="svg", bbox_inches="tight")
+plt.savefig(plot_path + "/model_comparison_replicates_confint_extended.png", format="png", bbox_inches="tight")
 
 plt.show()
 
@@ -184,8 +184,8 @@ sns.lineplot(data=plot_df, x="log-fold increase", y="mcc",
 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., labels=leg_labels)
 ax.set(xlabel="Log-fold increase", ylabel="MCC", ylim=[0,1])
 
-plt.savefig(plot_path + "\\model_comparison_logfold_confint_extended.svg", format="svg", bbox_inches="tight")
-plt.savefig(plot_path + "\\model_comparison_logfold_confint_extended.png", format="png", bbox_inches="tight")
+plt.savefig(plot_path + "/model_comparison_logfold_confint_extended.svg", format="svg", bbox_inches="tight")
+plt.savefig(plot_path + "/model_comparison_logfold_confint_extended.png", format="png", bbox_inches="tight")
 
 plt.show()
 
@@ -207,7 +207,7 @@ plt.show()
 import skbio
 
 importlib.reload(om)
-dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets\\"
+dataset_path = "../../data/model_comparison/generated_datasets/"
 
 file_names = os.listdir(dataset_path)
 
@@ -279,8 +279,8 @@ print(ancom_out[0]["Reject null hypothesis"])
 
 #%%
 
-#result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\extra_comparisons\\results\\"
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\model_comparison_new_005\\"
+#result_path = "../../scCODA/data/extra_comparisons/results/"
+result_path = "../../data/model_comparison/model_comparison_new_005/"
 
 results = []
 
@@ -305,7 +305,7 @@ all_res = add.complete_results(all_res)
 all_res = pd.concat([all_res, old_results])
 
 # Get only relevant models for plots
-models_rel = ["scdcdm", "simple_dm", "scDC (SydneyBioX)", "ancom", "ALDEx2_alr", "alr_ttest", "alr_wilcoxon", "dirichreg", "Haber", "ttest"]
+models_rel = ["scCODA", "simple_dm", "scDC (SydneyBioX)", "ancom", "ALDEx2_alr", "alr_ttest", "alr_wilcoxon", "dirichreg", "Haber", "ttest"]
 plot_df = all_res.loc[all_res["Model"].isin(models_rel)]
 
 #%%
@@ -317,7 +317,7 @@ n_cell_types = [5]
 n_cells = [5000]
 n_samples = [[i+1, i+1] for i in range(10)]
 
-write_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_test\\"
+write_path = "../../data/model_comparison/generated_datasets_test/"
 # write_path = "/home/icb/johannes.ostner/compositional_diff/benchmark_results/model_comparison_data/"
 
 base_change_n = [[200, 1/3, 4], [200, 1/2, 2], [200, 1, 1], [200, 2, 3],
@@ -361,7 +361,7 @@ def extract_all_generated_data(save_path):
     return generated_data
 
 #%%
-dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_test_2\\"
+dataset_path = "../../data/model_comparison/generated_datasets_test_2/"
 
 data_new = extract_all_generated_data(dataset_path)
 
@@ -383,7 +383,7 @@ print(np.mean(vars_case))
 
 #%%
 
-dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_new_005\\"
+dataset_path = "../../data/model_comparison/generated_datasets_new_005/"
 
 file_names = os.listdir(dataset_path)
 
@@ -428,7 +428,3 @@ with open(dataset_path + name, "rb") as f:
 #%%
 
 print(results[0])
-
-#%%
-
-az.

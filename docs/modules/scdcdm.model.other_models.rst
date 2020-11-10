@@ -1,7 +1,7 @@
-scdcdm.model.other\_models
+sccoda.model.other\_models
 ==========================
 
-.. automodule:: scdcdm.model.other_models
+.. automodule:: sccoda.model.other_models
 
    
    

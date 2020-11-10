@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 import importlib
 
 
-from scdcdm.util import data_generation as gen
-from scdcdm.util import comp_ana as mod
-from scdcdm.util import cell_composition_data as dat
-from scdcdm.util import data_visualization as viz
+from sccoda.util import data_generation as gen
+from sccoda.util import comp_ana as mod
+from sccoda.util import cell_composition_data as dat
+from sccoda.util import data_visualization as viz
 
 pd.options.display.float_format = '{:10,.3f}'.format
 pd.set_option('display.max_columns', 10)
@@ -108,9 +108,9 @@ print(data_bal_expr)
 
 #%%
 
-data_scdcdm = dat.from_pandas(data_bal_expr, col)
+data_sccoda = dat.from_pandas(data_bal_expr, col)
 
-print(data_scdcdm.X.shape)
+print(data_sccoda.X.shape)
 
 #%%
 
@@ -121,7 +121,7 @@ del([counts_bal, data, data_bal, metadata, meta_rel, file, otus, split, counts_b
 #%%
 importlib.reload(mod)
 
-model_mbs = mod.CompositionalAnalysis(data_scdcdm, "mbs_consolidated", baseline_index=None)
+model_mbs = mod.CompositionalAnalysis(data_sccoda, "mbs_consolidated", baseline_index=None)
 
 result_mbs = model_mbs.sample_hmc(num_results=int(10000), n_burnin=0)
 
@@ -149,7 +149,7 @@ plt.show()
 
 #%%
 
-viz.plot_feature_stackbars(data_scdcdm, ["mbs_consolidated"])
+viz.plot_feature_stackbars(data_sccoda, ["mbs_consolidated"])
 plt.show()
 
 #%%
@@ -203,7 +203,7 @@ plt.show()
 
 importlib.reload(mod)
 
-model_mbs = mod.CompositionalAnalysis(data_scdcdm, "mbs_consolidated", baseline_index=None)
+model_mbs = mod.CompositionalAnalysis(data_sccoda, "mbs_consolidated", baseline_index=None)
 
 #%%
 
@@ -256,7 +256,7 @@ print(result_mbs.posterior["beta"].sel(cell_type=names_int[[3,5]]))
 
 importlib.reload(mod)
 
-model_mbs = mod.CompositionalAnalysis(data_scdcdm, "mbs_consolidated", baseline_index=None)
+model_mbs = mod.CompositionalAnalysis(data_sccoda, "mbs_consolidated", baseline_index=None)
 
 result_mbs_nuts = model_mbs.sample_nuts(num_results=int(1000), n_burnin=0, num_adapt_steps=400)
 
@@ -299,7 +299,7 @@ plt.show()
 print(result_mbs_nuts.posterior["beta"].sel(cell_type=names_int[[2, 3]]))
 
 #%%
-result_mbs_nuts.save("C:/Users/Johannes/Documents/PhD/scdcdm/data/harrison_nuts_230920")
+result_mbs_nuts.save("C:/Users/Johannes/Documents/PhD/scCODA/data/harrison_nuts_230920")
 
 #%%
 
@@ -328,9 +328,9 @@ for i in depths:
     print(f"{counts_bal_.shape[1]} OTUs")
 
     data_bal_expr = pd.merge(counts_bal_, data_bal.loc[:, col], right_index=True, left_index=True)
-    data_scdcdm = dat.from_pandas(data_bal_expr, col)
+    data_sccoda = dat.from_pandas(data_bal_expr, col)
 
-    model_mbs = mod.CompositionalAnalysis(data_scdcdm, "mbs_consolidated", baseline_index=None)
+    model_mbs = mod.CompositionalAnalysis(data_sccoda, "mbs_consolidated", baseline_index=None)
     result_mbs_nuts = model_mbs.sample_nuts(num_results=int(50), n_burnin=0, num_adapt_steps=45)
 
     results.append(result_mbs_nuts)
@@ -354,9 +354,9 @@ counts_bal_ = counts_bal.iloc[:, np.where(np.array(seq_depths) > 49)[0]]
 print(f"{counts_bal_.shape[1]} OTUs")
 
 data_bal_expr = pd.merge(counts_bal_, data_bal.loc[:, col], right_index=True, left_index=True)
-data_scdcdm = dat.from_pandas(data_bal_expr, col)
+data_sccoda = dat.from_pandas(data_bal_expr, col)
 
-model_mbs = mod.CompositionalAnalysis(data_scdcdm, "mbs_consolidated", baseline_index=None)
+model_mbs = mod.CompositionalAnalysis(data_sccoda, "mbs_consolidated", baseline_index=None)
 result_mbs_nuts = model_mbs.sample_hmc(num_results=int(10000), n_burnin=0, num_adapt_steps=1000)
 
 #%%

@@ -8,10 +8,10 @@ import anndata as ad
 import ast
 
 import matplotlib.pyplot as plt
-from scdcdm.util import result_classes as res
-from scdcdm.util import multi_parameter_sampling as mult
-from scdcdm.util import multi_parameter_analysis_functions as ana
-from scdcdm.util import data_generation as gen
+from sccoda.util import result_classes as res
+from sccoda.util import multi_parameter_sampling as mult
+from sccoda.util import multi_parameter_analysis_functions as ana
+from sccoda.util import data_generation as gen
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
@@ -20,14 +20,14 @@ sns.set_context("paper", font_scale=1.4)
 
 #%%
 
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+result_path = "C:/Users/Johannes/Documents/Uni/Master's_Thesis/compositionalDiff-johannes_tests_2/data/benchmark_results"
 
-with open(result_path + "\\results_aggregated.pkl", "rb") as f:
+with open(result_path + "/results_aggregated.pkl", "rb") as f:
     all_study_params_agg_2 = pkl.load(file=f)
 
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+result_path = "C:/Users/Johannes/Documents/Uni/Master's_Thesis/compositionalDiff-johannes_tests_2/data/benchmark_results"
 
-with open(result_path + "\\results_negative.pkl", "rb") as f:
+with open(result_path + "/results_negative.pkl", "rb") as f:
     all_study_params_neg = pkl.load(file=f)
 
 #%%
@@ -42,7 +42,7 @@ def draw_heatmap(*args, **kwargs):
 fg = sns.FacetGrid(all_study_params_neg,
                    col='num_increase', row="b_count")
 fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
-# plt.savefig(result_path + "\\negative_heatmaps.svg", format="svg")
+# plt.savefig(result_path + "/negative_heatmaps.svg", format="svg")
 plt.show()
 
 #%%
@@ -51,7 +51,7 @@ fg = sns.FacetGrid(all_study_params_agg_2.loc[(all_study_params_agg_2["b_count"]
                                               (all_study_params_agg_2["num_increase"].isin([10, 50, 100]))],
                    col='num_increase', row="b_count")
 fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
-#plt.savefig(result_path + "\\9_heatmaps_concept_fig.png")
+#plt.savefig(result_path + "/9_heatmaps_concept_fig.png")
 plt.show()
 
 
@@ -92,7 +92,7 @@ for ax in fg.axes[2, :]:
 for ax in fg.axes[:, 0]:
  ax.set_ylabel('Condition replicates')
 
-plt.savefig(result_path + "\\9_heatmaps_concept_fig.svg", format="svg")
+plt.savefig(result_path + "/9_heatmaps_concept_fig.svg", format="svg")
 plt.show()
 
 
@@ -129,14 +129,14 @@ plt.show()
 #%%
 sns.lineplot(data=lineplot_data, x="Absolute Increase", y="MCC", hue="Base", legend="full", palette=sns.cm.rocket_r)
 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-plt.savefig(result_path + "\\absolute_increase_lines_concept_fig.svg", bbox_inches="tight", format="svg")
+plt.savefig(result_path + "/absolute_increase_lines_concept_fig.svg", bbox_inches="tight", format="svg")
 
 plt.show()
 
 #%%
 sns.lineplot(data=lineplot_data, x="Log-fold increase", y="MCC", hue="Base", legend="full", palette=sns.cm.rocket_r)
 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-plt.savefig(result_path + "\\log_fold_increase_lines_concept_fig.svg", bbox_inches="tight", format="svg")
+plt.savefig(result_path + "/log_fold_increase_lines_concept_fig.svg", bbox_inches="tight", format="svg")
 
 plt.show()
 

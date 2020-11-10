@@ -5,7 +5,7 @@ import sys
 import ast
 import numpy as np
 
-from scdcdm.util import multi_parameter_sampling as mult
+from sccoda.util import multi_parameter_sampling as mult
 
 # Convert string parameters to lists
 cases = ast.literal_eval(sys.argv[1])

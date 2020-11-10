@@ -16,10 +16,10 @@ import statsmodels.api as sm
 import statsmodels.formula.api as smf
 
 import matplotlib.pyplot as plt
-from scdcdm.util import result_classes as res
-from scdcdm.util import multi_parameter_sampling as mult
-from scdcdm.util import multi_parameter_analysis_functions as ana
-from scdcdm.util import data_generation as gen
+from sccoda.util import result_classes as res
+from sccoda.util import multi_parameter_sampling as mult
+from sccoda.util import multi_parameter_analysis_functions as ana
+from sccoda.util import data_generation as gen
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
@@ -27,9 +27,9 @@ sns.set_style("ticks")
 
 #%%
 # Load data
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+result_path = "C:/Users/Johannes/Documents/Uni/Master's_Thesis/compositionalDiff-johannes_tests_2/data/benchmark_results"
 
-with open(result_path + "\\results_aggregated.pkl", "rb") as f:
+with open(result_path + "/results_aggregated.pkl", "rb") as f:
     all_study_params_agg_2 = pkl.load(file=f)
 
 
@@ -80,7 +80,7 @@ tick_max = 1100
 ticklabels = range(tick_min, tick_max, tick_step)
 
 #%%
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\compositionalDiff-johannes_tests_2\\data\\benchmark_results"
+result_path = "C:/Users/Johannes/Documents/Uni/Master's_Thesis/compositionalDiff-johannes_tests_2/data/benchmark_results"
 
 sns.set_context("paper", font_scale=1.4)
 
@@ -99,8 +99,8 @@ ax1 = sns.heatmap(data=heatmap_data, robust=True, cbar_kws={"label": "Total samp
 ax1.set_yticks(yticks)
 ax1.set_xticks(xticks)
 
-# plt.savefig(result_path + "\\mcc_08_concept_fig.svg", format="svg", bbox_inches="tight")
-# plt.savefig(result_path + "\\mcc_08_concept_fig.png", format="png", bbox_inches="tight")
+# plt.savefig(result_path + "/mcc_08_concept_fig.svg", format="svg", bbox_inches="tight")
+# plt.savefig(result_path + "/mcc_08_concept_fig.png", format="png", bbox_inches="tight")
 
 plt.show()
 
@@ -132,8 +132,8 @@ plt.colorbar(label="Total samples needed")
 plt.xlabel("Base")
 plt.ylabel("Increase")
 
-plt.savefig(result_path + "\\mcc_08_concept_fig.svg", format="svg", bbox_inches="tight")
-plt.savefig(result_path + "\\mcc_08_concept_fig.png", format="png", bbox_inches="tight")
+plt.savefig(result_path + "/mcc_08_concept_fig.svg", format="svg", bbox_inches="tight")
+plt.savefig(result_path + "/mcc_08_concept_fig.png", format="png", bbox_inches="tight")
 
 plt.show()
 

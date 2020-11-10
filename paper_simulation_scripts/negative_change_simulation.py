@@ -9,7 +9,7 @@ The second part builds a bash script that submits a job to the slurm queue.
 import numpy as np
 import os
 
-from scdcdm.util import data_generation as gen
+from sccoda.util import data_generation as gen
 
 np.random.seed(1234)
 

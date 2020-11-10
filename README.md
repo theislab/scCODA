@@ -1,5 +1,5 @@
-# SCDCdm - Single-cell differential composition analysis 
-SCDCdm allows for identification of compositional changes in count data, especially scRNA-data.
+# scCODA - Single-cell differential composition analysis 
+scCODA allows for identification of compositional changes in count data, especially scRNA-data.
 It also provides a framework for reading in and analyzing cell compositions directly from *scanpy*
 
 The statistical methods used are described in:

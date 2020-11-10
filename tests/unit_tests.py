@@ -1,5 +1,5 @@
 """
-Unit tests for SCDCdm
+Unit tests for scCODA
 """
 
 import unittest
@@ -12,11 +12,11 @@ import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('..'))
 
-from scdcdm.util import cell_composition_data as dat
-from scdcdm.util import comp_ana as mod
-from scdcdm.util import multi_parameter_sampling as mult
-from scdcdm.util import multi_parameter_analysis_functions as ana
-from scdcdm.util import data_generation as gen
+from sccoda.util import cell_composition_data as dat
+from sccoda.util import comp_ana as mod
+from sccoda.util import multi_parameter_sampling as mult
+from sccoda.util import multi_parameter_analysis_functions as ana
+from sccoda.util import data_generation as gen
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)

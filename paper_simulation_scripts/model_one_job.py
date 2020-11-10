@@ -23,7 +23,7 @@ elif model_name == "ALDEx2":
               "alpha": 0.05,
               "fdr_correct": False}
 
-elif model_name in ["simple_dm", "scdcdm"]:
+elif model_name in ["simple_dm", "scCODA"]:
     kwargs = {"num_results": 20000,
               "n_burnin": 5000,
               "num_adapt_steps": 4000}

@@ -6,11 +6,11 @@ import pandas as pd
 import arviz as az
 import matplotlib.pyplot as plt
 
-from scdcdm.util import result_classes as res
-from scdcdm.model import dirichlet_models as mod
-from scdcdm.util import data_visualization as viz
-from scdcdm.util import comp_ana as ca
-from scdcdm.model import dirichlet_time_models as tm
+from sccoda.util import result_classes as res
+from sccoda.model import dirichlet_models as mod
+from sccoda.util import data_visualization as viz
+from sccoda.util import comp_ana as ca
+from sccoda.model import dirichlet_time_models as tm
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -18,7 +18,7 @@ tfb = tfp.bijectors
 pd.set_option('display.max_columns', 500)
 #%%
 # Testing
-from scdcdm.util import data_generation as gen
+from sccoda.util import data_generation as gen
 
 n = 5
 
@@ -128,10 +128,10 @@ for x in [str(y) for y in range(1)]:
 
 #%%
 
-result.save("C:/Users/Johannes/Documents/PhD/scdcdm/data/nuts_wide_230920")
+result.save("C:/Users/Johannes/Documents/PhD/scCODA/data/nuts_wide_230920")
 
 #%%
 import pickle as pkl
 
-with open("C:/Users/Johannes/Documents/PhD/scdcdm/data/nuts_standard_230920", "rb") as file:
+with open("C:/Users/Johannes/Documents/PhD/scCODA/data/nuts_standard_230920", "rb") as file:
     result_ = pkl.load(file)

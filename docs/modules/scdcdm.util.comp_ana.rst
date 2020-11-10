@@ -1,7 +1,7 @@
-scdcdm.util.comp\_ana
+sccoda.util.comp\_ana
 =====================
 
-.. automodule:: scdcdm.util.comp_ana
+.. automodule:: sccoda.util.comp_ana
 
    
    

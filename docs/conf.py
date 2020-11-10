@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('.'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'SCDCdm'
+project = 'scCODA'
 copyright = '2020, Johannes Ostner, Benjamin Schubert'
 author = 'Johannes Ostner, Benjamin Schubert'
 

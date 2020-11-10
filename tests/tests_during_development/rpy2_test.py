@@ -1,14 +1,14 @@
 import os
-os.environ["R_HOME"] = "C:\\Program Files\\R\\R-4.0.3"
-os.environ["PATH"] = r"C:\\Program Files\\R\\R-4.0.3\\bin\\x64" + ";" + os.environ["PATH"]
+os.environ["R_HOME"] = "C:/Program Files/R/R-4.0.3"
+os.environ["PATH"] = r"C:/Program Files/R/R-4.0.3/bin/x64" + ";" + os.environ["PATH"]
 
 import numpy as np
 import pandas as pd
 import importlib
 import pickle as pkl
 
-from scdcdm.util import data_generation as gen
-from scdcdm.model import other_models as om
+from sccoda.util import data_generation as gen
+from sccoda.model import other_models as om
 from paper_simulation_scripts import benchmark_utils as add
 
 import rpy2.robjects as rp
@@ -109,7 +109,7 @@ aldex_model.fit_model("we.eBH", mc_samples=128)
 #%%
 
 importlib.reload(om)
-dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets\\"
+dataset_path = "../../data/model_comparison/generated_datasets/"
 
 file_names = os.listdir(dataset_path)
 
@@ -144,7 +144,7 @@ for r in range(len(results)):
 
 importlib.reload(om)
 importlib.reload(add)
-dataset_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\model_comparison\\generated_datasets_new_005\\"
+dataset_path = "../../data/model_comparison/generated_datasets_new_005/"
 
 file_names = os.listdir(dataset_path)
 

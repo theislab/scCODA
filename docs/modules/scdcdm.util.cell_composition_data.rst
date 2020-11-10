@@ -1,7 +1,7 @@
-scdcdm.util.cell\_composition\_data
+sccoda.util.cell\_composition\_data
 ===================================
 
-.. automodule:: scdcdm.util.cell_composition_data
+.. automodule:: sccoda.util.cell_composition_data
 
    
    

@@ -1,7 +1,7 @@
-scdcdm
+sccoda
 ======
 
 .. toctree::
    :maxdepth: 4
 
-   scdcdm
+   sccoda

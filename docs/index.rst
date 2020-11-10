@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to SCDCdm's documentation!
+Welcome to scCODA's documentation!
 =============================================
 
 This package contains statistical models to analyze changes in compositional data, especially from single-cell RNA-seq experiments.
@@ -26,14 +26,14 @@ Modules
 .. autosummary::
    :toctree: modules
 
-   scdcdm.model.dirichlet_models
-   scdcdm.model.other_models
-   scdcdm.util.cell_composition_data
-   scdcdm.util.comp_ana
-   scdcdm.util.data_generation
-   scdcdm.util.multi_parameter_analysis_functions
-   scdcdm.util.multi_parameter_sampling
-   scdcdm.util.result_classes
+   sccoda.model.dirichlet_models
+   sccoda.model.other_models
+   sccoda.util.cell_composition_data
+   sccoda.util.comp_ana
+   sccoda.util.data_generation
+   sccoda.util.multi_parameter_analysis_functions
+   sccoda.util.multi_parameter_sampling
+   sccoda.util.result_classes
 
 Indices and tables
 ==================

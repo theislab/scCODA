@@ -10,12 +10,12 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow_probability.python.experimental import edward2 as ed
 
-from scdcdm.util import result_classes as res
-from scdcdm.util import data_generation as gen
-from scdcdm.util import comp_ana as mod
-from scdcdm.util import cell_composition_data as dat
-from scdcdm.util import data_visualization as viz
-from scdcdm.model import dirichlet_models as dm
+from sccoda.util import result_classes as res
+from sccoda.util import data_generation as gen
+from sccoda.util import comp_ana as mod
+from sccoda.util import cell_composition_data as dat
+from sccoda.util import data_visualization as viz
+from sccoda.model import dirichlet_models as dm
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -84,9 +84,9 @@ data_bal_expr = pd.merge(counts_bal, data_bal.loc[:, col], right_index=True, lef
 
 print(data_bal_expr)
 
-data_scdcdm = dat.from_pandas(data_bal_expr, col)
+data_sccoda = dat.from_pandas(data_bal_expr, col)
 
-print(data_scdcdm.X.shape)
+print(data_sccoda.X.shape)
 
 # Free up some memory
 
@@ -268,7 +268,7 @@ def model_experimental(data, formula, baseline_index=None):
 
 # Set logitNormal parameter to 10
 
-model_mbs = model_experimental(data_scdcdm, "mbs_consolidated", baseline_index=None)
+model_mbs = model_experimental(data_sccoda, "mbs_consolidated", baseline_index=None)
 
 result_mbs = model_mbs.sample_nuts(num_results=int(1000), n_burnin=0, num_adapt_steps=500)
 

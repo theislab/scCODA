@@ -9,9 +9,9 @@ save_path = sys.argv[2]
 model_name = sys.argv[3]
 count = int(sys.argv[4])
 if sys.argv[5] == "True":
-    keep_scdcdm_results = True
+    keep_sccoda_results = True
 else:
-    keep_scdcdm_results = False
+    keep_sccoda_results = False
 print("model name:", model_name)
 
 file_name = os.listdir(dataset_path)[count]
@@ -31,11 +31,11 @@ elif model_name == "ALDEx2":
               "alpha": 0.05,
               "fdr_correct": False}
 
-elif model_name in ["simple_dm", "scdcdm"]:
+elif model_name in ["simple_dm", "scCODA"]:
     kwargs = {"num_results": 20000,
               "n_burnin": 5000,
               "num_adapt_steps": 4000,
-              "keep_scdcdm_results": keep_scdcdm_results}
+              "keep_sccoda_results": keep_sccoda_results}
 
 elif model_name in ["alr_ttest", "alr_wilcoxon"]:
     kwargs = {"reference_index": 4,
@@ -49,7 +49,7 @@ elif model_name == "scdc":
 else:
     kwargs = {}
 
-if keep_scdcdm_results:
+if keep_sccoda_results:
     results, effects = add.model_on_one_datafile(dataset_path+file_name, model_name, **kwargs)
     results = add.get_scores(results)
     save = {"results": results, "effects": effects}

@@ -1,20 +1,21 @@
-# Utility functions for benchmarks on SCDCdm
+# Utility functions for benchmarks on scCODA
 import numpy as np
 import pandas as pd
 import pickle as pkl
 import os
 import sys
 import patsy as pt
+import rpy2
 
 # For running on server
 sys.path.insert(0, '/home/icb/johannes.ostner/compositional_diff/SCDCdm/')
 
-from scdcdm.util import data_generation as gen
-from scdcdm.model import other_models as om
-from scdcdm.model import dirichlet_models as model
+from sccoda.util import data_generation as gen
+from sccoda.model import other_models as om
+from sccoda.model import dirichlet_models as model
 
 
-def benchmark(data_path, save_path, models, benchmark_name="", server=False, keep_scdcdm_results=False):
+def benchmark(data_path, save_path, models, benchmark_name="", server=False, keep_sccoda_results=False):
     """
     Run a benchmark. All models in parameter "models" are applied to all datasets in "data_path".
 
@@ -39,7 +40,7 @@ def benchmark(data_path, save_path, models, benchmark_name="", server=False, kee
 
     # Models that need batched execution due to calculation time (One data file at a time, also one results file per data file).
     # For all other models, only one results file with all results is generated
-    batched_models = ["simple_dm", "scdcdm", "scdc"]
+    batched_models = ["simple_dm", "scCODA", "scdc"]
 
     # Parameters for each modelsc
     for model_name in models:
@@ -60,11 +61,11 @@ def benchmark(data_path, save_path, models, benchmark_name="", server=False, kee
                       "alpha": 0.05,
                       "fdr_correct": False}
 
-        elif model_name in ["simple_dm", "scdcdm"]:
+        elif model_name in ["simple_dm", "scCODA"]:
             kwargs = {"num_results": 20000,
                       "n_burnin": 5000,
                       "num_adapt_steps": 4000,
-                      "keep_scdcdm_results": keep_scdcdm_results}
+                      "keep_sccoda_results": keep_sccoda_results}
 
         elif model_name in ["alr_ttest", "alr_wilcoxon"]:
             kwargs = {"reference_index": 4,
@@ -88,14 +89,14 @@ def benchmark(data_path, save_path, models, benchmark_name="", server=False, kee
                     bash_loc = f"/home/icb/johannes.ostner/compositional_diff/benchmark_scripts/{benchmark_name}"
                     bash_name = f"{benchmark_name}_{model_name}_{count}"
                     script_location = "/home/icb/johannes.ostner/compositional_diff/benchmark_scripts/paper_simulation_scripts/model_one_job_batched.py"
-                    arguments = [data_path, save_path, model_name, count, keep_scdcdm_results]
+                    arguments = [data_path, save_path, model_name, count, keep_sccoda_results]
 
                     execute_on_server(bash_loc, bash_name, script_location, arguments)
                 # Locally, just execute and save
                 else:
                     file_name = os.listdir(data_path)[count]
 
-                    if keep_scdcdm_results:
+                    if keep_sccoda_results:
                         results, effects = model_on_one_datafile(data_path + file_name, model_name, **kwargs)
                         results = get_scores(results)
                         save = {"results": results, "effects": effects}
@@ -129,7 +130,7 @@ def benchmark(data_path, save_path, models, benchmark_name="", server=False, kee
                     pkl.dump(results, f)
 
 
-def model_on_one_datafile(file_path, model_name, keep_scdcdm_results=False, *args, **kwargs):
+def model_on_one_datafile(file_path, model_name, keep_sccoda_results=False, *args, **kwargs):
     """
     Run a model on one datafile from generate_data.generate_compositional_datasets
 
@@ -139,8 +140,8 @@ def model_on_one_datafile(file_path, model_name, keep_scdcdm_results=False, *arg
         path to dataset
     model_name: str
         model name
-    keep_scdcdm_results: bool
-        Whether betas_df from the scdcdm result should be returned as well (for threshold benchmark)
+    keep_sccoda_results: bool
+        Whether betas_df from the scCODA result should be returned as well (for threshold benchmark)
     args:
         Passed to the model execution function
     kwargs:
@@ -173,6 +174,8 @@ def model_on_one_datafile(file_path, model_name, keep_scdcdm_results=False, *arg
 
     # Select right model to execute. For most models, just init model, run fit, run eval
     for d in range(len(data["datasets"])):
+
+        model_completed = True
 
         if model_name == "Haber":
             mod = om.HaberModel(data["datasets"][d])
@@ -256,11 +259,11 @@ def model_on_one_datafile(file_path, model_name, keep_scdcdm_results=False, *arg
             fp = sum([final_betas[k] != 0 for k in ks])
 
             # append betas_df to output list
-            if keep_scdcdm_results:
+            if keep_sccoda_results:
                 effect_dfs.append(betas_df)
 
-        elif model_name == "scdcdm":
-            # Build covariance matrix for SCDCdm and extract comp. data
+        elif model_name == "scCODA":
+            # Build covariance matrix for scCODA and extract comp. data
             dat = data["datasets"][d]
             K = dat.X.shape[1]
             # Only one covariate
@@ -296,23 +299,29 @@ def model_on_one_datafile(file_path, model_name, keep_scdcdm_results=False, *arg
             fp = sum([final_betas[k] != 0 for k in ks])
 
             # append betas_df to output list
-            if keep_scdcdm_results:
+            if keep_sccoda_results:
                 effect_dfs.append(betas_df)
 
         elif model_name == "scdc":
             mod = om.scdney_model(data["datasets"][d])
-            tp, tn, fp, fn = mod.analyze(server=kwargs["server"])[1]
+            try:
+                tp, tn, fp, fn = mod.analyze(server=kwargs["server"])[1]
+            except rpy2.rinterface.RRuntimeError:
+                fin_df = fin_df.drop(d)
+                tp, tn, fp, fn = (np.nan, np.nan, np.nan, np.nan)
+                model_completed = False
 
         else:
             raise ValueError("Invalid model name specified!")
 
         # Add to result df
-        fin_df.loc[d, "tp"] = tp
-        fin_df.loc[d, "fp"] = fp
-        fin_df.loc[d, "tn"] = tn
-        fin_df.loc[d, "fn"] = fn
+        if model_completed:
+            fin_df.loc[d, "tp"] = tp
+            fin_df.loc[d, "fp"] = fp
+            fin_df.loc[d, "tn"] = tn
+            fin_df.loc[d, "fn"] = fn
 
-    if keep_scdcdm_results:
+    if keep_sccoda_results:
         return fin_df, effect_dfs
     else:
         return fin_df

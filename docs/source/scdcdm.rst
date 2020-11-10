@@ -1,4 +1,4 @@
-scdcdm package
+sccoda package
 ==============
 
 Subpackages
@@ -6,13 +6,13 @@ Subpackages
 
 .. toctree::
 
-   scdcdm.model
-   scdcdm.util
+   sccoda.model
+   sccoda.util
 
 Module contents
 ---------------
 
-.. automodule:: scdcdm
+.. automodule:: sccoda
    :members:
    :undoc-members:
    :show-inheritance:

@@ -2,10 +2,10 @@ Models
 ======
 
 CompositionalDiff uses two different models to detect changes in compositional data.
-These are implemented in ``scdcdm.model.dirichlet_models`` and differ whether a baseline (reference) cell type is used or not.
-Both models can be called via creating an instance of ``scdcdm.util.comp_ana.CompositionalAnalysis``.
-SCDCdm automatically selects the correct model based on whether a baseline cell type was specified.
-
+These are implemented in ``sccoda.model.dirichlet_models`` and differ whether a baseline (reference) cell type is used or not.
+Both models can be called via creating an instance of ``sccoda.util.comp_ana.CompositionalAnalysis``.
+scCODA automatically selects the correct model based on whether a baseline cell type was specified.
+f
 Model structure
 ~~~~~~~~~~~~~~~
 
@@ -20,13 +20,13 @@ Inference
 ~~~~~~~~~
 
 Once the model is set up, optimization via HMC sampling can be performed via ``sample_hmc()``.
-This produces a ``scdcdm.util.result_classes.CAResult`` object.
+This produces a ``sccoda.util.result_classes.CAResult`` object.
 
 
 Result analysis
 ~~~~~~~~~~~~~~~
 
-To see which effects were found to be significant, call ``summary()`` on your ``scdcdm.util.result_classes.CAResult`` object.
+To see which effects were found to be significant, call ``summary()`` on your ``sccoda.util.result_classes.CAResult`` object.
 The final_parameter column of the effects data frame shows the significances. If the value is 0, the effect is not significant, otherwise it is.
 
-Furthermore, ``scdcdm.util.result_classes.CAResult`` supports all functionalities af arviz's ``InferenceData``.
+Furthermore, ``sccoda.util.result_classes.CAResult`` supports all functionalities af arviz's ``InferenceData``.

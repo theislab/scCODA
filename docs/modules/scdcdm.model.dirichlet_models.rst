@@ -1,7 +1,7 @@
-scdcdm.model.dirichlet\_models
+sccoda.model.dirichlet\_models
 ==============================
 
-.. automodule:: scdcdm.model.dirichlet_models
+.. automodule:: sccoda.model.dirichlet_models
 
    
    

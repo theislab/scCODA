@@ -1,7 +1,7 @@
 import scanpy as sc
 import numpy as np
 import pandas as pd
-from scdcdm.util import cell_composition_data as ccd
+from sccoda.util import cell_composition_data as ccd
 
 #%%
 adata_ref = sc.datasets.pbmc3k_processed()  # this is an earlier version of the dataset from the pbmc3k tutorial

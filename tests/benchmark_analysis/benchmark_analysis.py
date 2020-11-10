@@ -8,10 +8,10 @@ import anndata as ad
 import ast
 
 import matplotlib.pyplot as plt
-from scdcdm.util import result_classes as res
-from scdcdm.util import multi_parameter_sampling as mult
-from scdcdm.util import multi_parameter_analysis_functions as ana
-from scdcdm.util import data_generation as gen
+from sccoda.util import result_classes as res
+from sccoda.util import multi_parameter_sampling as mult
+from sccoda.util import multi_parameter_analysis_functions as ana
+from sccoda.util import data_generation as gen
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
@@ -21,7 +21,7 @@ sns.set_style("ticks")
 importlib.reload(ana)
 # Get data
 
-path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\overall_benchmark"
+path = "../../scCODA/data/overall_benchmark"
 
 #%%
 # Find relations between numerical values and composition/increase vectors
@@ -117,11 +117,11 @@ print(all_study_params_2)
 
 #%%
 # Save that stuff
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\benchmark_results"
+result_path = "../../scCODA/data/benchmark_results"
 
-with open(result_path + "\\normal_results_aggregated.pkl", "wb") as f:
+with open(result_path + "/normal_results_aggregated.pkl", "wb") as f:
     pkl.dump(all_study_params_agg_2, file=f, protocol=4)
-with open(result_path + "\\normal_results.pkl", "wb") as f:
+with open(result_path + "/normal_results.pkl", "wb") as f:
     pkl.dump(all_study_params_2, file=f, protocol=4)
 
 #%%
@@ -273,15 +273,15 @@ print(total_df_2)
 
 #%%
 # Saving
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\benchmark_results"
+result_path = "../../scCODA/data/benchmark_results"
 
-with open(result_path + "\\thresholds.pkl", "wb") as f:
+with open(result_path + "/thresholds.pkl", "wb") as f:
     pkl.dump(total_df_2, file=f, protocol=4)
 
 #%%
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\benchmark_results"
+result_path = "../../scCODA/data/benchmark_results"
 
-with open(result_path+ "\\thresholds.pkl", "rb") as f:
+with open(result_path+ "/thresholds.pkl", "rb") as f:
     total_df_2 = pkl.load(f)
 
 #%%
@@ -304,7 +304,7 @@ plt.show()
 # Same setup as before
 importlib.reload(ana)
 
-path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\negative_benchmark"
+path = "../../scCODA/data/negative_benchmark"
 
 
 _, all_study_params_neg, all_study_params_neg_agg = ana.multi_run_study_analysis_prepare(path)
@@ -382,15 +382,15 @@ print(all_study_params_neg_agg)
 
 #%%
 # Save that stuff
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\benchmark_results"
+result_path = "../../scCODA/data/benchmark_results"
 
-with open(result_path + "\\results_negative.pkl", "wb") as f:
+with open(result_path + "/results_negative.pkl", "wb") as f:
     pkl.dump(all_study_params_neg, file=f, protocol=4)
-with open(result_path + "\\results_negative_aggregated.pkl", "wb") as f:
+with open(result_path + "/results_negative_aggregated.pkl", "wb") as f:
     pkl.dump(all_study_params_neg_agg, file=f, protocol=4)
 #%%
 # Plots
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\benchmark_results"
+result_path = "../../scCODA/data/benchmark_results"
 
 
 def draw_heatmap(*args, **kwargs):
@@ -400,15 +400,15 @@ def draw_heatmap(*args, **kwargs):
 
 fg = sns.FacetGrid(all_study_params_neg_agg, col='num_increase', row="b_count")
 fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
-plt.savefig(result_path + "\\negative_heatmaps.png")
+plt.savefig(result_path + "/negative_heatmaps.png")
 plt.show()
 
 #%%
 
 # For comparison: Positive heatmaps
-result_path = "C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\benchmark_results"
+result_path = "../../scCODA/data/benchmark_results"
 
-with open(result_path + "\\results_aggregated.pkl", "rb") as f:
+with open(result_path + "/results_aggregated.pkl", "rb") as f:
     all_study_params_agg_pos = pkl.load(file=f)
 
 #%%
@@ -417,7 +417,7 @@ fg = sns.FacetGrid(all_study_params_agg_pos.loc[(all_study_params_agg_pos["b_cou
                                               (all_study_params_agg_pos["num_increase"].isin([10, 50, 100]))],
                    col='num_increase', row="b_count")
 fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
-plt.savefig(result_path + "\\pos_heatmaps_for_negative.png")
+plt.savefig(result_path + "/pos_heatmaps_for_negative.png")
 plt.show()
 
 # -> For same absolute cell count change, negative effects are detected even a little better!
@@ -433,6 +433,6 @@ fg = sns.FacetGrid(all_study_params_agg_pos.loc[(all_study_params_agg_pos["b_cou
                                               (all_study_params_agg_pos["num_increase"].isin([40, 80, 200]))],
                    col='num_increase', row="b_count")
 fg.map_dataframe(draw_heatmap, 'n_controls', 'n_cases', 'mcc', cbar=False)
-plt.savefig(result_path + "\\negative_heatmaps.png")
+plt.savefig(result_path + "/negative_heatmaps.png")
 plt.show()
 

@@ -10,9 +10,9 @@ import importlib
 import pandas as pd
 from tensorflow_probability.python.experimental import edward2 as ed
 
-from scdcdm.util import result_classes as res
-from scdcdm.model import dirichlet_models as mod
-from scdcdm.util import comp_ana as ca
+from sccoda.util import result_classes as res
+from sccoda.model import dirichlet_models as mod
+from sccoda.util import comp_ana as ca
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -20,7 +20,7 @@ tfb = tfp.bijectors
 pd.set_option('display.max_columns', 500)
 #%%
 # Testing
-from scdcdm.util import data_generation as gen
+from sccoda.util import data_generation as gen
 
 n = 5
 

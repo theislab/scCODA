@@ -1,4 +1,5 @@
-""""
+"""
+
 This file contains simple simulation tests that are used to see if all parts of the package work
 
 :authors: Johannes Ostner
@@ -13,11 +14,11 @@ import importlib
 import arviz as az
 import pickle as pkl
 
-from scdcdm.util import data_generation as gen
-from scdcdm.util import comp_ana as mod
-from scdcdm.util import result_classes as res
-from scdcdm.util import multi_parameter_sampling as mult
-from scdcdm.util import cell_composition_data as dat
+from sccoda.util import data_generation as gen
+from sccoda.util import comp_ana as mod
+from sccoda.util import result_classes as res
+from sccoda.util import multi_parameter_sampling as mult
+from sccoda.util import cell_composition_data as dat
 
 pd.options.display.float_format = '{:10,.3f}'.format
 pd.set_option('display.max_columns', None)
@@ -29,12 +30,12 @@ np.random.seed(1234)
 n = 3
 
 cases = 1
-K = 5
+K = 3
 n_samples = [n, n]
-n_total = np.full(shape=[2*n], fill_value=1000)
+n_total = np.full(shape=[2*n], fill_value=5000)
 
 data = gen.generate_case_control(cases, K, n_total[0], n_samples,
-                                 w_true=np.array([[1, 0, 0, 0, 0]]),
+                                 w_true=np.array([[1, 0, 0, ]]),
                                  b_true=np.log(np.repeat(0.2, K)).tolist())
 
 print(data.uns["w_true"])
@@ -77,7 +78,7 @@ print(ana.covariate_names)
 
 #%%
 importlib.reload(mod)
-params_mcmc = ana.sample_hmc(num_results=int(1000), n_burnin=500)
+params_mcmc = ana.sample_hmc(num_results=int(20000), n_burnin=5000)
 
 #%%
 params_mcmc.summary()
@@ -153,7 +154,7 @@ params_mcmc_2.plot()
 
 # Haber Data
 
-data_path = "C:/Users/Johannes/Documents/Uni/Master's_Thesis/data/haber_atlas_metadata.txt"
+data_path = "../../data/haber_atlas_metadata.txt"
 data = pd.read_csv(data_path, sep="\t", header=[0], skiprows=[1])
 mice = data.groupby(["Mouse", "Cluster"])\
              .agg({"Cluster": "count"})\
@@ -270,7 +271,7 @@ for i in range(9):
 
 #%% Haber data on multiple categories
 
-cell_counts = pd.read_csv("C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\haber_counts.csv")
+cell_counts = pd.read_csv("../../data/haber_counts.csv")
 
 print(cell_counts)
 
@@ -324,7 +325,7 @@ print(model_all.x)
 
 #%%
 
-import scdcdm.model.other_models as om
+import sccoda.model.other_models as om
 import statsmodels.api as sm
 
 #%%
@@ -340,7 +341,7 @@ print(m_s.summary())
 
 #%% Haber data on multiple categories
 
-cell_counts = pd.read_csv("C:\\Users\\Johannes\\Documents\\Uni\\Master's_Thesis\\SCDCdm\\data\\haber_counts.csv")
+cell_counts = pd.read_csv("../../data/data/haber_counts.csv")
 
 print(cell_counts)
 
@@ -363,6 +364,6 @@ data_salm_2 = dat.from_pandas(salm_df, covariate_columns=["Mouse"])
 data_salm_2.obs["Condition"] = data_salm_2.obs["Mouse"].str.replace(r"_[0-9]", "")
 
 #%%
-from scdcdm.util import data_visualization as viz
+from sccoda.util import data_visualization as viz
 
 viz.plot_feature_stackbars(data_salm, ["Condition"])
