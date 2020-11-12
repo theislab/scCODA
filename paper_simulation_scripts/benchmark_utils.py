@@ -306,7 +306,7 @@ def model_on_one_datafile(file_path, model_name, keep_sccoda_results=False, *arg
             mod = om.scdney_model(data["datasets"][d])
             try:
                 tp, tn, fp, fn = mod.analyze(server=kwargs["server"])[1]
-            except rpy2.rinterface.RRuntimeError:
+            except rpy2.rinterface_lib.embedded.RRuntimeError:
                 fin_df = fin_df.drop(d)
                 tp, tn, fp, fn = (np.nan, np.nan, np.nan, np.nan)
                 model_completed = False

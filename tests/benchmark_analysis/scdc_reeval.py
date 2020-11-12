@@ -10,9 +10,6 @@ from pathlib import Path
 
 #%%
 
-print(Path().absolute())
-#%%
-
 # Read data
 save_path = str(Path().absolute()) + "/data/model_comparison/model_comparison_new_005/"
 
@@ -36,7 +33,7 @@ import re
 completed_numbers = [int(re.findall(r"\d+", x)[0]) for x in scdc_files]
 print(len(completed_numbers))
 
-missing_numbers = set(np.arange(1, 251, 1).tolist()) - set(completed_numbers)
+missing_numbers = set(np.arange(1, 250, 1).tolist()) - set(completed_numbers)
 
 
 print(len(missing_numbers))
@@ -44,11 +41,11 @@ print(len(missing_numbers))
 #%%
 import shutil
 
-data_path = os.path.expanduser("//data/model_comparison/generated_datasets_new_005/")
-miss_path = os.path.expanduser("//data/model_comparison/scdc_missing_datasets/")
+data_path = str(Path().absolute()) + "/data/model_comparison/generated_datasets_new_005/"
+miss_path = str(Path().absolute()) + "/data/model_comparison/scdc_missing_datasets/"
 
 for n in missing_numbers:
-    file_name = f"model_comp_data_{n}"
+    file_name = f"model_comp_data_{n+1}"
     shutil.copyfile(data_path + file_name, miss_path + file_name)
 
 #%%
@@ -109,3 +106,20 @@ reeval_path = str(Path().absolute()) + "/data/model_comparison/model_comparison_
 
 for file_name in os.listdir(reeval_path):
     shutil.copyfile(reeval_path + file_name, data_path + file_name)
+
+
+#%%
+data_path = str(Path().absolute()) + "/data/model_comparison/scdc_completion/"
+
+scdc_files = os.listdir(data_path)[:-1]
+
+print(len(scdc_files))
+print(len(missing_numbers))
+
+#%%
+result_path = str(Path().absolute()) + "/data/model_comparison/model_comparison_new_005/"
+
+for i in range(len(missing_numbers)):
+    shutil.copyfile(data_path + scdc_files[i], result_path + missing_numbers[i])
+
+
