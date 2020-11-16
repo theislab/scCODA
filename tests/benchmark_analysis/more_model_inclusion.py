@@ -273,6 +273,8 @@ df = pd.DataFrame(data.X, index=data.obs.index)
 
 
 import skbio
+importlib.reload(skbio)
+
 ancom_out = skbio.stats.composition.ancom(df, data.obs["x_0"])
 
 print(ancom_out[0]["Reject null hypothesis"])

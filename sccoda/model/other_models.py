@@ -10,7 +10,7 @@ import pandas as pd
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-# import skbio
+import skbio
 from tensorflow_probability.python.experimental import edward2 as ed
 
 import statsmodels as sm

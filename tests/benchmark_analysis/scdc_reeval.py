@@ -117,9 +117,12 @@ print(len(scdc_files))
 print(len(missing_numbers))
 
 #%%
+import shutil
+
+missing_numbers = list(missing_numbers)
 result_path = str(Path().absolute()) + "/data/model_comparison/model_comparison_new_005/"
 
 for i in range(len(missing_numbers)):
-    shutil.copyfile(data_path + scdc_files[i], result_path + missing_numbers[i])
+    shutil.copyfile(data_path + scdc_files[i], result_path + "scdc_results_" + str(missing_numbers[i]) + ".pkl")
 
 
