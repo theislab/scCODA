@@ -1,7 +1,11 @@
-sccoda.model.dirichlet\_models
+﻿sccoda.model.dirichlet\_models
 ==============================
 
 .. automodule:: sccoda.model.dirichlet_models
+
+   
+   
+   
 
    
    
@@ -14,6 +18,7 @@ sccoda.model.dirichlet\_models
    .. autosummary::
    
       BaselineModel
+      BaselineModelNoEdward
       CompositionalModel
       NoBaselineModel
       NoBaselineModelNoEdward
@@ -23,3 +28,6 @@ sccoda.model.dirichlet\_models
    
    
    
+
+
+

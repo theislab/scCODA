@@ -1,7 +1,11 @@
-sccoda.util.multi\_parameter\_sampling
+﻿sccoda.util.multi\_parameter\_sampling
 ======================================
 
 .. automodule:: sccoda.util.multi_parameter_sampling
+
+   
+   
+   
 
    
    
@@ -21,3 +25,6 @@ sccoda.util.multi\_parameter\_sampling
    
    
    
+
+
+

@@ -1,7 +1,11 @@
-sccoda.util.result\_classes
+﻿sccoda.util.result\_classes
 ===========================
 
 .. automodule:: sccoda.util.result_classes
+
+   
+   
+   
 
    
    
@@ -21,3 +25,6 @@ sccoda.util.result\_classes
    
    
    
+
+
+

@@ -1,7 +1,11 @@
-sccoda.util.data\_generation
+﻿sccoda.util.data\_generation
 ============================
 
 .. automodule:: sccoda.util.data_generation
+
+   
+   
+   
 
    
    
@@ -10,7 +14,6 @@ sccoda.util.data\_generation
    .. autosummary::
    
       b_w_from_abs_change
-      binary
       counts_from_first
       generate_case_control
       generate_normal_correlated
@@ -28,3 +31,6 @@ sccoda.util.data\_generation
    
    
    
+
+
+

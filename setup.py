@@ -14,9 +14,9 @@ from setuptools import find_packages, setup, Command
 # Package meta-data.
 NAME = 'scCODA'
 DESCRIPTION = 'A Dirichlet-Multinomial approach to identify compositional changes in count data.'
-URL = 'https://github.com/theislab/SCDCpy'
-EMAIL = 'benjamin.schubert@helmholtz-muenchen.de'
-AUTHOR = 'Benjamin Schubert'
+URL = 'https://github.com/theislab/scCODA'
+EMAIL = 'johannes.ostner@helmholtz-muenchen.de'
+AUTHOR = 'Johannes Ostner, Benjamin Schubert'
 REQUIRES_PYTHON = '>=3.7.0'
 VERSION = "0.0.1"
 
@@ -24,12 +24,11 @@ VERSION = "0.0.1"
 REQUIRED = [
     "numpy", "scipy", "tensorflow", "tensorflow-probability",
     "arviz", "seaborn", "pandas", "matplotlib", "scanpy", "anndata",
-    "patsy", "sklearn"
+    "patsy", "sklearn", "statsmodels", "scikit-bio", "rpy2",
 ]
 
 # What packages are optional?
 EXTRAS = {
-#     'visualization': ['arviz'],
 }
 
 # The rest you shouldn't have to touch too much :)
@@ -104,7 +103,7 @@ setup(
     author_email=EMAIL,
     python_requires=REQUIRES_PYTHON,
     url=URL,
-    packages=find_packages(exclude=('prototyping', 'data', 'paper_simulation_scripts', 'tests')),
+    packages=find_packages(exclude=("data", "tests", "tutorials")),
     # If your package is a single module, use this instead of 'packages':
     # py_modules=['mypackage'],
 
@@ -121,7 +120,7 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
     # $ setup.py publish support.
     cmdclass={
