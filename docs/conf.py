@@ -14,6 +14,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../'))
+sys.path.insert(0, os.path.abspath('.'))
 
 import sccoda
 
@@ -42,8 +43,18 @@ extensions = ['numpydoc',
               'sphinx.ext.autosummary',
               ]
 
-autodoc_mock_imports = [
-
+autodoc_mock_imports = ["tensorflow",
+                        "tensorflow_probability",
+                        "skbio",
+                        "arviz",
+                        "scipy",
+                        "anndata",
+                        "patsy",
+                        "sklearn",
+                        "scanpy",
+                        "statsmodels",
+                        "rpy2",
+                        "pickle",
                         ]
 
 
