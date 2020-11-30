@@ -39,7 +39,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.autosummary']
 
 autodoc_mock_imports = ["tensorflow",
-                        "tensorflow_probability"]
+                        "tensorflow_probability",
+                        "scikit-bio"]
 
 
 def skip(app, what, name, obj, would_skip, options):

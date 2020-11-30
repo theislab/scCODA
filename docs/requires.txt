@@ -14,6 +14,5 @@ patsy
 sklearn
 scanpy
 statsmodels
-scikit-bio
 rpy2
 pickle
