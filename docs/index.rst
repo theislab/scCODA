@@ -34,6 +34,7 @@ Modules
    sccoda.util.multi_parameter_analysis_functions
    sccoda.util.multi_parameter_sampling
    sccoda.util.result_classes
+   sccoda.util.data_visualization
 
 Indices and tables
 ==================
