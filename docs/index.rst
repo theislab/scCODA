@@ -24,7 +24,7 @@ Modules
 =======
 
 .. autosummary::
-   :toctree: modules
+   :toctree: .
 
    sccoda.model.dirichlet_models
    sccoda.model.other_models
