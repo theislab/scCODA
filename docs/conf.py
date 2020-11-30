@@ -13,14 +13,16 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('../sccoda/'))
+
+import sccoda
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'scCODA'
 copyright = '2020, Johannes Ostner, Maren Büttner, Benjamin Schubert'
-author = 'Johannes Ostner, Benjamin Schubert'
+author = 'Johannes Ostner, Maren Büttner, Benjamin Schubert'
 
 
 # -- General configuration ---------------------------------------------------
