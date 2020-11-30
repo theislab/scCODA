@@ -1,4 +1,4 @@
-﻿sccoda.util.multi\_parameter\_analysis\_functions
+sccoda.util.multi\_parameter\_analysis\_functions
 =================================================
 
 .. automodule:: sccoda.util.multi_parameter_analysis_functions

@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath('../sccoda/'))
 # -- Project information -----------------------------------------------------
 
 project = 'scCODA'
-copyright = '2020, Johannes Ostner, Benjamin Schubert'
+copyright = '2020, Johannes Ostner, Maren Büttner, Benjamin Schubert'
 author = 'Johannes Ostner, Benjamin Schubert'
 
 

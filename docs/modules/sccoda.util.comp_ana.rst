@@ -1,4 +1,4 @@
-﻿sccoda.util.comp\_ana
+sccoda.util.comp\_ana
 =====================
 
 .. automodule:: sccoda.util.comp_ana

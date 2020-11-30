@@ -1,4 +1,4 @@
-﻿sccoda.model.other\_models
+sccoda.model.other\_models
 ==========================
 
 .. automodule:: sccoda.model.other_models

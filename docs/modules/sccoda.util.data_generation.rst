@@ -1,4 +1,4 @@
-﻿sccoda.util.data\_generation
+sccoda.util.data\_generation
 ============================
 
 .. automodule:: sccoda.util.data_generation

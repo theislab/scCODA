@@ -8,9 +8,9 @@ Welcome to scCODA's documentation!
 
 This package contains statistical models to analyze changes in compositional data, especially from single-cell RNA-seq experiments.
 
-The package is available on `github <https://github.com/johannesostner/SCDCdm_public>`_.
+The package is available on `github <https://github.com/theislab/scCODA>`_.
 
-Please also check out the `tutorial <https://github.com/johannesostner/SCDCdm_public/blob/master/tutorials/Tutorial.ipynb>`_ that goes over the most important functionalities.
+Please also check out the `tutorial <https://github.com/theislab/scCODA/blob/master/tutorials/Tutorial.ipynb>`_ that explains the most important functionalities.
 
 .. toctree::
    :maxdepth: 2

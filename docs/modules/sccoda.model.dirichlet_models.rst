@@ -1,4 +1,4 @@
-﻿sccoda.model.dirichlet\_models
+sccoda.model.dirichlet\_models
 ==============================
 
 .. automodule:: sccoda.model.dirichlet_models
