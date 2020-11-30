@@ -13,3 +13,4 @@ scanpy
 statsmodels
 scikit-bio
 rpy2
+pickle
