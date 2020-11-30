@@ -43,7 +43,7 @@ extensions = ['sphinx.ext.autodoc',
 
 autodoc_mock_imports = ["tensorflow",
                         "tensorflow_probability",
-                        "scikit-bio",
+                        "skbio",
                         "arviz",
                         "scipy",
                         "anndata",
