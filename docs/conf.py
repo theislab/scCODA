@@ -42,18 +42,8 @@ extensions = ['numpydoc',
               'sphinx.ext.autosummary',
               ]
 
-autodoc_mock_imports = ["tensorflow",
-                        "tensorflow_probability",
-                        "skbio",
-                        "arviz",
-                        "scipy",
-                        "anndata",
-                        "patsy",
-                        "sklearn",
-                        "scanpy",
-                        "statsmodels",
-                        "rpy2",
-                        "pickle",
+autodoc_mock_imports = [
+
                         ]
 
 
