@@ -43,67 +43,6 @@ class TestDataGeneration(unittest.TestCase):
         self.b_true = None
         self.w_true = None
 
-    def test_case_1(self):
-
-        np.random.seed(1234)
-
-        test_1 = True
-        data_sc_1 = gen.generate_normal_uncorrelated(self.N, self.D, self.K, self.n_total, self.noise_std_true)
-        if any(np.abs(data_sc_1.obs["x_0"] - [-0.720589, 0.887163, 0.859588]) > 1e-5):
-            print("scenario1.obs is not correct!")
-            test_1 = False
-        if not np.array_equal(data_sc_1.X, np.array([[591., 409.], [959., 41.], [965.,  35.]])):
-            print("scenario1.X is not correct!")
-            test_1 = False
-
-        self.assertTrue(test_1)
-
-    def test_case_2(self):
-        np.random.seed(1234)
-
-        test_2 = True
-        data_sc_2 = gen.generate_normal_correlated(self.N, self.D, self.K, self.n_total, self.noise_std_true,
-                                                   self.covariate_mean, self.covariate_var)
-        if any(np.abs(data_sc_2.obs["x_0"] - [-0.720589, 0.887163, 0.859588]) > 1e-5):
-            print("scenario2.obs is not correct!")
-            test_2 = False
-        if not np.array_equal(data_sc_2.X, np.array([[591., 409.], [959., 41.], [965., 35.]])):
-            print("scenario2.X is not correct!")
-            test_2 = False
-
-        self.assertTrue(test_2)
-
-    def test_case_3(self):
-        np.random.seed(1234)
-
-        test_3 = True
-        data_sc_3 = gen.generate_normal_xy_correlated(self.N, self.D, self.K, self.n_total, self.noise_std_true,
-                                                      self.covariate_mean, self.covariate_var, self.sigma)
-        if any(np.abs(data_sc_3.obs["x_0"] - [-0.720589, 0.887163, 0.859588]) > 1e-5):
-            print("scenario3.obs is not correct!")
-            test_3 = False
-        if not np.array_equal(data_sc_3.X, np.array([[570., 430.], [957., 43.], [923., 77.]])):
-            print("scenario3.X is not correct!")
-            test_3 = False
-
-        self.assertTrue(test_3)
-
-    def test_case_4(self):
-        np.random.seed(1234)
-
-        test_4 = True
-        data_sc_4 = gen.generate_sparse_xy_correlated(self.N, self.D, self.K, self.n_total, self.noise_std_true,
-                                                      self.covariate_mean, self.covariate_var, self.sigma,
-                                                      self.b_true, self.w_true)
-        if any(np.abs(data_sc_4.obs["x_0"] - [0.662509, 0.675246, -0.940298]) > 1e-5):
-            print("scenario4.obs is not correct!")
-            test_4 = False
-        if not np.array_equal(data_sc_4.X, np.array([[12., 988.], [13., 987.], [26., 974.]])):
-            print("scenario4.X is not correct!")
-            test_4 = False
-
-        self.assertTrue(test_4)
-
     def test_case_control_gen(self):
         """
         Tests data generation for case/control scenarios
@@ -122,7 +61,7 @@ class TestDataGeneration(unittest.TestCase):
         b_true = None
         w_true = None
 
-        data = gen.generate_case_control(cases, K, n_total, n_samples, noise_std_true, sigma, b_true, w_true)
+        data = gen.generate_case_control(cases, K, n_total, n_samples, sigma, b_true, w_true)
 
         test = True
         if any(np.abs(data.obs["x_0"] - [0, 0, 1, 1]) > 1e-5):
@@ -229,7 +168,7 @@ class TestModels(unittest.TestCase):
         model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", baseline_index=None)
 
         # Run MCMC
-        sim_results = model_salm.sample_hmc(num_results=20000, n_burnin=5000)
+        sim_results = model_salm.sample_hmc(num_results=20000, num_burnin=5000)
         alpha_df, beta_df = sim_results.summary_prepare()
 
         # Mean cell counts for both groups
@@ -253,7 +192,7 @@ class TestModels(unittest.TestCase):
         model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", baseline_index=5)
 
         # Run MCMC
-        sim_results = model_salm.sample_hmc(num_results=20000, n_burnin=5000)
+        sim_results = model_salm.sample_hmc(num_results=20000, num_burnin=5000)
         alpha_df, beta_df = sim_results.summary_prepare()
 
         # Mean cell counts for both groups

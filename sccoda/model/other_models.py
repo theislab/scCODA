@@ -7,6 +7,7 @@ These models are otherwise not part of scCODA
 """
 import numpy as np
 import pandas as pd
+import os
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -23,7 +24,6 @@ from sccoda.model import dirichlet_models as dm
 tfd = tfp.distributions
 tfb = tfp.bijectors
 
-import os
 
 class SimpleModel(dm.CompositionalModel):
     """
@@ -46,7 +46,7 @@ class SimpleModel(dm.CompositionalModel):
             dtype = tf.float64
 
             alpha = ed.Normal(loc=tf.zeros([K], dtype=dtype), scale=tf.ones([K], dtype=dtype), name="alpha")
-            b = ed.Normal(loc=tf.zeros([D, K-1], dtype=dtype), scale=tf.ones([D,K-1], dtype=dtype), name="b")
+            b = ed.Normal(loc=tf.zeros([D, K-1], dtype=dtype), scale=tf.ones([D, K-1], dtype=dtype), name="b")
 
             beta = tf.concat(axis=1, values=[b[:, :baseline_index],
                                              tf.fill(value=0., dims=[D, 1]),
@@ -78,7 +78,8 @@ class SimpleModel(dm.CompositionalModel):
                        tf.random.normal(mean=0, stddev=1, name="init_b", shape=beta_size, dtype=dtype),
                        ]
 
-    def sample_hmc(self, num_results=int(20e3), n_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01, num_adapt_steps=None):
+    def sample_hmc(self, num_results=int(20e3), num_burnin=int(5e3),
+                   num_leapfrog_steps=10, step_size=0.01, num_adapt_steps=None):
         """
         HMC sampling
 
@@ -86,7 +87,7 @@ class SimpleModel(dm.CompositionalModel):
         ----------
         num_results -- int
             MCMC chain length (default 20000)
-        n_burnin -- int
+        num_burnin -- int
             Number of burnin iterations (default 5000)
         num_leapfrog_steps -- int
             HMC leapfrog steps (default 10)
@@ -99,7 +100,7 @@ class SimpleModel(dm.CompositionalModel):
             scCODA.util.result_data object
         """
 
-        # (not in use atm)
+        # identity bijectors
         constraining_bijectors = [
             tfb.Identity(),
             tfb.Identity(),
@@ -115,11 +116,11 @@ class SimpleModel(dm.CompositionalModel):
 
         # Set default value for adaptation steps
         if num_adapt_steps is None:
-            num_adapt_steps = int(0.8 * n_burnin)
+            num_adapt_steps = int(0.8 * num_burnin)
 
         # Add step size adaptation
         hmc_kernel = tfp.mcmc.SimpleStepSizeAdaptation(
-            inner_kernel=hmc_kernel, num_adaptation_steps=int(4000), target_accept_prob=0.8)
+            inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8)
 
         # tracing function
         def trace_fn(_, pkr):
@@ -131,12 +132,12 @@ class SimpleModel(dm.CompositionalModel):
             }
 
         # HMC sampling
-        states, kernel_results, duration = self.sampling(num_results, n_burnin, hmc_kernel, self.params, trace_fn)
+        states, kernel_results, duration = self.sampling(num_results, num_burnin, hmc_kernel, self.params, trace_fn)
 
         # apply burnin
-        states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, n_burnin)
+        states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, num_burnin)
 
-        y_hat = self.get_y_hat(states_burnin, num_results, n_burnin)
+        y_hat = self.get_y_hat(states_burnin, num_results, num_burnin)
 
         params = dict(zip(self.param_names, states_burnin))
 
@@ -158,11 +159,10 @@ class SimpleModel(dm.CompositionalModel):
                   "sample": range(self.y.shape[0])
                   }
 
-        sampling_stats = {"chain_length": num_results, "n_burnin": n_burnin,
-                        "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
+        sampling_stats = {"chain_length": num_results, "num_burnin": num_burnin,
+                          "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
 
         model_specs = {"baseline": self.baseline_index, "formula": self.formula}
-
 
         return res.CAResultConverter(posterior=posterior,
                                      posterior_predictive=posterior_predictive,
@@ -173,7 +173,7 @@ class SimpleModel(dm.CompositionalModel):
                                                                    model_specs=model_specs)
 
     # Calculate predicted cell counts (for analysis purposes)
-    def get_y_hat(self, states_burnin, num_results, n_burnin):
+    def get_y_hat(self, states_burnin, num_results, num_burnin):
         """
         Calculate predicted cell counts (for analysis purposes) and add intermediate parameters to MCMC results
 
@@ -183,7 +183,7 @@ class SimpleModel(dm.CompositionalModel):
             MCMC chain without burnin samples
         num_results -- int
             Chain length (with burnin)
-        n_burnin -- int
+        num_burnin -- int
             Number of burnin samples
 
         Returns
@@ -191,15 +191,15 @@ class SimpleModel(dm.CompositionalModel):
         y_mean
             predicted cell counts
         """
-        chain_size_beta = [num_results - n_burnin, self.D, self.K]
-        chain_size_y = [num_results - n_burnin, self.N, self.K]
+        chain_size_beta = [num_results - num_burnin, self.D, self.K]
+        chain_size_y = [num_results - num_burnin, self.N, self.K]
 
         alphas = states_burnin[0]
         alphas_final = alphas.mean(axis=0)
 
         b = states_burnin[1]
         beta = np.zeros(chain_size_beta)
-        for i in range(num_results - n_burnin):
+        for i in range(num_results - num_burnin):
             beta[i] = np.concatenate([b[i, :, :self.baseline_index],
                                       np.zeros(shape=[self.D, 1], dtype=np.float64),
                                       b[i, :, self.baseline_index:]], axis=1)
@@ -207,10 +207,10 @@ class SimpleModel(dm.CompositionalModel):
         betas_final = beta.mean(axis=0)
 
         conc_ = np.exp(np.einsum("jk, ...kl->...jl", self.x, beta)
-                       + alphas.reshape((num_results - n_burnin, 1, self.K))).astype(np.float64)
+                       + alphas.reshape((num_results - num_burnin, 1, self.K))).astype(np.float64)
 
         predictions_ = np.zeros(chain_size_y)
-        for i in range(num_results - n_burnin):
+        for i in range(num_results - num_burnin):
             pred = tfd.DirichletMultinomial(self.n_total, conc_[i, :, :]).mean().numpy()
             predictions_[i, :, :] = pred
 
@@ -225,7 +225,7 @@ class SimpleModel(dm.CompositionalModel):
 
 class scdney_model:
     """
-    wrapper for using the scdney package for R with scCODA data
+    wrapper for using the scdney package for R (Cao et al., 2019) with scCODA data
     """
 
     def __init__(self, data):
@@ -405,13 +405,14 @@ class HaberModel(FrequentistModel):
         K = self.y.shape[1]
 
         if self.y.shape[0] == 2:
-            p_val = [0 for x in range(K)]
+            p_val = [0 for _ in range(K)]
         else:
             for k in range(K):
                 data_ct = pd.DataFrame({"x": self.x[:, 0],
                                         "y": self.y[:, k]})
 
-                model_ct = glm('y ~ x', data=data_ct, family=sm.genmod.families.Poisson(), offset=np.log(self.n_total)).fit()
+                model_ct = glm('y ~ x', data=data_ct,
+                               family=sm.genmod.families.Poisson(), offset=np.log(self.n_total)).fit()
                 p_val.append(model_ct.pvalues[1])
 
         self.p_val = p_val
@@ -434,10 +435,9 @@ class CLRModel(FrequentistModel):
 
         p_val = []
         K = self.y.shape[1]
-        D = self.x.shape[1]
 
         if self.y.shape[0] == 2:
-            p_val = [0 for x in range(K)]
+            p_val = [0 for _ in range(K)]
         else:
             # computes clr-transformed data matrix as a pandas DataFrame
             geom_mean = np.prod(self.y, axis=1, keepdims=True) ** (1 / K)
@@ -475,7 +475,7 @@ class TTest(FrequentistModel):
         n_group = int(N/2)
 
         if self.y.shape[0] == 2:
-            p_val = [0 for x in range(K)]
+            p_val = [0 for _ in range(K)]
         else:
             for k in range(K):
 
@@ -485,7 +485,7 @@ class TTest(FrequentistModel):
         self.p_val = p_val
 
 
-class CLR_ttest(FrequentistModel):
+class CLRModel_ttest(FrequentistModel):
     """
     Implements a CLR transform and subsequent linear model on each cell type into the scCODA framework
     (for model comparison purposes)
@@ -502,12 +502,11 @@ class CLR_ttest(FrequentistModel):
 
         p_val = []
         N, K = self.y.shape
-        D = self.x.shape[1]
 
         n_group = int(N/2)
 
         if self.y.shape[0] == 2:
-            p_val = [0 for x in range(K)]
+            p_val = [0 for _ in range(K)]
         else:
             # computes clr-transformed data matrix as a pandas DataFrame
             geom_mean = np.prod(self.y, axis=1, keepdims=True) ** (1 / K)
@@ -521,6 +520,9 @@ class CLR_ttest(FrequentistModel):
 
 
 class ALDEx2Model(FrequentistModel):
+    """
+    Wrapper for using the ALDEx2 package (Fernandes et al., 2014)
+    """
 
     def fit_model(self, method="we.eBH", server=False, *args, **kwargs):
 
@@ -534,7 +536,7 @@ class ALDEx2Model(FrequentistModel):
         K = self.y.shape[1]
 
         if self.y.shape[0] == 2:
-            p_val = [0 for x in range(K)]
+            p_val = [0 for _ in range(K)]
             self.result = None
         else:
 
@@ -582,12 +584,11 @@ class ALRModel_ttest(FrequentistModel):
 
         p_val = []
         N, K = self.y.shape
-        D = self.x.shape[1]
 
         n_group = int(N/2)
 
         if self.y.shape[0] == 2:
-            p_val = [0 for x in range(K)]
+            p_val = [0 for _ in range(K)]
         else:
             # computes alr-transformed data matrix as a pandas DataFrame
             y_alr = np.log(self.y / self.y[:, reference_index][:, np.newaxis])
@@ -619,12 +620,11 @@ class ALRModel_wilcoxon(FrequentistModel):
 
         p_val = []
         N, K = self.y.shape
-        D = self.x.shape[1]
 
         n_group = int(N/2)
 
         if self.y.shape[0] == 2:
-            p_val = [0 for x in range(K)]
+            p_val = [0 for _ in range(K)]
         else:
             # computes alr-transformed data matrix as a pandas DataFrame
             y_alr = np.log(self.y / self.y[:, reference_index][:, np.newaxis])
@@ -641,8 +641,7 @@ class ALRModel_wilcoxon(FrequentistModel):
 
 class AncomModel():
     """
-        Implements a KS test one each cell type into the scCODA framework
-        (for model comparison purposes)
+        Wrapper for the ancom model (Mandal et al., 2015)
     """
     def __init__(self, data):
         x = data.obs
@@ -675,7 +674,7 @@ class AncomModel():
         K = self.y.shape[1]
 
         if self.y.shape[0] == 2:
-            ancom_out = [False for x in range(K)]
+            ancom_out = [False for _ in range(K)]
         else:
             ancom_out = skbio.stats.composition.ancom(self.y, self.x["x_0"])
 
@@ -694,7 +693,7 @@ class AncomModel():
         K = self.y.shape[1]
 
         if self.y.shape[0] == 2:
-            accept = [False for x in range(K)]
+            accept = [False for _ in range(K)]
         else:
             accept = self.ancom_out[0]["Reject null hypothesis"].tolist()
 
@@ -710,7 +709,11 @@ class AncomModel():
 
 class DirichRegModel(FrequentistModel):
 
-    def fit_model(self, server=False, *args, **kwargs):
+    """
+    Wrapper for using the DirichReg package in R (Maier, 2014) with scCODA's infrastructure
+    """
+
+    def fit_model(self, server=False):
 
         if server:
             os.environ["R_HOME"] = "/home/icb/johannes.ostner/anaconda3/lib/R"
@@ -723,7 +726,7 @@ class DirichRegModel(FrequentistModel):
         K = self.y.shape[1]
 
         if self.y.shape[0] == 2:
-            p_val = [0 for x in range(K)]
+            p_val = [0 for _ in range(K)]
             self.result = None
         else:
 
@@ -755,5 +758,3 @@ class DirichRegModel(FrequentistModel):
             p_val = p_val[0]
 
         self.p_val = p_val
-
-

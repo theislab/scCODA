@@ -62,7 +62,7 @@ class CAResult(az.InferenceData):
             Information and statistics about the MCMC sampling procedure.
             Default keys:
             "chain_length": Length of MCMC chain (with burnin samples)
-            "n_burnin": Number of burnin samples
+            "num_burnin": Number of burnin samples
             "acc_rate": MCMC Acceptance rate
             "duration": Duration of MCMC sampling
         model_specs -- dict
@@ -309,9 +309,9 @@ class CAResult(az.InferenceData):
         print("Formula: %s" % self.model_specs["formula"])
         print("Spike-and-slab threshold: {threshold:.3f}".format(threshold=self.model_specs["threshold_prob"]))
         print("")
-        print("MCMC Sampling: Sampled {num_results} chain states ({n_burnin} burnin samples) in {duration:.3f} sec. "
+        print("MCMC Sampling: Sampled {num_results} chain states ({num_burnin} burnin samples) in {duration:.3f} sec. "
               "Acceptance rate: {ar:.1f}%".format(num_results=self.sampling_stats["chain_length"],
-                                                  n_burnin=self.sampling_stats["n_burnin"],
+                                                  num_burnin=self.sampling_stats["num_burnin"],
                                                   duration=self.sampling_stats["duration"],
                                                   ar=(100*self.sampling_stats["acc_rate"])))
         print("")
