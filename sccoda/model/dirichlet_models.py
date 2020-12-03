@@ -40,7 +40,7 @@ class CompositionalModel:
             Covariate names
         """
 
-        dtype = tf.float32
+        dtype = tf.float64
         self.x = tf.convert_to_tensor(covariate_matrix, dtype)
 
         # Add pseudocount if needed.
@@ -498,7 +498,7 @@ class NoBaselineModel(CompositionalModel):
         super(self.__class__, self).__init__(*args, **kwargs)
 
         self.baseline_index = None
-        dtype = tf.float32
+        dtype = tf.float64
 
         # All parameters that are returned for analysis
         self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw",
@@ -519,10 +519,10 @@ class NoBaselineModel(CompositionalModel):
             """
 
             N, D = x.shape
-            dtype = tf.float32
+            dtype = tf.float64
 
             # normal prior on bias
-            alpha = ed.Normal(loc=tf.zeros([K]), scale=tf.ones([K])*5, name="alpha")
+            alpha = ed.Normal(loc=tf.zeros([K], dtype=dtype), scale=tf.ones([K], dtype=dtype)*5, name="alpha")
 
             # Noncentered parametrization for raw slopes (before spike-and-slab)
             mu_b = ed.Normal(loc=tf.zeros(1, dtype=dtype), scale=tf.ones(1, dtype=dtype), name="mu_b")
@@ -569,10 +569,10 @@ class NoBaselineModel(CompositionalModel):
         beta_size = [self.D, self.K]
 
         # MCMC starting values
-        self.params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha'),
+        self.params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype),
                        tf.zeros(1, name="init_mu_b", dtype=dtype),
                        tf.ones(1, name="init_sigma_b", dtype=dtype),
-                       tf.random.normal(beta_size, 0, 1, name='init_b_offset'),
+                       tf.random.normal(beta_size, 0, 1, name='init_b_offset', dtype=dtype),
                        tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
                        ]
 
@@ -627,7 +627,7 @@ class NoBaselineModel(CompositionalModel):
         states_burnin.append(conc_)
         states_burnin.append(predictions_)
 
-        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float32)
+        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float64)
         y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
         return y_mean
 
@@ -652,7 +652,7 @@ class BaselineModel(CompositionalModel):
         super(self.__class__, self).__init__(*args, **kwargs)
 
         self.baseline_index = baseline_index
-        dtype = tf.float32
+        dtype = tf.float64
 
         # All parameters that are returned for analysis
         self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw",
@@ -671,11 +671,11 @@ class BaselineModel(CompositionalModel):
             K -- int
                 Number of cell types
             """
-            dtype = tf.float32
+            dtype = tf.float64
             N, D = x.shape
 
             # normal prior on bias
-            alpha = ed.Normal(loc=tf.zeros([K]), scale=tf.ones([K]) * 5, name="alpha")
+            alpha = ed.Normal(loc=tf.zeros([K], dtype=dtype), scale=tf.ones([K], dtype=dtype) * 5, name="alpha")
 
             # Noncentered parametrization for raw slopes of all cell types except baseline type (before spike-and-slab)
             mu_b = ed.Normal(loc=tf.zeros(1, dtype=dtype), scale=tf.ones(1, dtype=dtype), name="mu_b")
@@ -698,7 +698,7 @@ class BaselineModel(CompositionalModel):
 
             # Include slope 0 for baseline cell type
             beta = tf.concat(axis=1, values=[beta[:, :baseline_index],
-                                             tf.fill(value=0., dims=[D, 1]),
+                                             tf.zeros(shape=[D, 1], dtype=dtype),
                                              beta[:, baseline_index:]])
 
             # Concentration vector from intercepts, slopes
@@ -728,10 +728,10 @@ class BaselineModel(CompositionalModel):
         beta_size = [self.D, self.K-1]
 
         # MCMC starting values
-        self.params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha'),
+        self.params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype),
                        tf.zeros(1, name="init_mu_b", dtype=dtype),
                        tf.ones(1, name="init_sigma_b", dtype=dtype),
-                       tf.random.normal(beta_size, 0, 1, name='init_b_offset'),
+                       tf.random.normal(beta_size, 0, 1, name='init_b_offset', dtype=dtype),
                        tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
                        ]
 
@@ -776,11 +776,11 @@ class BaselineModel(CompositionalModel):
         beta_ = np.zeros(chain_size_beta)
         for i in range(num_results - n_burnin):
             beta_[i] = np.concatenate([beta_temp[i, :, :self.baseline_index],
-                                       np.zeros(shape=[self.D, 1], dtype=np.float32),
+                                       np.zeros(shape=[self.D, 1], dtype=np.float64),
                                        beta_temp[i, :, self.baseline_index:]], axis=1)
 
         conc_ = np.exp(np.einsum("jk, ...kl->...jl", self.x, beta_)
-                       + alphas.reshape((num_results - n_burnin, 1, self.K))).astype(np.float32)
+                       + alphas.reshape((num_results - n_burnin, 1, self.K))).astype(np.float64)
 
         predictions_ = np.zeros(chain_size_y)
         for i in range(num_results - n_burnin):
@@ -794,7 +794,7 @@ class BaselineModel(CompositionalModel):
         states_burnin.append(conc_)
         states_burnin.append(predictions_)
 
-        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float32)
+        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float64)
         y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
         return y_mean
 
@@ -825,7 +825,7 @@ class NoBaselineModelNoEdward(CompositionalModel):
         super(self.__class__, self).__init__(*args, **kwargs)
 
         self.baseline_index = None
-        dtype = tf.float32
+        dtype = tf.float64
 
         # All parameters that are returned for analysis
         self.param_names = ["mu_b", "sigma_b", "b_offset", "ind_raw", "alpha",
@@ -873,8 +873,8 @@ class NoBaselineModelNoEdward(CompositionalModel):
 
             alpha = yield Root(tfd.Independent(
                 tfd.Normal(
-                    loc=tf.zeros(alpha_size),
-                    scale=tf.ones(alpha_size) * 5,
+                    loc=tf.zeros(alpha_size, dtype=dtype),
+                    scale=tf.ones(alpha_size, dtype=dtype) * 5,
                     name="alpha"),
                 reinterpreted_batch_ndims=1))
 
@@ -935,7 +935,7 @@ class NoBaselineModelNoEdward(CompositionalModel):
         states_burnin.append(conc_)
         states_burnin.append(predictions_)
 
-        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float32)
+        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float64)
 
         y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
 
@@ -968,7 +968,7 @@ class BaselineModelNoEdward(CompositionalModel):
         super(self.__class__, self).__init__(*args, **kwargs)
 
         self.baseline_index = baseline_index
-        dtype = tf.float32
+        dtype = tf.float64
 
         # All parameters that are returned for analysis
         self.param_names = ["mu_b", "sigma_b", "b_offset", "ind_raw", "alpha",
@@ -1017,13 +1017,13 @@ class BaselineModelNoEdward(CompositionalModel):
 
             # Include slope 0 for baseline cell type
             beta = tf.concat(axis=1, values=[beta[:, :baseline_index],
-                                             tf.fill(value=0., dims=[self.D, 1]),
+                                             tf.zeros(shape=[self.D, 1], dtype=dtype),
                                              beta[:, baseline_index:]])
 
             alpha = yield Root(tfd.Independent(
                 tfd.Normal(
-                    loc=tf.zeros(alpha_size),
-                    scale=tf.ones(alpha_size) * 5,
+                    loc=tf.zeros(alpha_size, dtype=dtype),
+                    scale=tf.ones(alpha_size, dtype=dtype) * 5,
                     name="alpha"),
                 reinterpreted_batch_ndims=1))
 
@@ -1084,7 +1084,7 @@ class BaselineModelNoEdward(CompositionalModel):
         states_burnin.append(conc_)
         states_burnin.append(predictions_)
 
-        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float32)
+        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float64)
 
         y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
 

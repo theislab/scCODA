@@ -37,7 +37,7 @@ class NoBaselineModelTime(CompositionalModel):
         super(self.__class__, self).__init__(*args, **kwargs)
 
         self.baseline_index = None
-        dtype = tf.float32
+        dtype = tf.float64
 
         # All parameters that are returned for analysis
         self.param_names = ["mu_b", "sigma_b", "b_offset", "ind_raw", "alpha", "phi",
@@ -165,7 +165,7 @@ class NoBaselineModelTime(CompositionalModel):
         # states_burnin.append(conc_)
         # states_burnin.append(predictions_)
 
-        # concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float32)
+        # concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float64)
 
         #  y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
         # print(y_mean)

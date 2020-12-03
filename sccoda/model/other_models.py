@@ -35,7 +35,7 @@ class SimpleModel(dm.CompositionalModel):
 
         super(self.__class__, self).__init__(*args, **kwargs)
         self.baseline_index = baseline_index
-        dtype = tf.float32
+        dtype = tf.float64
 
         # All parameters that are returned for analysis
         self.param_names = ["alpha", "b", "beta", "concentration", "prediction"]
@@ -43,7 +43,7 @@ class SimpleModel(dm.CompositionalModel):
         # Model definition
         def define_model(x, n_total, K):
             N, D = x.shape
-            dtype = tf.float32
+            dtype = tf.float64
 
             alpha = ed.Normal(loc=tf.zeros([K], dtype=dtype), scale=tf.ones([K], dtype=dtype), name="alpha")
             b = ed.Normal(loc=tf.zeros([D, K-1], dtype=dtype), scale=tf.ones([D,K-1], dtype=dtype), name="b")
@@ -201,13 +201,13 @@ class SimpleModel(dm.CompositionalModel):
         beta = np.zeros(chain_size_beta)
         for i in range(num_results - n_burnin):
             beta[i] = np.concatenate([b[i, :, :self.baseline_index],
-                                      np.zeros(shape=[self.D, 1], dtype=np.float32),
+                                      np.zeros(shape=[self.D, 1], dtype=np.float64),
                                       b[i, :, self.baseline_index:]], axis=1)
 
         betas_final = beta.mean(axis=0)
 
         conc_ = np.exp(np.einsum("jk, ...kl->...jl", self.x, beta)
-                       + alphas.reshape((num_results - n_burnin, 1, self.K))).astype(np.float32)
+                       + alphas.reshape((num_results - n_burnin, 1, self.K))).astype(np.float64)
 
         predictions_ = np.zeros(chain_size_y)
         for i in range(num_results - n_burnin):
@@ -218,7 +218,7 @@ class SimpleModel(dm.CompositionalModel):
         states_burnin.append(conc_)
         states_burnin.append(predictions_)
 
-        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float32)
+        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float64)
         y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
         return y_mean
 

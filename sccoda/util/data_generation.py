@@ -39,19 +39,19 @@ def generate_normal_uncorrelated(N, D, K, n_total, noise_std_true=1):
     """
 
     # Generate random composition parameters
-    b_true = np.random.normal(0, 1, size=K).astype(np.float32)  # bias (alpha)
-    w_true = np.random.normal(0, 1, size=(D, K)).astype(np.float32)  # weights (beta)
+    b_true = np.random.normal(0, 1, size=K).astype(np.float64)  # bias (alpha)
+    w_true = np.random.normal(0, 1, size=(D, K)).astype(np.float64)  # weights (beta)
 
     # Generate random covariate matrix
-    x = np.random.normal(0, 1, size=(N, D)).astype(np.float32)
-    noise = noise_std_true * np.random.randn(N, 1).astype(np.float32)
+    x = np.random.normal(0, 1, size=(N, D)).astype(np.float64)
+    noise = noise_std_true * np.random.randn(N, 1).astype(np.float64)
 
     # Generate y
-    y = np.zeros([N, K], dtype=np.float32)
+    y = np.zeros([N, K], dtype=np.float64)
     for i in range(N):
         # Concentration should sum to 1 for each sample
-        concentration = softmax(x[i, :].T@w_true + b_true + noise[i, :]).astype(np.float32)
-        y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float32)
+        concentration = softmax(x[i, :].T@w_true + b_true + noise[i, :]).astype(np.float64)
+        y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float64)
 
     x_names = ["x_" + str(n) for n in range(x.shape[1])]
     x_df = pd.DataFrame(x, columns=x_names)
@@ -102,19 +102,19 @@ def generate_normal_correlated(N, D, K, n_total, noise_std_true, covariate_mean=
                 covariate_var[i, j] = p**np.abs(i-j)
 
     # Generate random composition parameters
-    b_true = np.random.normal(0, 1, size=K).astype(np.float32)  # bias (alpha)
-    w_true = np.random.normal(0, 1, size=(D, K)).astype(np.float32)  # weights (beta)
+    b_true = np.random.normal(0, 1, size=K).astype(np.float64)  # bias (alpha)
+    w_true = np.random.normal(0, 1, size=(D, K)).astype(np.float64)  # weights (beta)
 
     # Generate random covariate matrix
-    x = np.random.multivariate_normal(size=N, mean=covariate_mean, cov=covariate_var).astype(np.float32)
-    noise = noise_std_true * np.random.randn(N, 1).astype(np.float32)
+    x = np.random.multivariate_normal(size=N, mean=covariate_mean, cov=covariate_var).astype(np.float64)
+    noise = noise_std_true * np.random.randn(N, 1).astype(np.float64)
 
     # Generate y
-    y = np.zeros([N, K], dtype=np.float32)
+    y = np.zeros([N, K], dtype=np.float64)
     for i in range(N):
         # Concentration should sum to 1 for each sample
-        concentration = softmax(x[i, :].T @ w_true + b_true + noise[i, :]).astype(np.float32)
-        y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float32)
+        concentration = softmax(x[i, :].T @ w_true + b_true + noise[i, :]).astype(np.float64)
+        y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float64)
 
     x_names = ["x_" + str(n) for n in range(x.shape[1])]
     x_df = pd.DataFrame(x, columns=x_names)
@@ -171,20 +171,20 @@ def generate_normal_xy_correlated(N, D, K, n_total, noise_std_true=1,
                 covariate_var[i, j] = p**np.abs(i-j)
 
     # Generate random composition parameters
-    b_true = np.random.normal(0, 1, size=K).astype(np.float32)  # bias (alpha)
-    w_true = np.random.normal(0, 1, size=(D, K)).astype(np.float32)  # weights (beta)
+    b_true = np.random.normal(0, 1, size=K).astype(np.float64)  # bias (alpha)
+    w_true = np.random.normal(0, 1, size=(D, K)).astype(np.float64)  # weights (beta)
 
     # Generate random covariate matrix
-    x = np.random.multivariate_normal(size=N, mean=covariate_mean, cov=covariate_var).astype(np.float32)
-    noise = noise_std_true * np.random.randn(N, 1).astype(np.float32)
+    x = np.random.multivariate_normal(size=N, mean=covariate_mean, cov=covariate_var).astype(np.float64)
+    noise = noise_std_true * np.random.randn(N, 1).astype(np.float64)
 
     # Generate y
-    y = np.zeros([N, K], dtype=np.float32)
+    y = np.zeros([N, K], dtype=np.float64)
     for i in range(N):
         # Each row of y is now influenced by sigma
-        alpha = np.random.multivariate_normal(mean=x[i, :].T@w_true + b_true, cov=sigma*noise[i, :]).astype(np.float32)
-        concentration = softmax(alpha).astype(np.float32)
-        y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float32)
+        alpha = np.random.multivariate_normal(mean=x[i, :].T@w_true + b_true, cov=sigma*noise[i, :]).astype(np.float64)
+        concentration = softmax(alpha).astype(np.float64)
+        y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float64)
 
     x_names = ["x_" + str(n) for n in range(x.shape[1])]
     x_df = pd.DataFrame(x, columns=x_names)
@@ -286,7 +286,7 @@ def generate_sparse_xy_correlated(N, D, K, n_total, noise_std_true=1,
 
     # Uniform intercepts if none are specifed
     if b_true is None:
-        b_true = np.random.uniform(-3,3, size=K).astype(np.float32)  # bias (alpha)
+        b_true = np.random.uniform(-3,3, size=K).astype(np.float64)  # bias (alpha)
 
     # Randomly select covariates that should correlate if none are specified
     if w_true is None:
@@ -295,17 +295,17 @@ def generate_sparse_xy_correlated(N, D, K, n_total, noise_std_true=1,
         w_true = sparse_effect_matrix(D, K, n_d, n_k)
 
     # Generate random covariate matrix
-    x = np.random.multivariate_normal(size=N, mean=covariate_mean, cov=covariate_var).astype(np.float32)
-    noise = noise_std_true * np.random.randn(N, 1).astype(np.float32)
+    x = np.random.multivariate_normal(size=N, mean=covariate_mean, cov=covariate_var).astype(np.float64)
+    noise = noise_std_true * np.random.randn(N, 1).astype(np.float64)
 
     # Generate y
-    y = np.zeros([N, K], dtype=np.float32)
+    y = np.zeros([N, K], dtype=np.float64)
     for i in range(N):
         # Each row of y is now influenced by sigma
         alpha = np.random.multivariate_normal(mean=x[i, :].T @ w_true + b_true, cov=sigma * noise[i, :]).astype(
-            np.float32)
-        concentration = softmax(alpha).astype(np.float32)
-        y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float32)
+            np.float64)
+        concentration = softmax(alpha).astype(np.float64)
+        y[i, :] = np.random.multinomial(n_total[i], concentration).astype(np.float64)
 
     x_names = ["x_" + str(n) for n in range(x.shape[1])]
     x_df = pd.DataFrame(x, columns=x_names)
@@ -347,7 +347,7 @@ def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5,5], noise_std
 
     # Uniform intercepts if none are specifed
     if b_true is None:
-        b_true = np.random.uniform(-3, 3, size=K).astype(np.float32)  # bias (alpha)
+        b_true = np.random.uniform(-3, 3, size=K).astype(np.float64)  # bias (alpha)
 
     # Randomly select covariates that should correlate if none are specified
     if w_true is None:
@@ -359,7 +359,7 @@ def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5,5], noise_std
     if sigma is None:
         sigma = np.identity(K) * 0.05
 
-    # noise = noise_std_true * np.random.randn(N, 1).astype(np.float32)
+    # noise = noise_std_true * np.random.randn(N, 1).astype(np.float64)
 
     # Initialize x, y
     x = np.zeros((sum(n_samples), cases))
@@ -379,15 +379,15 @@ def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5,5], noise_std
 
             # Generate y
             alpha = np.random.multivariate_normal(mean=x[c+j, :].T @ w_true + b_true, cov=sigma).astype(
-                np.float32)
+                np.float64)
 
-            concentration = softmax(alpha).astype(np.float32)
+            concentration = softmax(alpha).astype(np.float64)
             z = np.random.multinomial(n_total, concentration)
             y[c+j] = z
         c = c+n_samples[i]
 
-    x = x.astype(np.float32)
-    y = y.astype(np.float32)
+    x = x.astype(np.float64)
+    y = y.astype(np.float64)
 
     x_names = ["x_" + str(n) for n in range(x.shape[1])]
     x_df = pd.DataFrame(x, columns=x_names)

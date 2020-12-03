@@ -131,7 +131,7 @@ class TestDataGeneration(unittest.TestCase):
         if not np.array_equal(data.X, np.array([[74., 926.], [58., 942.], [32., 968.], [53., 947.]])):
             print("X is not correct!")
             test = False
-        if not np.array_equal(data.uns["b_true"], np.array([-1.8508832,  0.7326526], dtype=np.float32)) & \
+        if not np.array_equal(data.uns["b_true"], np.array([-1.8508832,  0.7326526], dtype=np.float64)) & \
            np.array_equal(data.uns["w_true"], np.array([[0., 0.]])):
             print("uns is not correct!")
             test = False
@@ -176,7 +176,7 @@ class TestDataImport(unittest.TestCase):
 
     def test_from_pandas(self):
         # Get Haber Salmonella data
-        data_raw = pd.read_csv("./data/haber_counts.csv")
+        data_raw = pd.read_csv(os.path.abspath("../../data/haber_counts.csv"))
 
         salm_indices = [0, 1, 2, 3, 8, 9]
         salm_df = data_raw.iloc[salm_indices, :]
@@ -213,7 +213,7 @@ class TestModels(unittest.TestCase):
     def setUp(self):
 
         # Get Haber count data
-        data_raw = pd.read_csv("./data/haber_counts.csv")
+        data_raw = pd.read_csv(os.path.abspath("../../data/haber_counts.csv"))
 
         salm_indices = [0, 1, 2, 3, 8, 9]
         salm_df = data_raw.iloc[salm_indices, :]
@@ -237,8 +237,8 @@ class TestModels(unittest.TestCase):
         betas_true = np.round(np.mean(self.data.X[4:], 0), 0)
 
         # Mean cell counts for simulated data
-        final_alphas = np.round(alpha_df.loc[:, "expected_sample"].tolist(), 0)
-        final_betas = np.round(beta_df.loc[:, "expected_sample"].tolist(), 0)
+        final_alphas = np.round(alpha_df.loc[:, "Expected Sample"].tolist(), 0)
+        final_betas = np.round(beta_df.loc[:, "Expected Sample"].tolist(), 0)
 
         # Check if model approximately predicts ground truth
         differing_alphas = any(np.abs(alphas_true - final_alphas) > 30)
@@ -261,8 +261,8 @@ class TestModels(unittest.TestCase):
         betas_true = np.round(np.mean(self.data.X[4:], 0), 0)
 
         # Mean cell counts for simulated data
-        final_alphas = np.round(alpha_df.loc[:, "expected_sample"].tolist(), 0)
-        final_betas = np.round(beta_df.loc[:, "expected_sample"].tolist(), 0)
+        final_alphas = np.round(alpha_df.loc[:, "Expected Sample"].tolist(), 0)
+        final_betas = np.round(beta_df.loc[:, "Expected Sample"].tolist(), 0)
 
         # Check if model approximately predicts ground truth
         differing_alphas = any(np.abs(alphas_true - final_alphas) > 30)
