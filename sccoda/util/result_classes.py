@@ -69,7 +69,7 @@ class CAResult(az.InferenceData):
             All information and statistics about the model specifications.
             Default keys:
             "formula": Formula string
-            "baseline": int - identifier of baseline cell type
+            "reference": int - identifier of reference cell type
             Added during class initialization: "threshold_prob": Threshold for inclusion probability that separates significant from non-significant effects
         kwargs -- passed to az.InferenceData
         """
@@ -279,7 +279,7 @@ class CAResult(az.InferenceData):
         print("Compositional Analysis summary:")
         print("")
         print("Data: %d samples, %d cell types" % data_dims)
-        print("Baseline index: %s" % str(self.model_specs["baseline"]))
+        print("Reference index: %s" % str(self.model_specs["refernce"]))
         print("Formula: %s" % self.model_specs["formula"])
         print("")
         print("Intercepts:")
@@ -305,7 +305,7 @@ class CAResult(az.InferenceData):
         print("Compositional Analysis summary (extended):")
         print("")
         print("Data: %d samples, %d cell types" % data_dims)
-        print("Baseline index: %s" % str(self.model_specs["baseline"]))
+        print("Reference index: %s" % str(self.model_specs["reference"]))
         print("Formula: %s" % self.model_specs["formula"])
         print("Spike-and-slab threshold: {threshold:.3f}".format(threshold=self.model_specs["threshold_prob"]))
         print("")

@@ -4,7 +4,7 @@ Models
 scCODA uses Bayesian modeling to detect changes in compositional data.
 The model is implemented in ``sccoda.model.dirichlet_models``.
 Te easiest way to call a compositional model is via calling an instance of ``sccoda.util.comp_ana.CompositionalAnalysis``, which returns a compositional model
-scCODA automatically selects the correct model based on whether a baseline cell type was specified.
+scCODA automatically selects the correct model based on whether a reference cell type was specified.
 
 Model structure
 ~~~~~~~~~~~~~~~

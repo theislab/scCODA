@@ -161,11 +161,11 @@ class TestModels(unittest.TestCase):
         data_salm.obs["Condition"] = data_salm.obs["Mouse"].str.replace(r"_[0-9]", "")
         self.data = data_salm
 
-    def test_no_baseline(self):
+    def test_no_reference(self):
         np.random.seed(1234)
         tf.random.set_seed(5678)
 
-        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", baseline_index=None)
+        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", reference_cell_type=None)
 
         # Run MCMC
         sim_results = model_salm.sample_hmc(num_results=20000, num_burnin=5000)
@@ -185,11 +185,11 @@ class TestModels(unittest.TestCase):
 
         self.assertTrue((not differing_alphas) & (not differing_betas))
 
-    def test_baseline(self):
+    def test_reference(self):
         np.random.seed(1234)
         tf.random.set_seed(5678)
 
-        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", baseline_index=5)
+        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", reference_cell_type=5)
 
         # Run MCMC
         sim_results = model_salm.sample_hmc(num_results=20000, num_burnin=5000)

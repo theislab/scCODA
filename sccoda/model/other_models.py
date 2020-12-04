@@ -31,10 +31,10 @@ class SimpleModel(dm.CompositionalModel):
 
     """
 
-    def __init__(self, baseline_index, *args, **kwargs):
+    def __init__(self, reference_cell_type, *args, **kwargs):
 
         super(self.__class__, self).__init__(*args, **kwargs)
-        self.baseline_index = baseline_index
+        self.reference_cell_type = reference_cell_type
         dtype = tf.float64
 
         # All parameters that are returned for analysis
@@ -48,9 +48,9 @@ class SimpleModel(dm.CompositionalModel):
             alpha = ed.Normal(loc=tf.zeros([K], dtype=dtype), scale=tf.ones([K], dtype=dtype), name="alpha")
             b = ed.Normal(loc=tf.zeros([D, K-1], dtype=dtype), scale=tf.ones([D, K-1], dtype=dtype), name="b")
 
-            beta = tf.concat(axis=1, values=[b[:, :baseline_index],
+            beta = tf.concat(axis=1, values=[b[:, :reference_cell_type],
                                              tf.fill(value=0., dims=[D, 1]),
-                                             b[:, baseline_index:]])
+                                             b[:, reference_cell_type:]])
 
             concentration_ = tf.exp(alpha + tf.matmul(x, beta))
 
@@ -141,7 +141,7 @@ class SimpleModel(dm.CompositionalModel):
 
         params = dict(zip(self.param_names, states_burnin))
 
-        cell_types_nb = self.cell_types[:self.baseline_index] + self.cell_types[self.baseline_index + 1:]
+        cell_types_nb = self.cell_types[:self.reference_cell_type] + self.cell_types[self.reference_cell_type + 1:]
 
         posterior = {var_name: [var] for var_name, var in params.items() if
                      "prediction" not in var_name}
@@ -162,7 +162,7 @@ class SimpleModel(dm.CompositionalModel):
         sampling_stats = {"chain_length": num_results, "num_burnin": num_burnin,
                           "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
 
-        model_specs = {"baseline": self.baseline_index, "formula": self.formula}
+        model_specs = {"reference": self.reference_cell_type, "formula": self.formula}
 
         return res.CAResultConverter(posterior=posterior,
                                      posterior_predictive=posterior_predictive,
@@ -200,9 +200,9 @@ class SimpleModel(dm.CompositionalModel):
         b = states_burnin[1]
         beta = np.zeros(chain_size_beta)
         for i in range(num_results - num_burnin):
-            beta[i] = np.concatenate([b[i, :, :self.baseline_index],
+            beta[i] = np.concatenate([b[i, :, :self.reference_cell_type],
                                       np.zeros(shape=[self.D, 1], dtype=np.float64),
-                                      b[i, :, self.baseline_index:]], axis=1)
+                                      b[i, :, self.reference_cell_type:]], axis=1)
 
         betas_final = beta.mean(axis=0)
 
@@ -572,7 +572,7 @@ class ALRModel_ttest(FrequentistModel):
     Implements a CLR transform and subsequent linear model on each cell type into the scCODA framework
     (for model comparison purposes)
     """
-    def fit_model(self, reference_index):
+    def fit_model(self, reference_cell_type):
         """
         Fits CLR model
 
@@ -591,7 +591,7 @@ class ALRModel_ttest(FrequentistModel):
             p_val = [0 for _ in range(K)]
         else:
             # computes alr-transformed data matrix as a pandas DataFrame
-            y_alr = np.log(self.y / self.y[:, reference_index][:, np.newaxis])
+            y_alr = np.log(self.y / self.y[:, reference_cell_type][:, np.newaxis])
 
             for k in range(K):
                 test = stats.ttest_ind(y_alr[0:n_group, k], y_alr[n_group:, k])
@@ -608,7 +608,7 @@ class ALRModel_wilcoxon(FrequentistModel):
     Implements a CLR transform and subsequent linear model on each cell type into the scCODA framework
     (for model comparison purposes)
     """
-    def fit_model(self, reference_index):
+    def fit_model(self, reference_cell_type):
         """
         Fits CLR model
 
@@ -627,7 +627,7 @@ class ALRModel_wilcoxon(FrequentistModel):
             p_val = [0 for _ in range(K)]
         else:
             # computes alr-transformed data matrix as a pandas DataFrame
-            y_alr = np.log(self.y / self.y[:, reference_index][:, np.newaxis])
+            y_alr = np.log(self.y / self.y[:, reference_cell_type][:, np.newaxis])
 
             for k in range(K):
                 test = stats.ranksums(y_alr[0:n_group, k], y_alr[n_group:, k])
