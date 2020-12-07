@@ -19,9 +19,45 @@ tfd = tfp.distributions
 tfb = tfp.bijectors
 
 
-class CompositionalModel():
+class CompositionalModel:
     """
     Dynamical framework for formulation and inference of Bayesian models for compositional data analysis.
+    This framework is used to implement scCODA's model as a subclass of this class.
+    Tensorflow probability then allows to run a multitude of inference algorithms on these models
+    without the need to specify them every time.
+
+    A `CompositionalModel` consists of the following parameters:
+
+    - `covariate_matrix`: Numpy array that specifies the independent variables (X). Generated equivalently to the covariate matrix of a linear regression.
+
+    - `data_matrix`: Dependent variable (Y). Includes the raw cell type counts for every sample.
+
+    - `cell_types`, covariate_names: Names of cell types and covariates
+
+    - `formula`: String that represents which covariates to include and how to transform them. Used analogously to the formula in R's lm function
+
+    A specific compositional model is then implemented as a child class, with the following additional parameters
+    specified in the constructor:
+
+    - `target_log_prob_fn`: Log-probability function of the model. For more specific information, please refer to (tensorflow probability's API)[https://www.tensorflow.org/probability/api_docs/python/tfp]
+
+    - `param_names`: Names of prior and intermediate parameters that are included in the model output. The order has to be the same as in the states_burnin output of `self.get_y_hat`
+
+    - `init_params`: Initial values for the inference method
+
+    Methods implemented by this class:
+
+    - `sampling`: General MCMC sampling that uses a transition kernel
+
+    - `get_chains_after_burnin`: Application of burn-in to MCMC sampling results
+
+    - MCMC sampling methods (`sample_hmc`, `sample_hmc_da`, `sample_nuts`)
+
+    Methods implemented by a parent class:
+
+    - `get_y_hat`: Calculation of intermediate parameters for all MCMC chain states and
+    posterior mode of the cell count matrix
+
     """
 
     def __init__(self, covariate_matrix, data_matrix, cell_types, covariate_names, formula, *args, **kwargs):
@@ -120,9 +156,11 @@ class CompositionalModel():
         samples -- list
             all kernel states
         kernel_results  -- list
-            Kernel meta-information
+            Kernel meta-information. The tracked statistics depend on the sampling method.
         num_burnin -- int
             number of burn-in iterations
+        is_nuts -- boolean
+            Specifies whether NUTS sampling was used
 
         Returns
         -------
@@ -136,12 +174,15 @@ class CompositionalModel():
         states_burnin = []
         stats = {}
 
+        # Apply burn-in to MCMC results
         for s in samples:
             states_burnin.append(s[num_burnin:].numpy())
 
+        # Apply burn-in to sampling statistics
         for k, v in kernel_results.items():
             stats[k] = v[num_burnin:].numpy()
 
+        # Calculation of acceptance rate (different for NUTS sampling)
         if is_nuts:
             p_accept = np.mean(np.exp(kernel_results["log_accept_ratio"].numpy()))
         else:
@@ -157,7 +198,17 @@ class CompositionalModel():
                    num_leapfrog_steps=10, step_size=0.01):
 
         """
-        HMC sampling in tensorflow 2.
+        Hamiltonian Monte Carlo (HMC) sampling in tensorflow 2.
+
+        Tracked diagnostic statistics:
+
+        - `target_log_prob`: Value of the model's log-probability
+
+        - `diverging`: Marks samples as diverging (NOTE: Handle with care, the spike-and-slab prior of scCODA usually leads to many samples being flagged as diverging)
+
+        - `is_accepted`: Whether the proposed sample was accepted in the algorithm's acceptance step
+
+        - `step_size`: The step size used by the algorithm in each step
 
         Parameters
         ----------
@@ -165,12 +216,12 @@ class CompositionalModel():
             MCMC chain length (default 20000)
         num_burnin -- int
             Number of burnin iterations (default 5000)
+        num_adapt_steps -- int
+            Length of step size adaptation procedure
         num_leapfrog_steps --  int
             HMC leapfrog steps (default 10)
         step_size -- float
             Initial step size (default 0.01)
-        num_adapt_steps -- int
-            Length of step size adaptation procedure
 
         Returns
         -------
@@ -179,7 +230,7 @@ class CompositionalModel():
         """
 
         # bijectors (not in use atm, therefore identity)
-        constraining_bijectors = [tfb.Identity() for x in range(len(self.params))]
+        constraining_bijectors = [tfb.Identity() for x in range(len(self.init_params))]
 
         # HMC transition kernel
         hmc_kernel = tfp.mcmc.HamiltonianMonteCarlo(
@@ -189,11 +240,11 @@ class CompositionalModel():
         hmc_kernel = tfp.mcmc.TransformedTransitionKernel(
             inner_kernel=hmc_kernel, bijector=constraining_bijectors)
 
-        # Set default value for adaptation steps
+        # Set default value for adaptation steps if none given
         if num_adapt_steps is None:
             num_adapt_steps = int(0.8 * num_burnin)
 
-        # Add step size adaptation
+        # Add step size adaptation (Andrieu, Thomas - 2008)
         hmc_kernel = tfp.mcmc.SimpleStepSizeAdaptation(
             inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8)
 
@@ -207,7 +258,8 @@ class CompositionalModel():
             }
 
         # The actual HMC sampling process
-        states, kernel_results, duration = self.sampling(num_results, num_burnin, hmc_kernel, self.params, trace_fn)
+        states, kernel_results, duration = self.sampling(num_results, num_burnin,
+                                                         hmc_kernel, self.init_params, trace_fn)
 
         # apply burn-in
         states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, num_burnin,
@@ -225,6 +277,7 @@ class CompositionalModel():
         else:
             cell_types_nb = self.cell_types
 
+        # Result object generation process. Uses arviz's data structure.
         posterior = {var_name: [var] for var_name, var in params.items() if
                      "prediction" not in var_name}
 
@@ -252,7 +305,7 @@ class CompositionalModel():
                   }
 
         sampling_stats = {"chain_length": num_results, "num_burnin": num_burnin,
-                        "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
+                          "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
 
         model_specs = {"reference": self.reference_cell_type, "formula": self.formula}
 
@@ -264,9 +317,22 @@ class CompositionalModel():
                                      coords=coords).to_result_data(sampling_stats=sampling_stats,
                                                                    model_specs=model_specs)
 
-    def sample_hmc_da(self, num_results=int(20e3), num_burnin=int(5e3), num_leapfrog_steps=10, step_size=0.01, num_adapt_steps=None):
+    def sample_hmc_da(self, num_results=int(20e3), num_burnin=int(5e3), num_adapt_steps=None,
+                      num_leapfrog_steps=10, step_size=0.01):
         """
-        HMC sampling with dual-averaging step size
+        HMC sampling with dual-averaging step size adaptation (Nesterov, 2009)
+
+        Tracked diagnostic statistics:
+
+        - `target_log_prob`: Value of the model's log-probability
+
+        - `diverging`: Marks samples as diverging (NOTE: Handle with care, the spike-and-slab prior of scCODA usually leads to many samples being flagged as diverging)
+
+        - `log_acc_ratio`: log-acceptance ratio
+
+        - `is_accepted`: Whether the proposed sample was accepted in the algorithm's acceptance step
+
+        - `step_size`: The step size used by the algorithm in each step
 
         Parameters
         ----------
@@ -274,6 +340,8 @@ class CompositionalModel():
             MCMC chain length (default 20000)
         num_burnin -- int
             Number of burnin iterations (default 5000)
+        num_adapt_steps -- int
+            Length of step size adaptation procedure
         num_leapfrog_steps --  int
             HMC leapfrog steps (default 10)
         step_size -- float
@@ -285,8 +353,8 @@ class CompositionalModel():
             Compositional analysis result
         """
 
-        # (not in use atm)
-        constraining_bijectors = [tfb.Identity() for x in range(len(self.params))]
+        # bijectors (not in use atm, therefore identity)
+        constraining_bijectors = [tfb.Identity() for x in range(len(self.init_params))]
 
         # HMC transition kernel
         hmc_kernel = tfp.mcmc.HamiltonianMonteCarlo(
@@ -296,7 +364,7 @@ class CompositionalModel():
         hmc_kernel = tfp.mcmc.TransformedTransitionKernel(
             inner_kernel=hmc_kernel, bijector=constraining_bijectors)
 
-        # Set default value for adaptation steps
+        # Set default value for adaptation steps if none given
         if num_adapt_steps is None:
             num_adapt_steps = int(0.8 * num_burnin)
 
@@ -315,7 +383,7 @@ class CompositionalModel():
             }
 
         # HMC sampling
-        states, kernel_results, duration = self.sampling(num_results, num_burnin, hmc_kernel, self.params, trace_fn)
+        states, kernel_results, duration = self.sampling(num_results, num_burnin, hmc_kernel, self.init_params, trace_fn)
         states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, num_burnin,
                                                                              is_nuts=False)
 
@@ -323,12 +391,13 @@ class CompositionalModel():
 
         params = dict(zip(self.param_names, states_burnin))
 
-        # Result object generation setup
+        # Specification of cell types that were not used as the reference
         if self.reference_cell_type is not None:
             cell_types_nb = self.cell_types[:self.reference_cell_type] + self.cell_types[self.reference_cell_type+1:]
         else:
             cell_types_nb = self.cell_types
 
+        # Result object generation process. Uses arviz's data structure.
         posterior = {var_name: [var] for var_name, var in params.items() if
                      "prediction" not in var_name}
 
@@ -357,7 +426,7 @@ class CompositionalModel():
 
         # build dictionary with sampling statistics
         sampling_stats = {"chain_length": num_results, "num_burnin": num_burnin,
-                        "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
+                          "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
 
         model_specs = {"reference": self.reference_cell_type, "formula": self.formula}
 
@@ -369,29 +438,50 @@ class CompositionalModel():
                                      coords=coords).to_result_data(sampling_stats=sampling_stats,
                                                                    model_specs=model_specs)
 
-    def sample_nuts(self, num_results=int(10e3), num_burnin=int(5e3), max_tree_depth=10, step_size=0.01, num_adapt_steps=None):
+    def sample_nuts(self, num_results=int(10e3), num_burnin=int(5e3), num_adapt_steps=None,
+                    max_tree_depth=10, step_size=0.01):
         """
-        NUTS sampling - WIP, DO NOT USE!!!
+        HMC with No-U-turn (NUTS) sampling
+
+        Tracked diagnostic statistics:
+
+        - `target_log_prob`: Value of the model's log-probability
+
+        - `leapfros_taken`: Number of leapfrog steps taken by hte integrator
+
+        - `diverging`: Marks samples as diverging (NOTE: Handle with care, the spike-and-slab prior of scCODA usually leads to many samples being flagged as diverging)
+
+        - `energy`: HMC "Energy" value for each step
+
+        - `log_accept_ratio`: log-acceptance ratio
+
+        - `step_size`: The step size used by the algorithm in each step
+
+        - `reached_max_depth`: Whether the NUTS algorithm reached the maximum sampling depth in each step
+
+        - `is_accepted`: Whether the proposed sample was accepted in the algorithm's acceptance step
 
         Parameters
         ----------
         num_results -- int
-            MCMC chain length (default 20000)
+            MCMC chain length (default 10000)
         num_burnin -- int
             Number of burnin iterations (default 5000)
-        max_tre_depth --  int
+        num_adapt_steps -- int
+            Length of step size adaptation procedure
+        max_tree_depth --  int
             Maximum tree depth (default 10)
         step_size -- float
             Initial step size (default 0.01)
 
         Returns
         -------
-        error
-            NotImplementedError
+        result -- scCODA.util.result_data.CAResult object
+            Compositional analysis result
         """
 
         # bijectors (not in use atm, therefore identity)
-        constraining_bijectors = [tfb.Identity() for x in range(len(self.params))]
+        constraining_bijectors = [tfb.Identity() for x in range(len(self.init_params))]
 
         # NUTS transition kernel
         nuts_kernel = tfp.mcmc.NoUTurnSampler(
@@ -407,7 +497,7 @@ class CompositionalModel():
         if num_adapt_steps is None:
             num_adapt_steps = int(0.8 * num_burnin)
 
-        # Step size adaptation
+        # Step size adaptation (Nesterov, 2009)
         nuts_kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
             inner_kernel=nuts_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8,
             step_size_setter_fn=lambda pkr, new_step_size: pkr._replace(
@@ -425,13 +515,13 @@ class CompositionalModel():
                 "diverging": pkr.inner_results.inner_results.has_divergence,
                 "energy": pkr.inner_results.inner_results.energy,
                 "log_accept_ratio": pkr.inner_results.inner_results.log_accept_ratio,
-                'step_size': pkr.inner_results.inner_results.step_size[0],
+                "step_size": pkr.inner_results.inner_results.step_size[0],
                 "reach_max_depth": pkr.inner_results.inner_results.reach_max_depth,
                 "is_accepted": pkr.inner_results.inner_results.is_accepted,
             }
 
         # HMC sampling
-        states, kernel_results, duration = self.sampling(num_results, num_burnin, nuts_kernel, self.params, trace_fn)
+        states, kernel_results, duration = self.sampling(num_results, num_burnin, nuts_kernel, self.init_params, trace_fn)
         states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, num_burnin,
                                                                              is_nuts=True)
 
@@ -439,7 +529,7 @@ class CompositionalModel():
 
         params = dict(zip(self.param_names, states_burnin))
 
-        # Result object generation setup
+        # Result object generation process. Uses arviz's data structure.
         # Get names of cell types that are not the reference
         if self.reference_cell_type is not None:
             cell_types_nb = self.cell_types[:self.reference_cell_type] + self.cell_types[self.reference_cell_type + 1:]
@@ -489,12 +579,36 @@ class CompositionalModel():
 class NoReferenceModel(CompositionalModel):
 
     """"
-    statistical model for compositional differential change analysis without specification of a reference cell type
+    Statistical model for single-cell differential composition analysis without specification of a reference cell type.
+    This is a flavor of scCODA that does not use a refrence cell type.
+    Therefore, all effects that are set to 0 in the posterior are implicitly seen as the reference.
+    It is not recommended to use this model, as it can lead to ambiguous results.
+
+    The hierarchical formulation of the model for one sample is:
+
+    .. math::
+        y|x &\\sim DirMult(a(x), \\bar{y}) \\\\
+        \\log(a(x)) &= \\alpha + x \\beta \\\\
+        \\alpha_k &\\sim N(0, 5) \\quad &\\forall k \\in [K] \\\\
+        \\beta &= \\tau \\tilde{\\beta} \\\\
+        \\tau_{d, k} &= \\frac{\\exp(t_{d, k})}{1+ \\exp(t_{d, k})} \\quad &\\forall d \\in [D], k \\in [K]\\\\
+        \\frac{t_{d, k}}{50} &\\sim N(0, 1) \\quad &\\forall d \\in [D], k \\in [K] \\\\
+        \\tilde{\\beta}_{d, k} &= \\tilde{\\mu} + \\tilde{\\sigma}^2 \\cdot \\tilde{\\gamma}_{d, k} \\quad &\\forall d \\in [D], k \\in [K] \\\\
+        \\tilde{\\mu} &\\sim N(0, 1) \\\\
+        \\tilde{\\sigma}^2 &\\sim HC(0, 1) \\\\
+        \\tilde{\\gamma}_{d, k} &\\sim N(0,1) \\quad &\\forall d \\in [D], k \\in [K] \\\\
+
+    with y being the cell counts and x the covariates.
+
+    For further information, see `scCODA: A Bayesian model for compositional single-cell data analysis`
+    (Büttner et al., 2020)
+
     """
 
     def __init__(self, *args, **kwargs):
         """
-        Constructor of model class
+        Constructor of model class. Defines model structure, log-probability function, parameter names,
+        and MCMC starting values.
 
         Parameters
         ----------
@@ -575,17 +689,18 @@ class NoReferenceModel(CompositionalModel):
         beta_size = [self.D, self.K]
 
         # MCMC starting values
-        self.params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype),
-                       tf.zeros(1, name="init_mu_b", dtype=dtype),
-                       tf.ones(1, name="init_sigma_b", dtype=dtype),
-                       tf.random.normal(beta_size, 0, 1, name='init_b_offset', dtype=dtype),
-                       tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
-                       ]
+        self.init_params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype),
+                            tf.zeros(1, name="init_mu_b", dtype=dtype),
+                            tf.ones(1, name="init_sigma_b", dtype=dtype),
+                            tf.random.normal(beta_size, 0, 1, name='init_b_offset', dtype=dtype),
+                            tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
+                            ]
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, num_burnin):
         """
-        Calculate predicted cell counts (for analysis purposes) and add intermediate parameters to MCMC results
+        Calculate posterior mode of cell counts (for analysis purposes) and add intermediate parameters
+        that are no priors to MCMC results.
 
         Parameters
         ----------
@@ -599,7 +714,7 @@ class NoReferenceModel(CompositionalModel):
         Returns
         -------
         y_mean
-            predicted cell counts
+            posterior mode of predicted cell counts
         """
 
         chain_size_y = [num_results - num_burnin, self.N, self.K]
@@ -640,13 +755,38 @@ class NoReferenceModel(CompositionalModel):
 
 class ReferenceModel(CompositionalModel):
     """
-    implements statistical model for compositional differential change analysis with specification of a reference cell type
+    Statistical model for single-cell differential composition analysis with specification of a reference cell type.
+    This is the standard scCODA model and recommenced for all uses.
+
+    The hierarchical formulation of the model for one sample is:
+
+    ..math:
+    \\begin{align*}
+     y|x &\\sim DirMult(a(x), \\Bar{y}) \\\\
+     \\log(a(x)) &= \\alpha + x \\beta \\\\
+     \\alpha_k &\\sim N(0, 5) \\quad &\\forall k \\in [K] \\\\
+     \\beta_{d, \\hat{k}} &= 0 &\\forall d \\in [D]\\\\
+     \\beta_{d, k} &= \\tau_{d, k} \\tilde{\\beta}_{d, k} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+     \\tau_{d, k} &= \\frac{\\exp(t_{d, k})}{1+ \\exp(t_{d, k})} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+     \\frac{t_{d, k}}{50} &\\sim N(0, 1) \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+     \\tilde{\\beta_{d, k}} &= \\tilde{\\mu} + \\tilde{\\sigma}^2) \\cdot \\tilde{\\gamma}_{d, k} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+     \\tilde{\\mu} &\\sim N(0, 1) \\\\
+     \\tilde{\\sigma}^2 &\\sim HC(0, 1) \\\\
+     \\tilde{\\gamma}_{d, k} &\\sim N(0,1) \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+    \\end{align*}
+
+    with y being the cell counts and x the covariates.
+
+    For further information, see `scCODA: A Bayesian model for compositional single-cell data analysis`
+    (Büttner et al., 2020)
+
     """
 
     def __init__(self, reference_cell_type, *args, **kwargs):
 
         """
-        Constructor of model class
+        Constructor of model class. Defines model structure, log-probability function, parameter names,
+        and MCMC starting values.
 
         Parameters
         ----------
@@ -734,17 +874,18 @@ class ReferenceModel(CompositionalModel):
         beta_size = [self.D, self.K-1]
 
         # MCMC starting values
-        self.params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype),
-                       tf.zeros(1, name="init_mu_b", dtype=dtype),
-                       tf.ones(1, name="init_sigma_b", dtype=dtype),
-                       tf.random.normal(beta_size, 0, 1, name='init_b_offset', dtype=dtype),
-                       tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
-                       ]
+        self.init_params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype),
+                            tf.zeros(1, name="init_mu_b", dtype=dtype),
+                            tf.ones(1, name="init_sigma_b", dtype=dtype),
+                            tf.random.normal(beta_size, 0, 1, name='init_b_offset', dtype=dtype),
+                            tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
+                            ]
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, num_burnin):
         """
-        Calculate predicted cell counts (for analysis purposes) and add intermediate parameters to MCMC results
+        Calculate posterior mode of cell counts (for analysis purposes) and add intermediate parameters
+        that are no priors to MCMC results.
 
         Parameters
         ----------
@@ -758,7 +899,7 @@ class ReferenceModel(CompositionalModel):
         Returns
         -------
         y_mean
-            predicted cell counts
+            posterior mode of cell counts
         """
 
         chain_size_beta = [num_results - num_burnin, self.D, self.K]

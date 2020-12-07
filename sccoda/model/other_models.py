@@ -1,7 +1,9 @@
 """
-Models for the model comparison part in the paper
+Models for the model comparison benchmark in `scCODA: A Bayesian model for compositional single-cell data analysis`
+(Büttner et al., 2020).
 
-These models are otherwise not part of scCODA
+These models are otherwise not part of scCODA, but make a nice addition for comparison purposes
+and are thus part of the main package.
 
 :authors: Johannes Ostner
 """
@@ -27,7 +29,7 @@ tfb = tfp.bijectors
 
 class SimpleModel(dm.CompositionalModel):
     """
-    Simple Dirichlet-Multinomial model with normal priors
+    Simple Dirichlet-Multinomial model with normal priors. Structure equivalent to scCODA's other models.
 
     """
 
@@ -78,8 +80,8 @@ class SimpleModel(dm.CompositionalModel):
                        tf.random.normal(mean=0, stddev=1, name="init_b", shape=beta_size, dtype=dtype),
                        ]
 
-    def sample_hmc(self, num_results=int(20e3), num_burnin=int(5e3),
-                   num_leapfrog_steps=10, step_size=0.01, num_adapt_steps=None):
+    def sample_hmc(self, num_results=int(20e3), num_burnin=int(5e3), num_adapt_steps=None,
+                   num_leapfrog_steps=10, step_size=0.01):
         """
         HMC sampling
 
@@ -89,6 +91,8 @@ class SimpleModel(dm.CompositionalModel):
             MCMC chain length (default 20000)
         num_burnin -- int
             Number of burnin iterations (default 5000)
+        num_adapt_steps -- int
+            Length of step size adaptation procedure
         num_leapfrog_steps -- int
             HMC leapfrog steps (default 10)
         step_size -- float
@@ -175,7 +179,7 @@ class SimpleModel(dm.CompositionalModel):
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(self, states_burnin, num_results, num_burnin):
         """
-        Calculate predicted cell counts (for analysis purposes) and add intermediate parameters to MCMC results
+        Calculate posterrior mod of cell counts (for analysis purposes) and add intermediate parameters to MCMC results
 
         Parameters
         ----------
@@ -189,7 +193,7 @@ class SimpleModel(dm.CompositionalModel):
         Returns
         -------
         y_mean
-            predicted cell counts
+            posterior mode of cell counts
         """
         chain_size_beta = [num_results - num_burnin, self.D, self.K]
         chain_size_y = [num_results - num_burnin, self.N, self.K]
@@ -331,9 +335,9 @@ class scdney_model:
         return r_summary, (tp, tn, fp, fn)
 
 
-class FrequentistModel:
+class NonBaysesianModel:
     """
-    Superclass for making frequentist models in statsmodels from scCODA data (for model comparison)
+    Superclass for making non-Bayesian models from scCODA data.
     """
 
     def __init__(self, data):
@@ -362,6 +366,13 @@ class FrequentistModel:
         Evaluates array of p-values.
         It is assumed that the effect on the first cell type is significant, all others are not.
 
+        Parameters
+        ----------
+        alpha -- float
+            p-value (or q-value if using FDR correction) threshold
+        fdr_correct -- bool
+            Whether to use Benjamini-Hochberg FDR correction for multiple testing
+
         Returns
         -------
         tp, tn, fp, fn : Tuple
@@ -386,11 +397,11 @@ class FrequentistModel:
         return tp, tn, fp, fn
 
 
-class HaberModel(FrequentistModel):
+class HaberModel(NonBaysesianModel):
     """
-    Implements the Poisson regression model from Haber et al. into the scCODA framework
-    (for model comparison purposes)
+    Implements the Poisson regression model from Haber et al.
     """
+
     def fit_model(self):
         """
         Fits Poisson model
@@ -418,14 +429,14 @@ class HaberModel(FrequentistModel):
         self.p_val = p_val
 
 
-class CLRModel(FrequentistModel):
+class CLRModel(NonBaysesianModel):
     """
-    Implements a CLR transform and subsequent linear model on each cell type into the scCODA framework
-    (for model comparison purposes)
+    Implements a CLR transform and subsequent linear model on each cell type.
     """
+
     def fit_model(self):
         """
-        Fits CLR model
+        Fits CLR model with linear model
 
         Returns
         -------
@@ -453,15 +464,14 @@ class CLRModel(FrequentistModel):
         self.p_val = p_val
 
 
-class TTest(FrequentistModel):
+class TTest(NonBaysesianModel):
     """
-        Implements a KS test one each cell type into the scCODA framework
-        (for model comparison purposes)
+        Implements a t-test on each cell type.
     """
 
     def fit_model(self):
         """
-        Fits KS test model
+        Fits t-test model
 
         Returns
         -------
@@ -485,14 +495,14 @@ class TTest(FrequentistModel):
         self.p_val = p_val
 
 
-class CLRModel_ttest(FrequentistModel):
+class CLRModel_ttest(NonBaysesianModel):
     """
-    Implements a CLR transform and subsequent linear model on each cell type into the scCODA framework
-    (for model comparison purposes)
+    Implements a CLR transform and subsequent t-test on each cell type.
     """
+
     def fit_model(self):
         """
-        Fits CLR model
+        Fits CLR model with t-test
 
         Returns
         -------
@@ -519,12 +529,30 @@ class CLRModel_ttest(FrequentistModel):
         self.p_val = p_val
 
 
-class ALDEx2Model(FrequentistModel):
+class ALDEx2Model(NonBaysesianModel):
     """
-    Wrapper for using the ALDEx2 package (Fernandes et al., 2014)
+    Wrapper for using the ALDEx2 package for R (Fernandes et al., 2014)
     """
 
     def fit_model(self, method="we.eBH", server=False, *args, **kwargs):
+        """
+        Fits ALDEx2 model.
+
+        Parameters
+        ----------
+        method -- str
+            method that is used to calculate p-values (column name in ALDEx2's output)
+        server -- bool
+            indicator for remote execution
+        args -- dict
+            passed to ``ALDEx2.clr``
+        kwargs -- dict
+            passed to ``ALDEx2.clr``
+
+        Returns
+        -------
+
+        """
 
         if server:
             os.environ["R_HOME"] = "/home/icb/johannes.ostner/anaconda3/lib/R"
@@ -567,14 +595,14 @@ class ALDEx2Model(FrequentistModel):
         self.p_val = p_val
 
 
-class ALRModel_ttest(FrequentistModel):
+class ALRModel_ttest(NonBaysesianModel):
     """
-    Implements a CLR transform and subsequent linear model on each cell type into the scCODA framework
-    (for model comparison purposes)
+    Implements a ALR transform and subsequent t-test on each cell type.
     """
+
     def fit_model(self, reference_cell_type):
         """
-        Fits CLR model
+        Fits ALR model with t-test
 
         Returns
         -------
@@ -603,14 +631,14 @@ class ALRModel_ttest(FrequentistModel):
         self.p_val = p_val
 
 
-class ALRModel_wilcoxon(FrequentistModel):
+class ALRModel_wilcoxon(NonBaysesianModel):
     """
-    Implements a CLR transform and subsequent linear model on each cell type into the scCODA framework
-    (for model comparison purposes)
+    Implements a ALR transform and subsequent Wilcoxon rank-sum test on each cell type.
     """
+
     def fit_model(self, reference_cell_type):
         """
-        Fits CLR model
+        Fits ALR model with Wilcoxon rank-sum test
 
         Returns
         -------
@@ -641,8 +669,9 @@ class ALRModel_wilcoxon(FrequentistModel):
 
 class AncomModel():
     """
-        Wrapper for the ancom model (Mandal et al., 2015)
+        Wrapper for the ancom model for compositional differentiation analysis (Mandal et al., 2015)
     """
+
     def __init__(self, data):
         x = data.obs
         y = pd.DataFrame(data.X, index=data.obs.index)
@@ -663,7 +692,7 @@ class AncomModel():
 
     def fit_model(self):
         """
-        Fits KS test model
+        Fits ancom model
 
         Returns
         -------
@@ -707,13 +736,26 @@ class AncomModel():
         return tp, tn, fp, fn
 
 
-class DirichRegModel(FrequentistModel):
+class DirichRegModel(NonBaysesianModel):
 
     """
     Wrapper for using the DirichReg package in R (Maier, 2014) with scCODA's infrastructure
     """
 
     def fit_model(self, server=False):
+
+        """
+        fits the DirichReg model.
+
+        Parameters
+        ----------
+        server -- bool
+            indicator for remote execution
+
+        Returns
+        -------
+
+        """
 
         if server:
             os.environ["R_HOME"] = "/home/icb/johannes.ostner/anaconda3/lib/R"

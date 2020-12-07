@@ -31,8 +31,6 @@ Modules
    sccoda.util.cell_composition_data
    sccoda.util.comp_ana
    sccoda.util.data_generation
-   sccoda.util.multi_parameter_analysis_functions
-   sccoda.util.multi_parameter_sampling
    sccoda.util.result_classes
    sccoda.util.data_visualization
 

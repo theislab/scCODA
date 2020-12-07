@@ -1,5 +1,5 @@
 """
-Results class that summarizes the results of the different inference methods and calculates test statistics
+Results class that summarizes the results of the different inference methods and calculates test statistics.
 
 :authors: Johannes Ostner
 """

@@ -103,7 +103,7 @@ def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5,5],
     y = np.zeros((sum(n_samples), K)) 
     c = 0
 
-    # Binary representation of x as list of fixed length
+    # Binary representation of a number x as list of fixed length
     def binary(x, length):
         return [int(x_n) for x_n in bin(x)[2:].zfill(length)]
 

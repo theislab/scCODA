@@ -1,5 +1,5 @@
 """
-This script contains methods to visualize compositional data that was imported into scCODA's data format
+This document contains methods to visualize compositional data that was imported into scCODA's data format
 
 :authors: Johannes Ostner
 """

@@ -10,11 +10,14 @@ import os
 
 def from_scanpy(adata, cell_type_identifier, covariate_key):
     """
-    Converts a single scRNA-seq data set from scanpy to a row of a cell count matrix.
+    Converts a single scRNA-seq data set from scanpy (adata format) to a row of a cell count matrix.
 
-    It is assumed that a column of adata.obs contains the cell type assignment, while covariates (control/disease group, ...) are stored as a subdict in adata.uns
+    It is assumed that a column of adata.obs contains the cell type assignment,
+    while covariates (control/disease group, ...) are stored as a subdict in adata.uns
 
-    Usage: cell_counts, covs = from_scanpy(adata, cell_type_identifier="Louvain", covariate_key="covariates")
+    Usage:
+
+    ``cell_counts, covs = from_scanpy(adata, cell_type_identifier="Louvain", covariate_key="covariates")``
 
     Parameters
     ----------
@@ -46,10 +49,12 @@ def from_scanpy_list(samples, cell_type_identifier, covariate_key):
     """
     Creates a compositional analysis data set from a list of scanpy data sets.
 
-    To use this function, all data sets need to have one common column in adata.obs that contans the cell type assignment.
+    To use this function, all data sets need to have one common column in adata.obs that contains the cell type assignment.
     Also, the covariates need to be stored under the same key in adata.uns
 
-    Usage: data = from_scanpy([adata1, adata2, adata3], cell_type_identifier="Louvain", covariate_key="covariates")
+    Usage:
+
+    ``data = from_scanpy_list([adata1, adata2, adata3], cell_type_identifier="Louvain", covariate_key="covariates")``
 
     Parameters
     ----------
@@ -92,7 +97,8 @@ def from_scanpy_dir(path, cell_type_identifier, covariate_key):
     To use this function, all data sets need to have one common column in adata.obs that contans the cell type assignment.
     Also, the covariates need to be stored under the same key in adata.uns
 
-    Usage: data = from_scanpy("./path/to/directory", cell_type_identifier="Louvain", covariate_key="covariates")
+    Usage:
+    ``data = from_scanpy_dir("./path/to/directory", cell_type_identifier="Louvain", covariate_key="covariates")``
 
     Parameters
     ----------
@@ -136,7 +142,8 @@ def from_pandas(df, covariate_columns):
 
     Note that all columns that are not specified as covariates are assumed to be cell counts.
 
-    Usage: data = from_pandas(df, covariate_columns=["cov1", "cov2"])
+    Usage:
+    ``data = from_pandas(df, covariate_columns=["cov1", "cov2"])``
 
     Parameters
     ----------
