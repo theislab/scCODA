@@ -3,9 +3,19 @@ Toolbox for simulating compositional data from ScRNA-seq
 
 This toolbox provides data generation and modelling solutions for compositional data with different specifications.
 This data might e.g. come from scRNA-seq experiments.
-We first generate composition parameters (b_true, w_true) and a covariance matrix (Sigma) from some input specifications.
-We then build a concentration vector for each sample (row of x) that sums up to 1.
-From there, we can calculate each row of the cell count matrix (y) via a multinomial distribution
+The covariates are represented by ``X``, the cell count matrix is denoted ``Y``.
+
+To start, we set the dimensions of the data: Number of cell types (``K``), number of covariates (``D``),
+number of samples (``N``), and number of cells per sample (``n_total``).
+
+We now generate composition parameters (``b_true``, ``w_true``) and a covariance matrix (``Sigma``)
+from some input specifications.
+``b_true`` represents the base composition with all covariates set to 0. Adding ``X * w_true`` to this
+gives the corresponding parameter for each sample.
+
+After adding a gaussian noise (``Sigma``), we can build a concentration vector for each sample that sums up to 1
+via the softmax function.
+From there, we can calculate each row of the cell count matrix (``Y``) via a multinomial distribution.
 
 :authors: Johannes Ostner
 """
@@ -16,59 +26,22 @@ import pandas as pd
 from scipy.special import softmax
 
 
-def sparse_effect_matrix(D, K, n_d, n_k):
-    """
-    Generates a sparse effect matrix
-
-    Parameters
-    ----------
-    D -- int
-        Number of covariates
-    K -- int
-        Number of cell types
-    n_d -- int
-        Number of covariates that effect a cell type
-    n_k -- int
-        Number of cell types that are affected by any covariate
-
-    Returns
-    -------
-    w_true
-        Effect matrix
-    """
-
-    # Choose indices of affected cell types and covariates randomly
-    d_eff = np.random.choice(range(D), size=n_d, replace=False)
-    k_eff = np.random.choice(range(K), size=n_k, replace=False)
-
-    # Possible entries of w_true
-    w_choice = [0.3, 0.5, 1]
-
-    w_true = np.zeros((D, K))
-    # Fill in w_true
-    for i in d_eff:
-        for j in k_eff:
-            c = np.random.choice(3, 1)
-            w_true[i, j] = w_choice[c]
-
-    return w_true
-
-
-def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5,5],
+def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5, 5],
                           sigma=None, b_true=None, w_true=None):
     """
-    Generates compositional data with binary covariates
+    Generates compositional data with binary covariates.
 
     Parameters
     ----------
     cases -- int
-        number of covariates
+        number of covariates.
+        This will lead to D=2**cases columns in X, one for each combination of active/inactive covariates.
     K -- int
         Number of cell types
     n_total -- int
         number of cells per sample
     n_samples -- list
-        Number of samples per case combination as array[2**cases]
+        Number of samples per case combination. len(n_samples)=[2**cases]
     sigma -- numpy array [KxK]
         correlation matrix for cell types
     b_true -- numpy array [K]
@@ -104,8 +77,8 @@ def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5,5],
     c = 0
 
     # Binary representation of a number x as list of fixed length
-    def binary(x, length):
-        return [int(x_n) for x_n in bin(x)[2:].zfill(length)]
+    def binary(num, length):
+        return [int(x_n) for x_n in bin(num)[2:].zfill(length)]
 
     # For all combinations of cases
     for i in range(2**cases):
@@ -180,6 +153,62 @@ def b_w_from_abs_change(counts_before=np.array([200, 200, 200, 200, 200]), abs_c
 
 
 def counts_from_first(b_0=200, n_total=1000, K=5):
+    """
+    Calculates a count vector from a given first entry, length and sum. The entries 2...K will get the same value.
+
+    Parameters
+    ----------
+    b_0 -- int
+        size of first entry
+    n_total -- int
+        total sum of all entries
+    K -- int
+        length of output vector (number of cell types)
+
+    Returns
+    -------
+    b -- numpy array [K]
+        count vector (not necessarily integer)
+
+    """
     b = np.repeat((n_total-b_0)/(K-1), K)
     b[0] = b_0
     return b
+
+
+def sparse_effect_matrix(D, K, n_d, n_k):
+    """
+    Generates a sparse effect matrix
+
+    Parameters
+    ----------
+    D -- int
+        Number of covariates
+    K -- int
+        Number of cell types
+    n_d -- int
+        Number of covariates that effect each cell type
+    n_k -- int
+        Number of cell types that are affected by each covariate
+
+    Returns
+    -------
+    w_true
+        Effect matrix
+    """
+
+    # Choose indices of affected cell types and covariates randomly
+    d_eff = np.random.choice(range(D), size=n_d, replace=False)
+    k_eff = np.random.choice(range(K), size=n_k, replace=False)
+
+    # Possible entries of w_true
+    w_choice = [0.3, 0.5, 1]
+
+    w_true = np.zeros((D, K))
+    # Fill in w_true
+    for i in d_eff:
+        for j in k_eff:
+            c = np.random.choice(3, 1)
+            w_true[i, j] = w_choice[c]
+
+    return w_true

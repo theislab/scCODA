@@ -68,6 +68,6 @@ class CompositionalAnalysis:
                                      cell_types=cell_types, covariate_names=covariate_names,
                                      reference_cell_type=reference_cell_type, formula=formula)
 
-        # None of the above: Throw cell type
+        # None of the above: Throw error
         else:
             raise NameError("Reference index is not a valid cell type name or numerical index!")

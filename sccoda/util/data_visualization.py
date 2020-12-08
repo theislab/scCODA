@@ -1,5 +1,5 @@
 """
-This document contains methods to visualize compositional data that was imported into scCODA's data format
+This document contains methods to visualize compositional data that was imported into scCODA's data format.
 
 :authors: Johannes Ostner
 """
@@ -55,13 +55,11 @@ def plot_one_stackbar(y, type_names, title, level_names):
     plt.legend(loc='upper left', bbox_to_anchor=(1, 1), ncol=1)
     plt.xticks(r, level_names, rotation=45)
 
-    plt.show()
-
 
 def plot_feature_stackbars(data, features):
 
     """
-    Plots stackbars for all listed covariates
+    Plots stackbars for all listed covariates.
     Usage: plot_feature_stackbars(data, ["cov1", "cov2", "cov3"])
 
     Parameters
@@ -96,7 +94,8 @@ def plot_feature_stackbars(data, features):
 
 def grouped_boxplot(data, feature, log_scale=False, *args, **kwargs):
     """
-    Grouped boxplot -cell types on x-Axis; one boxplot per feature level for each cell type
+    Grouped boxplot for a feature (covariate) - cell types on x-Axis
+
     Parameters
     ----------
     data -- AnnData object
@@ -104,7 +103,7 @@ def grouped_boxplot(data, feature, log_scale=False, *args, **kwargs):
     feature -- string
         The name of the feature in data.obs to plot
     log_scale -- bool
-        If true, use log(data.X + 1) (pseudocount 1 to avoid log(0)-issues)
+        Plotting on log-scale. If true, use log(data.X + 1) instead of X (pseudocount 1 to avoid log(0)-issues)
     *args, **kwargs -- Passed to sns.boxplot
 
     Returns
@@ -137,7 +136,8 @@ def grouped_boxplot(data, feature, log_scale=False, *args, **kwargs):
 
 def boxplot_facets(data, feature, log_scale=False, args_boxplot={}, args_swarmplot={}):
     """
-    Grouped boxplot -cell types on x-Axis; one boxplot per feature level for each cell type
+    Faceted boxplot and swarmplot - one cell type per facet. All plots will represent the same feature
+
     Parameters
     ----------
     data -- AnnData object
@@ -145,7 +145,7 @@ def boxplot_facets(data, feature, log_scale=False, args_boxplot={}, args_swarmpl
     feature -- string
         The name of the feature in data.obs to plot
     log_scale -- bool
-        If true, use log(data.X + 1) (pseudocount 1 to avoid log(0)-issues)
+        Plotting on log-scale. If true, use log(data.X + 1) instead of X (pseudocount 1 to avoid log(0)-issues)
     args_boxplot -- dict
         Arguments passed to sns.boxplot
     args_swarmplot -- dict
@@ -156,7 +156,7 @@ def boxplot_facets(data, feature, log_scale=False, args_boxplot={}, args_swarmpl
     Plot!
     """
 
-    # add pseudocount 1 if using log scale (needs to be improved)
+    # add pseudocount 1 if using log scale
     if log_scale:
         X = np.log(data.X + 1)
         value_name = "log(count)"

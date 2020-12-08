@@ -1,5 +1,9 @@
 """
-Results class that summarizes the results of the different inference methods and calculates test statistics.
+Results class that summarizes the results of scCODA and calculates test statistics.
+This class extends the ´´InferenceData`` class in the ``arviz`` package and can use all plotting and diacgnostic
+functionalities of it.
+
+Additionally, this class can produce nicely readable outputs for scCODA.
 
 :authors: Johannes Ostner
 """
@@ -11,7 +15,7 @@ import pickle as pkl
 
 class CAResultConverter(az.data.io_dict.DictConverter):
     """
-    Helper class for result conversion in arviz's format
+    Helper class for result conversion into arviz's format
     """
 
     def to_result_data(self, sampling_stats, model_specs):
@@ -40,38 +44,44 @@ class CAResultConverter(az.data.io_dict.DictConverter):
 
 class CAResult(az.InferenceData):
     """
-    Result class, extends the arviz framework for inference data.
+    Result class for scCODA, extends the arviz framework for inference data.
 
-    The CAResult class is an extension of az.InferenceData, that adds some information about the compositional model.
+    The CAResult class is an extension of az.InferenceData, that adds some information about the compositional model
+    and is able to print humanly readable results.
     It supports all functionality from az.InferenceData.
     """
 
     def __init__(self, sampling_stats, model_specs, **kwargs):
         """
+        Gathers sampling information from a compositional model and converts it to a ``az.InferenceData`` object.
         The following attributes are added during class initialization:
 
-        self.sampling_stats: dict - see below
-        self.model_specs: dict - see below
+        ``self.sampling_stats``: dict - see below
+        ``self.model_specs``: dict - see below
 
-        self.intercept_df: Summary dataframe from CAResult.summary_prepare
-        self.effect_df: Summary dataframe from CAResult.summary_prepare
+        ``self.intercept_df``: Intercept dataframe from ``CAResult.summary_prepare``
+        ``self.effect_df``: Effect dataframe from ``CAResult.summary_prepare``
 
         Parameters
         ----------
         sampling_stats -- dict
             Information and statistics about the MCMC sampling procedure.
             Default keys:
-            "chain_length": Length of MCMC chain (with burnin samples)
-            "num_burnin": Number of burnin samples
-            "acc_rate": MCMC Acceptance rate
-            "duration": Duration of MCMC sampling
+            - "chain_length": Length of MCMC chain (with burnin samples)
+            - "num_burnin": Number of burnin samples
+            - "acc_rate": MCMC Acceptance rate
+            - "duration": Duration of MCMC sampling
+
         model_specs -- dict
             All information and statistics about the model specifications.
             Default keys:
-            "formula": Formula string
-            "reference": int - identifier of reference cell type
-            Added during class initialization: "threshold_prob": Threshold for inclusion probability that separates significant from non-significant effects
-        kwargs -- passed to az.InferenceData
+            - "formula": Formula string
+            - "reference": int - identifier of reference cell type
+
+            Added during class initialization:
+            - "threshold_prob": Threshold for inclusion probability that separates significant from non-significant effects
+        kwargs -- dict
+            passed to az.InferenceData. This includes the MCMC chain states and statistics for eachs MCMC sample.
         """
         super(self.__class__, self).__init__(**kwargs)
 
@@ -86,32 +96,37 @@ class CAResult(az.InferenceData):
     def summary_prepare(self, *args, **kwargs):
         """
         Generates summary dataframes for intercepts and slopes.
-        This function supports all functionalities from az.summary.
+        This function builds on and supports all functionalities from ``az.summary``.
 
         Parameters
         ----------
-        args -- Passed to az.summary
-        kwargs -- Passed to az.summary
+        args -- Passed to ``az.summary``
+        kwargs -- Passed to ``az.summary``
 
         Returns
         -------
         intercept_df -- pandas df
-            Summary of intercept parameters. Contains one row per cell type. Columns:
-            Final Parameter: Final intercept model parameter
-            hdi X%: Upper and lower boundaries of confidence interval (width specified via hdi_prob=)
-            SD: Standard deviation of MCMC samples
-            Expected sample: Expected cell counts for a sample with no present covariates. See the tutorial for more explanation
+            Summary of intercept parameters. Contains one row per cell type.
+
+            Columns:
+            - Final Parameter: Final intercept model parameter
+            - hdi X%: Upper and lower boundaries of confidence interval (width specified via hdi_prob=)
+            - SD: Standard deviation of MCMC samples
+            - Expected sample: Expected cell counts for a sample with no present covariates. See the tutorial for more explanation
 
         effect_df -- pandas df
-            Summary of effect (slope) parameters. Contains one row per covariate/cell type combination. Columns:
-            Final Parameter: Final effect model parameter. If this parameter is 0, the effect is not significant, else it is.
-            HDI X%: Upper and lower boundaries of confidence interval (width specified via hdi_prob=)
-            SD: Standard deviation of MCMC samples
-            Expected sample: Expected cell counts for a sample with only the current covariate set to 1. See the tutorial for more explanation
-            log2-fold change: Log2-fold change between expected cell counts with no covariates and with only the current covariate
-            Inclusion probability: Share of MCMC samples, for which this effect was not set to 0 by the spike-and-slab prior.
+            Summary of effect (slope) parameters. Contains one row per covariate/cell type combination.
+
+            Columns:
+            - Final Parameter: Final effect model parameter. If this parameter is 0, the effect is not significant, else it is.
+            - HDI X%: Upper and lower boundaries of confidence interval (width specified via hdi_prob=)
+            - SD: Standard deviation of MCMC samples
+            - Expected sample: Expected cell counts for a sample with only the current covariate set to 1. See the tutorial for more explanation
+            - log2-fold change: Log2-fold change between expected cell counts with no covariates and with only the current covariate
+            - Inclusion probability: Share of MCMC samples, for which this effect was not set to 0 by the spike-and-slab prior.
         """
-        # initialize summary df
+
+        # initialize summary df from arviz and separate into intercepts and effects.
         summ = az.summary(self, *args, **kwargs, kind="stats", var_names=["alpha", "beta"])
         effect_df = summ.loc[summ.index.str.match("|".join(["beta"]))].copy()
         intercept_df = summ.loc[summ.index.str.match("|".join(["alpha"]))].copy()
@@ -151,13 +166,14 @@ class CAResult(az.InferenceData):
     def complete_beta_df(self, intercept_df, effect_df):
         """
         Evaluation of MCMC results for effect parameters. This function is only used within self.summary_prepare.
+        This function also calculates the posterior inclusion probability for each effect and decides whether effects are significant.
 
         Parameters
         ----------
         intercept_df -- Data frame
-            Intercept summary, see self.summary_prepare
+            Intercept summary, see ``self.summary_prepare``
         effect_df -- Data frame
-            Effect summary, see self.summary_prepare
+            Effect summary, see ``self.summary_prepare``
 
         Returns
         -------
@@ -181,11 +197,12 @@ class CAResult(az.InferenceData):
         effect_df.loc[:, "inclusion_prob"] = beta_inc_prob
         effect_df.loc[:, "mean_nonzero"] = beta_nonzero_mean
 
-        # Inclusion prob threshold value
+        # Inclusion prob threshold value. For derivation of the functional form, see
+        # "scCODA: A Bayesian model for compositional single-cell data analysis" (Büttner et al., 2020)
         threshold = 1-(0.77/(beta_raw.shape[2]**0.29))
         self.model_specs["threshold_prob"] = threshold
 
-        # Decide whether betas are significant or not
+        # Decide whether betas are significant or not, set non-significant ones to 0
         effect_df.loc[:, "final_parameter"] = np.where(effect_df.loc[:, "inclusion_prob"] > threshold,
                                                       effect_df.loc[:, "mean_nonzero"],
                                                       0)
@@ -244,9 +261,9 @@ class CAResult(az.InferenceData):
 
     def summary(self, *args, **kwargs):
         """
-        Printing method for summary data
+        Printing method for scCODA's summary.
 
-        Usage: result.summary()
+        Usage: ``result.summary()``
 
         Parameters
         ----------
@@ -258,7 +275,8 @@ class CAResult(az.InferenceData):
 
         """
 
-        # If other than default values for e.g. confidence interval are specified, recalculate the intercept and effect DataFrames
+        # If other than default values for e.g. confidence interval are specified,
+        # recalculate them for intercept and effect DataFrames
         if args or kwargs:
             intercept_df, effect_df = self.summary_prepare(*args, **kwargs)
         else:
@@ -275,7 +293,7 @@ class CAResult(az.InferenceData):
         alphas_print = intercept_df.loc[:, ["Final Parameter", "Expected Sample"]]
         betas_print = effect_df.loc[:, ["Final Parameter", "Expected Sample", "log2-fold change"]]
 
-        # Print everything
+        # Print everything neatly
         print("Compositional Analysis summary:")
         print("")
         print("Data: %d samples, %d cell types" % data_dims)
@@ -291,7 +309,21 @@ class CAResult(az.InferenceData):
 
     def summary_extended(self, *args, **kwargs):
 
-        # If other than default values for e.g. confidence interval are specified, recalculate the intercept and effect DataFrames
+        """
+        Extended (diagnostic) printing function that shows more info about the sampling result
+
+        Parameters
+        ----------
+        args -- Passed to az.summary
+        kwargs -- Passed to az.summary
+
+        Returns
+        -------
+
+        """
+
+        # If other than default values for e.g. confidence interval are specified,
+        # recalculate them for intercept and effect DataFrames
         if args or kwargs:
             intercept_df, effect_df = self.summary_prepare(*args, **kwargs)
         else:
@@ -364,7 +396,7 @@ class CAResult(az.InferenceData):
 
     def distances(self):
         """
-        Compares real cell count matrix to the cell count matrix that arises from the calculated parameters
+        Compares real cell count matrix to the psterior mode cell count matrix that arises from the calculated parameters
 
         Returns
         -------
@@ -396,6 +428,17 @@ class CAResult(az.InferenceData):
         return ret
 
     def save(self, path_to_file):
+        """
+        Function to save scCODA results to disk via pickle. Caution: Files can quickly become very large!
+
+        Parameters
+        ----------
+        path_to_file -- str
+            saving location on disk
+
+        Returns
+        -------
+
+        """
         with open(path_to_file, "wb") as f:
             pkl.dump(self, file=f, protocol=4)
-
