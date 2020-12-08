@@ -4,7 +4,7 @@ It also provides a framework for integration of results directly from *scanpy* a
 
 The statistical methodology and benchmarking performance are described in:
  
-*scCODA: A Bayesian model for compositional single-cell data analysis (Ostner et al., 2020)*
+*scCODA: A Bayesian model for compositional single-cell data analysis (Büttner and Ostner et al., 2020)*
 (Code for the article available at https://github.com/theislab/scCODA_reproducibility)
 
 For further information, please refer to the 
@@ -25,7 +25,7 @@ To install these packages and all other dependencies via pip, call::
 To install scCODA from source:
 
 - Navigate to the directory you want scCODA in
-- Clone the repository from (Github)[https://github.com/johannesostner/scCODA_public]
+- Clone the repository from [Github](https://github.com/johannesostner/scCODA_public)
 - Navigate to the root directory of scCODA
 - Install scCODA::
 
