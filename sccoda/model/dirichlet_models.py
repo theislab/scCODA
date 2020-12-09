@@ -8,6 +8,7 @@ Büttner et al.: scCODA: A Bayesian model for compositional single-cell data ana
 """
 import numpy as np
 import time
+import warnings
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -55,8 +56,7 @@ class CompositionalModel:
 
     Methods implemented by a parent class:
 
-    - `get_y_hat`: Calculation of intermediate parameters for all MCMC chain states and
-    posterior mode of the cell count matrix
+    - `get_y_hat`: Calculation of intermediate parameters for all MCMC chain states and posterior mode of the cell count matrix
 
     """
 
@@ -353,6 +353,11 @@ class CompositionalModel:
             Compositional analysis result
         """
 
+        warnings.warn(
+            "This feature is untested and might yield different results than expected. Please use sample_hmc().",
+            category=UserWarning
+        )
+
         # bijectors (not in use atm, therefore identity)
         constraining_bijectors = [tfb.Identity() for x in range(len(self.init_params))]
 
@@ -441,7 +446,8 @@ class CompositionalModel:
     def sample_nuts(self, num_results=int(10e3), num_burnin=int(5e3), num_adapt_steps=None,
                     max_tree_depth=10, step_size=0.01):
         """
-        HMC with No-U-turn (NUTS) sampling
+        HMC with No-U-turn (NUTS) sampling.
+        This method is untested and might yield different results than expected.
 
         Tracked diagnostic statistics:
 
@@ -479,6 +485,11 @@ class CompositionalModel:
         result -- scCODA.util.result_data.CAResult object
             Compositional analysis result
         """
+
+        warnings.warn(
+            "This feature is untested and might yield different results than expected. Please use sample_hmc().",
+            category=UserWarning
+        )
 
         # bijectors (not in use atm, therefore identity)
         constraining_bijectors = [tfb.Identity() for x in range(len(self.init_params))]
@@ -576,183 +587,6 @@ class CompositionalModel:
                                                                    model_specs=model_specs)
 
 
-class NoReferenceModel(CompositionalModel):
-
-    """"
-    Statistical model for single-cell differential composition analysis without specification of a reference cell type.
-    This is a flavor of scCODA that does not use a refrence cell type.
-    Therefore, all effects that are set to 0 in the posterior are implicitly seen as the reference.
-    It is not recommended to use this model, as it can lead to ambiguous results.
-
-    The hierarchical formulation of the model for one sample is:
-
-    .. math::
-        y|x &\\sim DirMult(a(x), \\bar{y}) \\\\
-        \\log(a(x)) &= \\alpha + x \\beta \\\\
-        \\alpha_k &\\sim N(0, 5) \\quad &\\forall k \\in [K] \\\\
-        \\beta &= \\tau \\tilde{\\beta} \\\\
-        \\tau_{d, k} &= \\frac{\\exp(t_{d, k})}{1+ \\exp(t_{d, k})} \\quad &\\forall d \\in [D], k \\in [K]\\\\
-        \\frac{t_{d, k}}{50} &\\sim N(0, 1) \\quad &\\forall d \\in [D], k \\in [K] \\\\
-        \\tilde{\\beta}_{d, k} &= \\tilde{\\mu} + \\tilde{\\sigma}^2 \\cdot \\tilde{\\gamma}_{d, k} \\quad &\\forall d \\in [D], k \\in [K] \\\\
-        \\tilde{\\mu} &\\sim N(0, 1) \\\\
-        \\tilde{\\sigma}^2 &\\sim HC(0, 1) \\\\
-        \\tilde{\\gamma}_{d, k} &\\sim N(0,1) \\quad &\\forall d \\in [D], k \\in [K] \\\\
-
-    with y being the cell counts and x the covariates.
-
-    For further information, see `scCODA: A Bayesian model for compositional single-cell data analysis`
-    (Büttner et al., 2020)
-
-    """
-
-    def __init__(self, *args, **kwargs):
-        """
-        Constructor of model class. Defines model structure, log-probability function, parameter names,
-        and MCMC starting values.
-
-        Parameters
-        ----------
-        args -- arguments passed to top-level class
-        kwargs -- arguments passed to top-level class
-        """
-        super(self.__class__, self).__init__(*args, **kwargs)
-
-        self.reference_cell_type = None
-        dtype = tf.float64
-
-        # All parameters that are returned for analysis
-        self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw",
-                            "ind", "b_raw", "beta", "concentration", "prediction"]
-
-        def define_model(x, n_total, K):
-            """
-            Model definition in Edward2
-
-            Parameters
-            ----------
-            x -- numpy array [NxD]
-                covariate matrix
-            n_total -- numpy array [N]
-                number of cells per sample
-            K -- int
-                Number of cell types
-            """
-
-            N, D = x.shape
-            dtype = tf.float64
-
-            # normal prior on bias
-            alpha = ed.Normal(loc=tf.zeros([K], dtype=dtype), scale=tf.ones([K], dtype=dtype)*5, name="alpha")
-
-            # Noncentered parametrization for raw slopes (before spike-and-slab)
-            mu_b = ed.Normal(loc=tf.zeros(1, dtype=dtype), scale=tf.ones(1, dtype=dtype), name="mu_b")
-            sigma_b = ed.HalfCauchy(tf.zeros(1, dtype=dtype), tf.ones(1, dtype=dtype), name="sigma_b")
-            b_offset = ed.Normal(loc=tf.zeros([D, K], dtype=dtype), scale=tf.ones([D, K], dtype=dtype), name="b_offset")
-
-            b_raw = mu_b + sigma_b * b_offset
-
-            # Spike-and-slab priors
-            sigma_ind_raw = ed.Normal(
-                loc=tf.zeros(shape=[D, K], dtype=dtype),
-                scale=tf.ones(shape=[D, K], dtype=dtype),
-                name='sigma_ind_raw')
-            ind_t = sigma_ind_raw*50
-            ind = tf.exp(ind_t) / (1 + tf.exp(ind_t))
-
-            # Calculate betas
-            beta = ind * b_raw
-
-            # Concentration vector from intercepts, slopes
-            concentration_ = tf.exp(alpha + tf.matmul(x, beta))
-
-            # Cell count prediction via DirMult
-            predictions = ed.DirichletMultinomial(n_total, concentration=concentration_, name="predictions")
-            return predictions
-
-        # Joint posterior distribution
-        self.log_joint = ed.make_log_joint_fn(define_model)
-
-        # Function to compute log posterior probability
-        self.target_log_prob_fn = lambda alpha_, mu_b_, sigma_b_, b_offset_, sigma_ind_raw_:\
-            self.log_joint(x=self.x,
-                           n_total=self.n_total,
-                           K=self.K,
-                           predictions=self.y,
-                           alpha=alpha_,
-                           mu_b=mu_b_,
-                           sigma_b=sigma_b_,
-                           b_offset=b_offset_,
-                           sigma_ind_raw=sigma_ind_raw_,
-                           )
-
-        alpha_size = [self.K]
-        beta_size = [self.D, self.K]
-
-        # MCMC starting values
-        self.init_params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype),
-                            tf.zeros(1, name="init_mu_b", dtype=dtype),
-                            tf.ones(1, name="init_sigma_b", dtype=dtype),
-                            tf.random.normal(beta_size, 0, 1, name='init_b_offset', dtype=dtype),
-                            tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
-                            ]
-
-    # Calculate predicted cell counts (for analysis purposes)
-    def get_y_hat(self, states_burnin, num_results, num_burnin):
-        """
-        Calculate posterior mode of cell counts (for analysis purposes) and add intermediate parameters
-        that are no priors to MCMC results.
-
-        Parameters
-        ----------
-        states_burnin -- List
-            MCMC chain without burn-in samples
-        num_results -- int
-            Chain length (with burn-in)
-        num_burnin -- int
-            Number of burn-in samples
-
-        Returns
-        -------
-        y_mean
-            posterior mode of predicted cell counts
-        """
-
-        chain_size_y = [num_results - num_burnin, self.N, self.K]
-
-        alphas = states_burnin[0]
-        alphas_final = alphas.mean(axis=0)
-
-        ind_raw = states_burnin[4] * 50
-        mu_b = states_burnin[1]
-        sigma_b = states_burnin[2]
-        b_offset = states_burnin[3]
-
-        ind_ = np.exp(ind_raw) / (1 + np.exp(ind_raw))
-
-        b_raw_ = mu_b.reshape((num_results - num_burnin, 1, 1)) + np.einsum("...jk, ...j->...jk", b_offset, sigma_b)
-
-        beta_ = np.einsum("..., ...", ind_, b_raw_)
-
-        conc_ = np.exp(np.einsum("jk, ...kl->...jl", self.x, beta_)
-                       + alphas.reshape((num_results - num_burnin, 1, self.K)))
-
-        predictions_ = np.zeros(chain_size_y)
-        for i in range(num_results - num_burnin):
-            pred = tfd.DirichletMultinomial(self.n_total, conc_[i, :, :]).mean().numpy()
-            predictions_[i, :, :] = pred
-
-        betas_final = beta_.mean(axis=0)
-        states_burnin.append(ind_)
-        states_burnin.append(b_raw_)
-        states_burnin.append(beta_)
-        states_burnin.append(conc_)
-        states_burnin.append(predictions_)
-
-        concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float64)
-        y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
-        return y_mean
-
-
 class ReferenceModel(CompositionalModel):
     """
     Statistical model for single-cell differential composition analysis with specification of a reference cell type.
@@ -760,20 +594,18 @@ class ReferenceModel(CompositionalModel):
 
     The hierarchical formulation of the model for one sample is:
 
-    ..math:
-    \\begin{align*}
-     y|x &\\sim DirMult(a(x), \\Bar{y}) \\\\
-     \\log(a(x)) &= \\alpha + x \\beta \\\\
-     \\alpha_k &\\sim N(0, 5) \\quad &\\forall k \\in [K] \\\\
-     \\beta_{d, \\hat{k}} &= 0 &\\forall d \\in [D]\\\\
-     \\beta_{d, k} &= \\tau_{d, k} \\tilde{\\beta}_{d, k} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
-     \\tau_{d, k} &= \\frac{\\exp(t_{d, k})}{1+ \\exp(t_{d, k})} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
-     \\frac{t_{d, k}}{50} &\\sim N(0, 1) \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
-     \\tilde{\\beta_{d, k}} &= \\tilde{\\mu} + \\tilde{\\sigma}^2) \\cdot \\tilde{\\gamma}_{d, k} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
-     \\tilde{\\mu} &\\sim N(0, 1) \\\\
-     \\tilde{\\sigma}^2 &\\sim HC(0, 1) \\\\
-     \\tilde{\\gamma}_{d, k} &\\sim N(0,1) \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
-    \\end{align*}
+    .. math::
+         y|x &\\sim DirMult(a(x), \\bar{y}) \\\\
+         \\log(a(x)) &= \\alpha + x \\beta \\\\
+         \\alpha_k &\\sim N(0, 5) \\quad &\\forall k \\in [K] \\\\
+         \\beta_{d, \\hat{k}} &= 0 &\\forall d \\in [D]\\\\
+         \\beta_{d, k} &= \\tau_{d, k} \\tilde{\\beta}_{d, k} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+         \\tau_{d, k} &= \\frac{\\exp(t_{d, k})}{1+ \\exp(t_{d, k})} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+         \\frac{t_{d, k}}{50} &\\sim N(0, 1) \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+         \\tilde{\\beta_{d, k}} &= \\tilde{\\mu} + \\tilde{\\sigma}^2) \\cdot \\tilde{\\gamma}_{d, k} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+         \\tilde{\\mu} &\\sim N(0, 1) \\\\
+         \\tilde{\\sigma}^2 &\\sim HC(0, 1) \\\\
+         \\tilde{\\gamma}_{d, k} &\\sim N(0,1) \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
 
     with y being the cell counts and x the covariates.
 

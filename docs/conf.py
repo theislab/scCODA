@@ -16,7 +16,14 @@ import sys
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0, os.path.abspath('.'))
 
+from sphinx.application import Sphinx
+from sphinx.ext import autosummary
+from pathlib import Path
+import logging
+
 import sccoda
+
+logger = logging.getLogger(__name__)
 
 
 # -- Project information -----------------------------------------------------
@@ -99,3 +106,46 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+# -- generate_options override ------------------------------------------
+
+
+def process_generate_options(app: Sphinx):
+    genfiles = app.config.autosummary_generate
+
+    if genfiles and not hasattr(genfiles, "__len__"):
+        env = app.builder.env
+        genfiles = [
+            env.doc2path(x, base=None)
+            for x in env.found_docs
+            if Path(env.doc2path(x)).is_file()
+        ]
+    if not genfiles:
+        return
+
+    from sphinx.ext.autosummary.generate import generate_autosummary_docs
+
+    ext = app.config.source_suffix
+    genfiles = [
+        genfile + (not genfile.endswith(tuple(ext)) and ext[0] or "")
+        for genfile in genfiles
+    ]
+
+    suffix = autosummary.get_rst_suffix(app)
+    if suffix is None:
+        return
+
+    generate_autosummary_docs(
+        genfiles,
+        builder=app.builder,
+        warn=logger.warning,
+        info=logger.info,
+        suffix=suffix,
+        base_path=app.srcdir,
+        imported_members=True,
+        app=app,
+    )
+
+
+autosummary.process_generate_options = process_generate_options
+

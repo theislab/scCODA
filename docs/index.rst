@@ -19,6 +19,7 @@ Please also check out the `tutorial <https://github.com/theislab/scCODA/blob/mas
    installation
    data
    models
+   api
 
 Modules
 =======
@@ -26,13 +27,13 @@ Modules
 .. autosummary::
    :toctree: .
 
-   sccoda.model.dirichlet_models
-   sccoda.model.other_models
-   sccoda.util.cell_composition_data
-   sccoda.util.comp_ana
-   sccoda.util.data_generation
-   sccoda.util.result_classes
-   sccoda.util.data_visualization
+..   sccoda.model.dirichlet_models
+..   sccoda.model.other_models
+..   sccoda.util.cell_composition_data
+..   sccoda.util.comp_ana
+..   sccoda.util.data_generation
+..   sccoda.util.result_classes
+..   sccoda.util.data_visualization
 
 Indices and tables
 ==================

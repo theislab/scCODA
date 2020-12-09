@@ -38,7 +38,7 @@ def plot_one_stackbar(y, type_names, title, level_names):
     a plot
     """
 
-    plt.figure(figsize=(20, 10))
+    fig = plt.figure(figsize=(20, 10))
     n_samples, n_types = y.shape
     r = np.array(range(n_samples))
     sample_sums = np.sum(y, axis=1)

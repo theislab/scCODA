@@ -50,13 +50,8 @@ class CompositionalAnalysis:
         covariate_matrix = covariate_matrix[:, 1:]
 
         # Invoke instance of the correct model depending on reference cell type
-        # No reference cell type
-        if reference_cell_type is None:
-            return dm.NoReferenceModel(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
-                                       cell_types=cell_types, covariate_names=covariate_names, formula=formula)
-
         # Column name as reference cell type
-        elif reference_cell_type in cell_types:
+        if reference_cell_type in cell_types:
             num_index = cell_types.index(reference_cell_type)
             return dm.ReferenceModel(covariate_matrix=np.array(covariate_matrix), data_matrix=data_matrix,
                                      cell_types=cell_types, covariate_names=covariate_names,
