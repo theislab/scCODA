@@ -18,10 +18,11 @@ Data acquisition
 ----------------
 
 **Integrating data sources (dat)** (scanpy or pandas)
+
 .. autosummary::
     :toctree: .
 
     sccoda.util.cell_composition_data.from_pandas
-    sccoda.util.cell_composition_data.from_scanpy
+    sccoda.util.cell_composition_data.read_anndata_one_sample
     sccoda.util.cell_composition_data.from_scanpy_dir
     sccoda.util.cell_composition_data.from_scanpy_list

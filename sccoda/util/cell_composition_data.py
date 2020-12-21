@@ -8,12 +8,12 @@ import anndata as ad
 import os
 
 
-def from_scanpy(adata, cell_type_identifier, covariate_key):
+def read_anndata_one_sample(adata, cell_type_identifier, covariate_key=None):
     """
-    Converts a single scRNA-seq data set from scanpy (adata format) to a row of a cell count matrix.
+    Converts a single scRNA-seq data set from scanpy (anndata format) to a row of a cell count matrix.
 
-    It is assumed that a column of adata.obs contains the cell type assignment,
-    while covariates (control/disease group, ...) are stored as a subdict in adata.uns
+    It is assumed that a column of adata.obs (e.g. Louvain clustering results) contains the cell type assignment.
+    Additionally, covariates (control/disease group, ...) can be specified as a subdict in adata.uns
 
     Usage:
 
@@ -21,18 +21,18 @@ def from_scanpy(adata, cell_type_identifier, covariate_key):
 
     Parameters
     ----------
-    adata -- anndata object
+    adata :class:`~anndata.AnnData`
         single-cell data object from scanpy
-    cell_type_identifier -- str
+    cell_type_identifier: `str`
         column name in adata.obs that specifies the cell types
-    covariate_key -- str
+    covariate_key: `str`
         key for adata.uns, where the covariate values are stored
 
     Returns
     -------
-    cell_counts -- Numpy array
+    cell_counts  :class:`~numpy.array`
         cell count vector
-    covs -- list
+    covs: `list`
         covariate vector
     """
 
@@ -40,9 +40,12 @@ def from_scanpy(adata, cell_type_identifier, covariate_key):
     cell_counts = adata.obs[cell_type_identifier].value_counts()
 
     # extracting covariates from uns
-    covs = adata.uns[covariate_key]
+    if covariate_key is not None:
+        covs = adata.uns[covariate_key]
+        return cell_counts, covs
 
-    return cell_counts, covs
+    else:
+        return cell_counts
 
 
 def from_scanpy_list(samples, cell_type_identifier, covariate_key):
@@ -77,7 +80,7 @@ def from_scanpy_list(samples, cell_type_identifier, covariate_key):
     # iterate over anndata objects for each sample
     for s in samples:
 
-        cell_counts, covs = from_scanpy(s, cell_type_identifier, covariate_key)
+        cell_counts, covs = read_anndata_one_sample(s, cell_type_identifier, covariate_key)
         count_data = count_data.append(cell_counts, ignore_index=True)
         covariate_data = covariate_data.append(pd.Series(covs), ignore_index=True)
 
@@ -122,7 +125,7 @@ def from_scanpy_dir(path, cell_type_identifier, covariate_key):
     for f in filenames:
         adata = ad.read_h5ad(f)
 
-        cell_counts, covs = from_scanpy(adata, cell_type_identifier, covariate_key)
+        cell_counts, covs = read_anndata_one_sample(adata, cell_type_identifier, covariate_key)
         count_data = count_data.append(cell_counts, ignore_index=True)
         covariate_data = covariate_data.append(pd.Series(covs), ignore_index=True)
 
