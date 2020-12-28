@@ -10,16 +10,24 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.pyplot import cm
+from matplotlib import cm, rcParams
 
 sns.set_style("ticks")
 
 
-def plot_one_stackbar(y, type_names, title, level_names):
-
+def stackbar(
+        y,
+        type_names,
+        title,
+        level_names,
+        figsize=None,
+        dpi=100,
+        cmap=cm.tab20,
+        plot_legend=True,
+):
     """
     Plots a stacked barplot for one (discrete) covariate
-    Typical use: plot_one_stackbar(data.X, data.var.index, "xyz", data.obs.index)
+    Typical use (only inside stacked_barplot): plot_one_stackbar(data.X, data.var.index, "xyz", data.obs.index)
 
     Parameters
     ----------
@@ -32,86 +40,164 @@ def plot_one_stackbar(y, type_names, title, level_names):
         Plot title, usually the covariate's name
     level_names -- list-like
         names of the covariate's levels
+    figsize -- tuple
+        figure size
+    dpi -- int
+        dpi setting
+    cmap -- matplotlib.cm colormap
+        The color map for the barplot
+    plot_legend -- bool
+        If True, adds a legend
 
     Returns
     -------
-    a plot
-    """
+    ax -- plot
 
-    fig = plt.figure(figsize=(20, 10))
-    n_samples, n_types = y.shape
-    r = np.array(range(n_samples))
+    """
+    n_bars, n_types = y.shape
+
+    figsize = rcParams["figure.figsize"] if figsize is None else figsize
+
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+    r = np.array(range(n_bars))
     sample_sums = np.sum(y, axis=1)
+
     barwidth = 0.85
-    cum_bars = np.zeros(n_samples)
-    colors = cm.tab20
+    cum_bars = np.zeros(n_bars)
 
     for n in range(n_types):
-        bars = [i / j * 100 for i, j in zip([y[k][n] for k in range(n_samples)], sample_sums)]
-        plt.bar(r, bars, bottom=cum_bars, color=colors(n % 20), width=barwidth, label=type_names[n])
+        bars = [i / j * 100 for i, j in zip([y[k][n] for k in range(n_bars)], sample_sums)]
+        plt.bar(r, bars, bottom=cum_bars, color=cmap(n % cmap.N), width=barwidth, label=type_names[n], linewidth=0)
         cum_bars += bars
 
-    plt.title(title)
-    plt.legend(loc='upper left', bbox_to_anchor=(1, 1), ncol=1)
-    plt.xticks(r, level_names, rotation=45)
+    ax.set_title(title)
+    if plot_legend:
+        ax.legend(loc='upper left', bbox_to_anchor=(1, 1), ncol=1)
+    ax.set_xticks(r)
+    ax.set_xticklabels(level_names, rotation=45)
+    ax.set_ylabel("Proportion")
+
+    return ax
 
 
-def plot_feature_stackbars(data, features):
+def stacked_barplot(
+        data,
+        feature_name,
+        figsize=None,
+        dpi=100,
+        cmap=cm.tab20,
+        plot_legend=True,
+):
 
     """
-    Plots stackbars for all listed covariates.
+    Plots a stacked barplot for all levels of a covariate or all samples (if feature_name=="samples").
     Usage: plot_feature_stackbars(data, ["cov1", "cov2", "cov3"])
 
     Parameters
     ----------
     data -- AnnData object
-        A scCODA-compatible data object
-    features -- list
-        List of all covariates to plot. Specifying "samples" as an element will plot a stackbar with all samples
+        A scCODA compositional data object
+    feature_name -- string
+        The name of the covariate to plot. If feature_name=="samples", one bar for every sample will be plotted
+    figsize -- tuple
+        figure size
+    dpi -- int
+        dpi setting
+    cmap -- matplotlib.cm colormap
+        The color map for the barplot
+    plot_legend -- bool
+        If True, adds a legend
 
     Returns
     -------
-    One plot for every category
+    g -- plot
 
     """
 
+    # cell type names
     type_names = data.var.index
-    for f in features:
 
-        if f == "samples":
-            plot_one_stackbar(data.X, data.var.index, "samples", data.obs.index)
-        else:
-            levels = pd.unique(data.obs[f])
-            n_levels = len(levels)
-            feature_totals = np.zeros([n_levels, data.X.shape[1]])
+    # option to plot one stacked barplot per sample
+    if feature_name == "samples":
+        g = stackbar(
+            data.X,
+            type_names=data.var.index,
+            title="samples",
+            level_names=data.obs.index,
+            figsize=figsize,
+            dpi=dpi,
+            cmap=cmap,
+            plot_legend=plot_legend,
+            )
+    else:
+        levels = pd.unique(data.obs[feature_name])
+        n_levels = len(levels)
+        feature_totals = np.zeros([n_levels, data.X.shape[1]])
 
-            for level in range(n_levels):
-                l_indices = np.where(data.obs[f] == levels[level])
-                feature_totals[level] = np.sum(data.X[l_indices], axis=0)
+        for level in range(n_levels):
+            l_indices = np.where(data.obs[feature_name] == levels[level])
+            feature_totals[level] = np.sum(data.X[l_indices], axis=0)
 
-            plot_one_stackbar(feature_totals, type_names=type_names, level_names=levels, title=f)
+        g = stackbar(
+            feature_totals,
+            type_names=type_names,
+            title=feature_name,
+            level_names=levels,
+            figsize=figsize,
+            dpi=dpi,
+            cmap=cmap,
+            plot_legend=plot_legend,
+            )
+
+    return g
 
 
-def grouped_boxplot(data, feature, log_scale=False, *args, **kwargs):
+def boxplots(
+        data,
+        feature_name,
+        log_scale=False,
+        plot_facets=False,
+        add_dots=False,
+        args_boxplot={},
+        args_swarmplot={},
+        figsize=None,
+        dpi=100,
+        cmap="Blues",
+        plot_legend=True,
+):
     """
-    Grouped boxplot for a feature (covariate) - cell types on x-Axis
+    Grouped boxplot visualization. The cell counts for each cell type are shown as a group of boxplots,
+    with intra--group separation by a covariate from data.obs.
+
+    The cell type groups can either be ordered along the x-axis of a single plot (plot_facets=False) or as plot facets (plot_facets=True).
 
     Parameters
     ----------
     data -- AnnData object
         A scCODA-compatible data object
-    feature -- string
+    feature_name -- string
         The name of the feature in data.obs to plot
     log_scale -- bool
-        Plotting on log-scale. If true, use log(data.X + 1) instead of X (pseudocount 1 to avoid log(0)-issues)
-    *args, **kwargs -- Passed to sns.boxplot
+        Transformation to log-scale. If true, use log(data.X + 1) instead of data.X (pseudocount 1 to avoid log(0)-issues)
+    plot_facets -- bool
+        If False, plot cell types on the x-axis. If True, plot as facets
+    add_dots -- bool
+        If True, overlay a scatterplot with one dot for each data point
+    args_boxplot -- dict
+        Arguments passed to sns.boxplot
+    args_swarmplot -- dict
+            Arguments passed to sns.swarmplot
+    dpi -- int
+        dpi setting
+    cmap -- string
+        The seaborn color map for the barplot
+    plot_legend -- bool
+        If True, adds a legend
 
     Returns
     -------
     Plot!
     """
-
-    plt.figure(figsize=(20, 10))
 
     # add pseudocount 1 if using log scale (needs to be improved)
     if log_scale:
@@ -122,63 +208,93 @@ def grouped_boxplot(data, feature, log_scale=False, *args, **kwargs):
         value_name = "count"
 
     count_df = pd.DataFrame(X, columns=data.var.index, index=data.obs.index).\
-        merge(data.obs[feature], left_index=True, right_index=True)
-    plot_df = pd.melt(count_df, id_vars=feature, var_name="Cell type", value_name=value_name)
+        merge(data.obs[feature_name], left_index=True, right_index=True)
+    plot_df = pd.melt(count_df, id_vars=feature_name, var_name="Cell type", value_name=value_name)
 
-    d = sns.boxplot(x="Cell type", y=value_name, hue=feature, data=plot_df, fliersize=1,
-                    palette='Blues', *args, **kwargs)
+    if plot_facets:
 
-    loc, labels = plt.xticks()
-    d.set_xticklabels(labels, rotation=90)
+        K = X.shape[1]
 
-    return d
+        g = sns.FacetGrid(
+            plot_df,
+            col="Cell type",
+            sharey=False,
+            col_wrap=np.floor(np.sqrt(K)),
+            height=5,
+            aspect=2,
+        )
+        g.map(
+            sns.boxplot,
+            feature_name,
+            value_name,
+            palette=cmap,
+            order=pd.unique(plot_df[feature_name]),
+            **args_boxplot
+        )
 
+        if add_dots:
 
-def boxplot_facets(data, feature, log_scale=False, args_boxplot={}, args_swarmplot={}):
-    """
-    Faceted boxplot and swarmplot - one cell type per facet. All plots will represent the same feature
+            if "hue" in args_swarmplot:
+                hue = args_swarmplot.pop("hue")
+            else:
+                hue = None
 
-    Parameters
-    ----------
-    data -- AnnData object
-        A scCODA-compatible data object
-    feature -- string
-        The name of the feature in data.obs to plot
-    log_scale -- bool
-        Plotting on log-scale. If true, use log(data.X + 1) instead of X (pseudocount 1 to avoid log(0)-issues)
-    args_boxplot -- dict
-        Arguments passed to sns.boxplot
-    args_swarmplot -- dict
-        Arguments passed to sns.swarmplot
+            if hue is None:
+                g.map(
+                    sns.swarmplot,
+                    feature_name,
+                    value_name,
+                    color="black",
+                    order=pd.unique(plot_df[feature_name]),
+                    **args_swarmplot
+                ).set_titles("{col_name}")
+            else:
+                g.map(
+                    sns.swarmplot,
+                    feature_name,
+                    value_name,
+                    hue,
+                    order=pd.unique(plot_df[feature_name]),
+                    **args_swarmplot
+                ).set_titles("{col_name}")
 
-    Returns
-    -------
-    Plot!
-    """
+        if plot_legend:
+            g.legend(loc='upper left', bbox_to_anchor=(1, 1), ncol=1)
 
-    # add pseudocount 1 if using log scale
-    if log_scale:
-        X = np.log(data.X + 1)
-        value_name = "log(count)"
+        return g
+
     else:
-        X = data.X
-        value_name = "count"
 
-    K = X.shape[1]
+        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
-    count_df = pd.DataFrame(X, columns=data.var.index, index=data.obs.index).merge(data.obs, left_index=True,
-                                                                                   right_index=True)
-    plot_df = pd.melt(count_df, id_vars=data.obs.columns, var_name="Cell type", value_name=value_name)
+        sns.boxplot(x="Cell type", y=value_name, hue=feature_name, data=plot_df, fliersize=1,
+                    palette=cmap, ax=ax, **args_boxplot)
 
-    if "hue" in args_swarmplot:
-        hue = args_swarmplot.pop("hue")
-    else:
-        hue = None
+        if add_dots:
+            sns.swarmplot(
+                x="Cell type",
+                y=value_name,
+                data=plot_df,
+                hue=feature_name,
+                ax=ax,
+                dodge=True,
+                color="black",
+                **args_swarmplot
+            )
 
-    g = sns.FacetGrid(plot_df, col="Cell type", sharey=False, col_wrap=np.floor(np.sqrt(K)), height=5, aspect=2)
-    g.map(sns.boxplot, feature, value_name, palette="Blues", **args_boxplot)
-    if hue is None:
-        g.map(sns.swarmplot, feature, value_name, color="black", **args_swarmplot).set_titles("{col_name}")
-    else:
-        g.map(sns.swarmplot, feature, value_name, hue, **args_swarmplot).set_titles("{col_name}")
-    return g
+        cell_types = pd.unique(plot_df["Cell type"])
+        ax.set_xticklabels(cell_types, rotation=90)
+
+        if plot_legend:
+            handles, labels = ax.get_legend_handles_labels()
+            handout = []
+            labelout = []
+            for h, l in zip(handles, labels):
+                if l not in labelout:
+                    labelout.append(l)
+                    handout.append(h)
+            ax.legend(handout, labelout, loc='upper left', bbox_to_anchor=(1, 1), ncol=1, title=feature_name)
+
+        plt.tight_layout()
+
+        return ax

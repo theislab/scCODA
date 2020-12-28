@@ -2,14 +2,19 @@
 Welcome to scCODA's documentation!
 =============================================
 
+.. image:: ../.github/Figures/Fig1_v10.png
+   :width: 500px
+   :align: right
+
 scCODA is a toolbox for statistical models to analyze changes in compositional data,
 especially from single-cell RNA-seq experiments.
-Its main purpose is to provide a platform and implementation for the *scCODA* model, which is described in
+Its main purpose is to provide a platform and implementation for the *scCODA* model, which is described by
 `Büttner, Ostner et al. <https://doi.org/10.1101/2020.12.14.422688>`_.
 
 The package is available on `github <https://github.com/theislab/scCODA>`_.
 
-Please also check out the `tutorial <https://github.com/theislab/scCODA/blob/master/tutorials/Tutorial.ipynb>`_ that explains the most important functionalities.
+Please also check out the `tutorial <https://github.com/theislab/scCODA/blob/master/tutorials/Tutorial.ipynb>`_
+that explains the most important functionalities.
 
 Motivation
 ^^^^^^^^^^^^
@@ -33,9 +38,10 @@ implementations of other statistical models that can be used as comparisons.
     :caption: Contents
     :maxdepth: 2
 
-    installation
+    compositional_data
     data
     models
+    installation
     api
 
 Modules

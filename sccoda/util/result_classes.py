@@ -297,7 +297,7 @@ class CAResult(az.InferenceData):
         print("Compositional Analysis summary:")
         print("")
         print("Data: %d samples, %d cell types" % data_dims)
-        print("Reference index: %s" % str(self.model_specs["refernce"]))
+        print("Reference index: %s" % str(self.model_specs["reference"]))
         print("Formula: %s" % self.model_specs["formula"])
         print("")
         print("Intercepts:")

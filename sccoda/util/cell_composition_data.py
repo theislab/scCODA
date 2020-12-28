@@ -21,7 +21,7 @@ def read_anndata_one_sample(adata, cell_type_identifier, covariate_key=None):
 
     Parameters
     ----------
-    adata :class:`~anndata.AnnData`
+    adata: :class:`~anndata.AnnData`
         single-cell data object from scanpy
     cell_type_identifier: `str`
         column name in adata.obs that specifies the cell types
@@ -30,7 +30,7 @@ def read_anndata_one_sample(adata, cell_type_identifier, covariate_key=None):
 
     Returns
     -------
-    cell_counts  :class:`~numpy.array`
+    cell_counts: :class:`~numpy.array`
         cell count vector
     covs: `list`
         covariate vector
@@ -48,16 +48,16 @@ def read_anndata_one_sample(adata, cell_type_identifier, covariate_key=None):
         return cell_counts
 
 
-def from_scanpy_list(samples, cell_type_identifier, covariate_key):
+def from_scanpy_list(samples, cell_type_identifier, covariate_key=None, covariate_df=None):
     """
     Creates a compositional analysis data set from a list of scanpy data sets.
 
-    To use this function, all data sets need to have one common column in adata.obs that contains the cell type assignment.
-    Also, the covariates need to be stored under the same key in adata.uns
+    To use this function, all data sets need to have one identically named column in adata.obs that contains the cell type assignment.
+    Covariates can either be specified via a key in adata.uns, or as a separate DataFrame
 
     Usage:
 
-    ``data = from_scanpy_list([adata1, adata2, adata3], cell_type_identifier="Louvain", covariate_key="covariates")``
+    ``data = from_scanpy_list([adata1, adata2, adata3], cell_type_identifier="Louvain", covariate_df="covariates")``
 
     Parameters
     ----------
@@ -66,7 +66,9 @@ def from_scanpy_list(samples, cell_type_identifier, covariate_key):
     cell_type_identifier -- str
         column name in adata.obs that specifies the cell types
     covariate_key -- str
-        key for adata.uns, where the covariate values are stored
+        key for adata.uns, where covariate values are stored
+    covariate_df -- DataFrame
+        DataFrame with covariates
 
     Returns
     -------
@@ -78,27 +80,35 @@ def from_scanpy_list(samples, cell_type_identifier, covariate_key):
     covariate_data = pd.DataFrame()
 
     # iterate over anndata objects for each sample
-    for s in samples:
+    if covariate_key is not None:
+        for s in samples:
 
-        cell_counts, covs = read_anndata_one_sample(s, cell_type_identifier, covariate_key)
-        count_data = count_data.append(cell_counts, ignore_index=True)
-        covariate_data = covariate_data.append(pd.Series(covs), ignore_index=True)
+            cell_counts, covs = read_anndata_one_sample(s, cell_type_identifier, covariate_key)
+            count_data = count_data.append(cell_counts, ignore_index=True)
+            covariate_data = covariate_data.append(pd.Series(covs), ignore_index=True)
+    elif covariate_df is not None:
+        for s in samples:
+            cell_counts = read_anndata_one_sample(s, cell_type_identifier)
+            count_data = count_data.append(cell_counts, ignore_index=True)
+            covariate_data = covariate_df
+    else:
+        print("No covariate information specified!")
+        return
 
     # Replace NaNs
     count_data = count_data.fillna(0)
-    covariate_data = covariate_data.fillna(0)
 
     return ad.AnnData(X=count_data.values,
                       var=count_data.sum(axis=0).rename("n_cells").to_frame(),
                       obs=covariate_data)
 
 
-def from_scanpy_dir(path, cell_type_identifier, covariate_key):
+def from_scanpy_dir(path, cell_type_identifier, covariate_key=None, covariate_df=None):
     """
     Creates a compositional analysis data set from all scanpy data sets in a directory.
 
-    To use this function, all data sets need to have one common column in adata.obs that contans the cell type assignment.
-    Also, the covariates need to be stored under the same key in adata.uns
+    To use this function, all data sets need to have one identically named column in adata.obs that contains the cell type assignment.
+    Covariates can either be specified via a key in adata.uns, or as a separate DataFrame
 
     Usage:
     ``data = from_scanpy_dir("./path/to/directory", cell_type_identifier="Louvain", covariate_key="covariates")``
@@ -110,7 +120,9 @@ def from_scanpy_dir(path, cell_type_identifier, covariate_key):
     cell_type_identifier -- str
         column name in adata.obs that specifies the cell types
     covariate_key -- str
-        key for adata.uns, where the covariate values are stored
+        key for adata.uns, where covariate values are stored
+    covariate_df -- DataFrame
+        DataFrame with covariates
 
     Returns
     -------
@@ -122,20 +134,75 @@ def from_scanpy_dir(path, cell_type_identifier, covariate_key):
     covariate_data = pd.DataFrame()
 
     filenames = os.listdir(path)
-    for f in filenames:
-        adata = ad.read_h5ad(f)
+    if covariate_key is not None:
+        for f in filenames:
+            adata = ad.read_h5ad(f)
 
-        cell_counts, covs = read_anndata_one_sample(adata, cell_type_identifier, covariate_key)
-        count_data = count_data.append(cell_counts, ignore_index=True)
-        covariate_data = covariate_data.append(pd.Series(covs), ignore_index=True)
+            cell_counts, covs = read_anndata_one_sample(adata, cell_type_identifier, covariate_key)
+            count_data = count_data.append(cell_counts, ignore_index=True)
+            covariate_data = covariate_data.append(pd.Series(covs), ignore_index=True)
+    elif covariate_df is not None:
+        for f in filenames:
+            adata = ad.read_h5ad(f)
+
+            cell_counts = read_anndata_one_sample(adata, cell_type_identifier)
+            count_data = count_data.append(cell_counts, ignore_index=True)
+            covariate_data = covariate_df
+    else:
+        print("No covariate information specified!")
+        return
 
     # Replace NaNs
     count_data = count_data.fillna(0)
-    covariate_data = covariate_data.fillna(0)
 
     return ad.AnnData(X=count_data.values,
                       var=count_data.sum(axis=0).rename("n_cells").to_frame(),
                       obs=covariate_data)
+
+
+def from_scanpy(adata, cell_type_identifier, sample_identifier, covariate_key=None, covariate_df=None):
+
+    """
+    Creates a compositional analysis dataset from a single anndata object, as it is produced by e.g. scanpy.
+
+    The anndata object needs to have a column in adata.obs that contains the cell type assignment,
+    and one column that specifies the grouping into samples.
+    Covariates can either be specified via a key in adata.uns, or as a separate DataFrame
+
+
+    Parameters
+    ----------
+    adata -- list
+        list of scanpy data sets
+    cell_type_identifier -- str
+        column name in adata.obs that specifies the cell types
+    sample_identifier -- str
+        column name in adata.obs that specifies the sample
+    covariate_key -- str
+        key for adata.uns, where covariate values are stored
+    covariate_df -- DataFrame
+        DataFrame with covariates
+
+    Returns
+    -------
+    data -- CompositionalData object
+        A compositional analysis data set
+
+    """
+
+    if covariate_key is not None:
+        covariate_df = pd.DataFrame(adata.uns[covariate_key])
+    elif covariate_df is None:
+        print("No covariate information specified!")
+        return
+
+    groups = adata.obs.value_counts([sample_identifier, cell_type_identifier])
+    count_data = groups.unstack(level=cell_type_identifier)
+    count_data = count_data.fillna(0)
+
+    return ad.AnnData(X=count_data.values,
+                      var=count_data.sum(axis=0).rename("n_cells").to_frame(),
+                      obs=covariate_df)
 
 
 def from_pandas(df, covariate_columns):
@@ -143,7 +210,7 @@ def from_pandas(df, covariate_columns):
     Converts a Pandas DataFrame into a compositional analysis data set.
     The DataFrame must contain one row per sample, columns can be cell types or covariates
 
-    Note that all columns that are not specified as covariates are assumed to be cell counts.
+    Note that all columns that are not specified as covariates are assumed to be cell types.
 
     Usage:
     ``data = from_pandas(df, covariate_columns=["cov1", "cov2"])``

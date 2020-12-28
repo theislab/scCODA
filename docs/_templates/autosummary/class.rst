@@ -8,28 +8,34 @@
 
 .. autoclass:: {{ objname }}
 
-   {% block attributes %}
-   {% if attributes %}
-   .. rubric:: Attributes
+    {% if objname != "CAResult" %}
 
-   .. autosummary::
-      :toctree: .
-   {% for item in attributes %}
-      ~{{ fullname }}.{{ item }}
-   {%- endfor %}
-   {% endif %}
-   {% endblock %}
+    {% block attributes %}
+    {% if attributes %}
+    .. rubric:: Attributes
 
-   {% block methods %}
-   {% if methods %}
-   .. rubric:: Methods
+    .. autosummary::
+        :toctree: .
+    {% for item in attributes %}
+        {%- if item[0] != "_" %}
+        ~{{ fullname }}.{{ item }}
+        {%- endif -%}
+    {%- endfor %}
+    {% endif %}
+    {% endblock %}
 
-   .. autosummary::
-      :toctree: .
-   {% for item in methods %}
-      {%- if item != '__init__' %}
-      ~{{ fullname }}.{{ item }}
-      {%- endif -%}
-   {%- endfor %}
-   {% endif %}
-   {% endblock %}
+    {% block methods %}
+    {% if methods %}
+    .. rubric:: Methods
+
+    .. autosummary::
+        :toctree: .
+    {% for item in methods %}
+            {% if item[0] != "_" %}
+            ~{{ fullname }}.{{ item }}
+            {% endif %}
+    {%- endfor %}
+    {% endif %}
+    {% endblock %}
+
+    {% endif %}

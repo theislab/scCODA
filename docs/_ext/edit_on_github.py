@@ -9,9 +9,7 @@ import warnings
 __licence__ = "BSD (3 clause)"
 
 
-def get_github_repo(app, path):
-    if path.endswith(".ipynb"):
-        return app.config.github_nb_repo, "/"
+def get_github_repo(app):
     return app.config.github_repo, "/docs/"
 
 
@@ -23,13 +21,9 @@ def html_page_context(app, pagename, templatename, context, doctree):
         warnings.warn("`github_repo `not specified")
         return
 
-    if not app.config.github_nb_repo:
-        nb_repo = f"{app.config.github_repo}_notebooks"
-        warnings.warn("`github_nb_repo `not specified. Setting to `{nb_repo}`")
-        app.config.github_nb_repo = nb_repo
 
     path = os.path.relpath(doctree.get("source"), app.builder.srcdir)
-    repo, conf_py_path = get_github_repo(app, path)
+    repo, conf_py_path = get_github_repo(app)
 
     # For sphinx_rtd_theme.
     context["display_github"] = True
@@ -40,6 +34,5 @@ def html_page_context(app, pagename, templatename, context, doctree):
 
 
 def setup(app):
-    app.add_config_value("github_nb_repo", "", True)
     app.add_config_value("github_repo", "", True)
     app.connect("html-page-context", html_page_context)

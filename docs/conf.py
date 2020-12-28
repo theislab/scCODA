@@ -15,8 +15,6 @@ import os
 import sys
 import datetime
 import inspect
-sys.path.insert(0, os.path.abspath('../'))
-sys.path.insert(0, os.path.abspath('.'))
 
 from sphinx.application import Sphinx
 from sphinx.ext import autosummary
@@ -24,6 +22,9 @@ from pathlib import Path
 import logging
 from typing import Optional, Union, Mapping
 
+HERE = Path(__file__)
+sys.path.insert(0, f"{HERE.parent.parent}")
+sys.path.insert(0, os.path.abspath("_ext"))
 import sccoda
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,6 @@ copyright = f"{datetime.datetime.now():%Y}, {author}"
 
 version = sccoda.__version__.replace(".dirty", "")
 release = version
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 pygments_style = "sphinx"
 todo_include_todos = False
 
@@ -70,6 +70,7 @@ extensions = ['numpydoc',
               "sphinx.ext.githubpages",
               "sphinx_autodoc_typehints",
               "nbsphinx",
+              "edit_on_github"
               ]
 
 autodoc_mock_imports = ["tensorflow",
@@ -92,17 +93,6 @@ intersphinx_mapping = dict(
     scanpy=("https://scanpy.readthedocs.io/en/latest/", None),
     numpy=("https://numpy.org/doc/stable/", None),
 )
-
-
-def skip(app, what, name, obj, would_skip, options):
-    if name == "__init__" or name == "__new__":
-        return False
-    return would_skip
-
-
-def setup(app):
-    app.connect("autodoc-skip-member", skip)
-
 
 # Generate the API documentation when building
 autosummary_generate = True
@@ -130,7 +120,7 @@ nbsphinx_prolog = r"""
       <a href="https://colab.research.google.com/{{ docname|e }}" target="_parent">
       <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
       <a href="https://nbviewer.jupyter.org/{{ docname|e }}" target="_parent">
-      <img src="https://github.com/theislab/sccoda/raw/release_0.1/docs/source/_static/nbviewer-badge.svg" alt="Open In nbviewer"/></a>
+      <img src="https://github.com/theislab/scCODA/raw/release_0.1/docs/_static/nbviewer_badge.svg" alt="Open In nbviewer"/></a>
     </div>
 """
 
@@ -141,9 +131,9 @@ html_theme = 'sphinx_rtd_theme'
 html_theme_options = dict(navigation_depth=1, titles_only=True)
 github_repo = "sccoda"
 html_static_path = ['_static']
-
-def setup(app):
-    app.add_stylesheet("custom.css")
+html_css_files = [
+    'custom.css',
+]
 
 
 # -- Options for other output ------------------------------------------
@@ -188,8 +178,6 @@ def process_generate_options(app: Sphinx):
     generate_autosummary_docs(
         genfiles,
         builder=app.builder,
-        warn=logger.warning,
-        info=logger.info,
         suffix=suffix,
         base_path=app.srcdir,
         imported_members=True,
@@ -264,7 +252,6 @@ def modurl(qualname):
 
 def api_image(qualname: str) -> Optional[str]:
     path = Path(__file__).parent / f"{qualname}.png"
-    print(path, path.is_file())
     return (
         f".. image:: {path.name}\n   :width: 200\n   :align: right"
         if path.is_file()

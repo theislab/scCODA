@@ -2,10 +2,15 @@
 scCODA allows for identification of compositional changes in high-throughput sequencing count data, especially cell compositions from scRNA-seq.
 It also provides a framework for integration of results directly from *scanpy* and other sources.
 
+![scCODA](.github/Figures/Fig1_v10.png)
+
 The statistical methodology and benchmarking performance are described in:
  
-*scCODA: A Bayesian model for compositional single-cell data analysis (Ostner et al., 2020)*
-(Code for the article available at https://github.com/theislab/scCODA_reproducibility)
+Büttner, Ostner *et al.* (2020). **scCODA: A Bayesian model for compositional single-cell data analysis**
+
+
+[Link](https://www.biorxiv.org/content/10.1101/2020.12.14.422688v1) to article on *BioRxiv*.
+Code for reproducing the article is available [here](https://github.com/theislab/scCODA_reproducibility).
 
 For further information, please refer to the 
 [documentation](https://scdcdm-public.readthedocs.io/en/latest/) and the 

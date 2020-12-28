@@ -8,16 +8,16 @@ def sample_size_estimate(mcc_desired, increase, lf_increase):
     Büttner et al., 2020
 
     Linear model parameters:
-    (Intercept)
-        -1.3675613850217
-    total_samples
-        0.0193158965178381
-    log_fold_increase
-        0.704729538709909
-    log_increase
-        0.315857162659738
-    log_fold_increase:log_increase
-        -0.0927955725385892
+
+    - `(Intercept)`: -1.3675613850217
+
+    - `total_samples`: 0.0193158965178381
+
+    - `log_fold_increase`: 0.704729538709909
+
+    - `log_increase`: 0.315857162659738
+
+    - `log_fold_increase`: -0.0927955725385892
 
     Parameters
     ----------
@@ -32,6 +32,7 @@ def sample_size_estimate(mcc_desired, increase, lf_increase):
     -------
     n_samples -- int
         estimated number of required samples
+
     """
     
     # scale and transform input features

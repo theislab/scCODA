@@ -54,7 +54,7 @@ class CompositionalModel:
 
     - MCMC sampling methods (`sample_hmc`, `sample_hmc_da`, `sample_nuts`)
 
-    Methods implemented by a parent class:
+    Methods implemented by a child class:
 
     - `get_y_hat`: Calculation of intermediate parameters for all MCMC chain states and posterior mode of the cell count matrix
 
@@ -602,7 +602,7 @@ class ReferenceModel(CompositionalModel):
          \\beta_{d, k} &= \\tau_{d, k} \\tilde{\\beta}_{d, k} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
          \\tau_{d, k} &= \\frac{\\exp(t_{d, k})}{1+ \\exp(t_{d, k})} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
          \\frac{t_{d, k}}{50} &\\sim N(0, 1) \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
-         \\tilde{\\beta_{d, k}} &= \\tilde{\\mu} + \\tilde{\\sigma}^2) \\cdot \\tilde{\\gamma}_{d, k} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+         \\tilde{\\beta}_{d, k} &= (\\tilde{\\mu} + \\tilde{\\sigma}^2) \\cdot \\tilde{\\gamma}_{d, k} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
          \\tilde{\\mu} &\\sim N(0, 1) \\\\
          \\tilde{\\sigma}^2 &\\sim HC(0, 1) \\\\
          \\tilde{\\gamma}_{d, k} &\\sim N(0,1) \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
