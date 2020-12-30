@@ -1,6 +1,6 @@
 """
 Models for the model comparison benchmark in `scCODA: A Bayesian model for compositional single-cell data analysis`
-(Büttner et al., 2020).
+(Büttner, Ostner et al., 2020).
 
 These models are otherwise not part of scCODA, but make a nice addition for comparison purposes
 and are thus part of the main package.

@@ -258,9 +258,6 @@ def boxplots(
                     **args_swarmplot
                 ).set_titles("{col_name}")
 
-        if plot_legend:
-            g.legend(loc='upper left', bbox_to_anchor=(1, 1), ncol=1)
-
         return g
 
     else:

@@ -43,5 +43,6 @@ You can either import data directly from a pandas DataFrame via ``from_pandas()`
 If all cells from all samples are stored in one anndata object, ``from_scanpy`` generates a compositional analysis dataset from this.
 If there is one anndata object with the single-cell expression data for each sample,
 ``from_scanpy_list`` (for in-memory data) and ``from_scanpy_dir`` (for data stored on disk) can transform the information from these files directly into a compositional analysis dataset.
+For more information, see the data import tutorial.
 
 

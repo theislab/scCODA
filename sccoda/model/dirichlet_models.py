@@ -2,7 +2,7 @@
 Dirichlet-multinomial models for statistical analysis of compositional changes in single-cell data.
 
 For further reference, see:
-Büttner et al.: scCODA: A Bayesian model for compositional single-cell data analysis
+Büttner, Ostner et al.: scCODA: A Bayesian model for compositional single-cell data analysis
 
 :authors: Johannes Ostner
 """
@@ -610,7 +610,7 @@ class ReferenceModel(CompositionalModel):
     with y being the cell counts and x the covariates.
 
     For further information, see `scCODA: A Bayesian model for compositional single-cell data analysis`
-    (Büttner et al., 2020)
+    (Büttner, Ostner et al., 2020)
 
     """
 

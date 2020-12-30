@@ -44,26 +44,16 @@ implementations of other statistical models that can be used as comparisons.
     installation
     api
 
-Modules
+Tutorials
 ^^^^^^^^^^
-
-.. autosummary::
-    :caption: Modules
-    :toctree: .
-
-..   sccoda.model.dirichlet_models
-..   sccoda.model.other_models
-..   sccoda.util.cell_composition_data
-..   sccoda.util.comp_ana
-..   sccoda.util.data_generation
-..   sccoda.util.result_classes
-..   sccoda.util.data_visualization
 
 .. toctree::
     :caption: Tutorials
     :maxdepth: 1
 
-    Tutorial
+    getting started
+    Data import and visualization
+    Modeling options and result analysis
 
 Reference
 ^^^^^^^^^^

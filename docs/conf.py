@@ -35,7 +35,9 @@ from urllib.request import urlretrieve
 
 notebooks_url = "https://github.com/theislab/scCODA/raw/master/tutorials/"
 notebooks = [
-    "Tutorial.ipynb",
+    "getting started.ipynb",
+    "Data import and visualization.ipynb"
+    "Modeling options and result analysis.ipynb"
 ]
 for nb in notebooks:
     try:

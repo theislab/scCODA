@@ -5,7 +5,7 @@ def sample_size_estimate(mcc_desired, increase, lf_increase):
     """
     calculates the estimated number of required samples for
     fixed MCC, absolute increase and log2-fold change using the fitted linear model from
-    Büttner et al., 2020
+    Büttner, Ostner et al., 2020
 
     Linear model parameters:
 

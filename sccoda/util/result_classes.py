@@ -110,7 +110,7 @@ class CAResult(az.InferenceData):
 
             Columns:
             - Final Parameter: Final intercept model parameter
-            - hdi X%: Upper and lower boundaries of confidence interval (width specified via hdi_prob=)
+            - HDI X%: Upper and lower boundaries of confidence interval (width specified via hdi_prob=)
             - SD: Standard deviation of MCMC samples
             - Expected sample: Expected cell counts for a sample with no present covariates. See the tutorial for more explanation
 
@@ -198,7 +198,7 @@ class CAResult(az.InferenceData):
         effect_df.loc[:, "mean_nonzero"] = beta_nonzero_mean
 
         # Inclusion prob threshold value. For derivation of the functional form, see
-        # "scCODA: A Bayesian model for compositional single-cell data analysis" (Büttner et al., 2020)
+        # "scCODA: A Bayesian model for compositional single-cell data analysis" (Büttner, Ostner et al., 2020)
         threshold = 1-(0.77/(beta_raw.shape[2]**0.29))
         self.model_specs["threshold_prob"] = threshold
 
@@ -354,9 +354,10 @@ class CAResult(az.InferenceData):
         print("Effects:")
         print(effect_df)
 
-    def compare_to_truth(self, b_true, w_true, *args, **kwargs):
+    def compare_parameters_to_truth(self, b_true, w_true, *args, **kwargs):
         """
-        Extends data frames from summary_prepare by a comparison to some ground truth slope and intercept values
+        Extends data frames from summary_prepare by a comparison to some ground truth slope and intercept values that are
+        assumed to be from the same generative model (e.g. in data_generation)
 
         Parameters
         ----------
@@ -394,9 +395,9 @@ class CAResult(az.InferenceData):
 
         return intercept_df, effect_df
 
-    def distances(self):
+    def distance_to_truth(self):
         """
-        Compares real cell count matrix to the psterior mode cell count matrix that arises from the calculated parameters
+        Compares real cell count matrix to the posterior mode cell count matrix that arises from the calculated parameters
 
         Returns
         -------
@@ -426,6 +427,33 @@ class CAResult(az.InferenceData):
 
         ret['Cell Type'][0] = 'Total'
         return ret
+
+    def credible_effects(self, inc_prob_threshold=None):
+
+        """
+        Decides which effects of the scCODA model are credible based on an adjustable inclusion probability threshold.
+
+        Parameters
+        ----------
+        inc_prob_threshold -- float
+            Inclusion probability threshold value. Must be between 0 and 1. Per default, the value depends on the number of cell types.
+
+        Returns
+        -------
+        out -- Pandas series
+            Boolean values whether effects are credible under inc_prob_threshold
+        """
+
+        if inc_prob_threshold is None:
+            beta_raw = np.array(self.posterior["beta"])[0]
+            inc_prob_threshold = 1 - (0.77 / (beta_raw.shape[2] ** 0.29))
+        elif inc_prob_threshold < 0 or inc_prob_threshold > 1:
+            raise ValueError("inc_prob_threshold must be between 0 and 1!")
+
+        out = self.effect_df["Inclusion probability"] > inc_prob_threshold
+        out.rename("credible change")
+
+        return out
 
     def save(self, path_to_file):
         """
