@@ -1,0 +1,35 @@
+﻿:github_url: https://github.com/theislab/scanpy/tree/master/scanpy/model/other_models.py#L634-L667
+
+sccoda.model.other\_models.ALRModel\_wilcoxon
+=============================================
+
+.. currentmodule:: sccoda.model.other_models
+
+.. add toctree option to make autodoc generate the pages
+
+.. autoclass:: ALRModel_wilcoxon
+
+    
+
+    
+    
+    
+
+    
+    
+    .. rubric:: Methods
+
+    .. autosummary::
+        :toctree: .
+    
+            
+            
+            ~sccoda.model.other_models.ALRModel_wilcoxon.eval_model
+            
+            
+            ~sccoda.model.other_models.ALRModel_wilcoxon.fit_model
+            
+    
+    
+
+    

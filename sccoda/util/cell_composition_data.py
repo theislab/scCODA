@@ -167,7 +167,7 @@ def from_scanpy(adata, cell_type_identifier, sample_identifier, covariate_key=No
 
     The anndata object needs to have a column in adata.obs that contains the cell type assignment,
     and one column that specifies the grouping into samples.
-    Covariates can either be specified via a key in adata.uns, or as a separate DataFrame
+    Covariates can either be specified via a key in adata.uns, or as a separate DataFrame.
 
 
     Parameters

@@ -14,6 +14,10 @@ from matplotlib import cm, rcParams
 
 sns.set_style("ticks")
 
+from anndata import AnnData
+from typing import Optional, Tuple, Collection, Union
+
+
 
 def stackbar(
         y,
@@ -31,27 +35,27 @@ def stackbar(
 
     Parameters
     ----------
-    y -- numpy array
+    y: :class:`~numpy.array`
         The count data, collapsed onto the level of interest. i.e. a binary covariate has two rows containing the count
         mean of all samples of each cell type
-    type_names -- list-like
+    type_names: `list`-like
         The names of all cell types
-    title -- string
+    title: `string`
         Plot title, usually the covariate's name
-    level_names -- list-like
+    level_names: `list`-like
         names of the covariate's levels
-    figsize -- tuple
+    figsize: tuple
         figure size
-    dpi -- int
+    dpi: `int`, default: 100
         dpi setting
-    cmap -- matplotlib.cm colormap
+    cmap: matplotlib.cm colormap, default: "tap20"
         The color map for the barplot
-    plot_legend -- bool
+    plot_legend: `bool`, default: True
         If True, adds a legend
 
     Returns
     -------
-    ax -- plot
+    ax: plot
 
     """
     n_bars, n_types = y.shape
@@ -153,18 +157,18 @@ def stacked_barplot(
 
 
 def boxplots(
-        data,
-        feature_name,
-        log_scale=False,
-        plot_facets=False,
-        add_dots=False,
-        args_boxplot={},
-        args_swarmplot={},
-        figsize=None,
-        dpi=100,
-        cmap="Blues",
-        plot_legend=True,
-):
+        data: AnnData,
+        feature_name: str,
+        y_scale: str = "relative",
+        plot_facets: bool = False,
+        add_dots: bool = False,
+        args_boxplot: Optional[dict] = {},
+        args_swarmplot: Optional[dict] = {},
+        figsize: Optional[bool] = None,
+        dpi: Optional[int] = 100,
+        cmap: Optional[str] = "Blues",
+        plot_legend: Optional[bool] = True,
+) -> plt.plot:
     """
     Grouped boxplot visualization. The cell counts for each cell type are shown as a group of boxplots,
     with intra--group separation by a covariate from data.obs.
@@ -173,25 +177,25 @@ def boxplots(
 
     Parameters
     ----------
-    data -- AnnData object
+    data
         A scCODA-compatible data object
-    feature_name -- string
+    feature_name
         The name of the feature in data.obs to plot
-    log_scale -- bool
-        Transformation to log-scale. If true, use log(data.X + 1) instead of data.X (pseudocount 1 to avoid log(0)-issues)
-    plot_facets -- bool
+    y_scale
+        Transformation to of cell counts. Options: "relative" - Relative abundance, "log" - log(count), "count" - absolute abundance (cell counts)
+    plot_facets
         If False, plot cell types on the x-axis. If True, plot as facets
-    add_dots -- bool
+    add_dots
         If True, overlay a scatterplot with one dot for each data point
-    args_boxplot -- dict
+    args_boxplot
         Arguments passed to sns.boxplot
-    args_swarmplot -- dict
+    args_swarmplot
             Arguments passed to sns.swarmplot
-    dpi -- int
+    dpi
         dpi setting
-    cmap -- string
+    cmap
         The seaborn color map for the barplot
-    plot_legend -- bool
+    plot_legend
         If True, adds a legend
 
     Returns
@@ -199,13 +203,20 @@ def boxplots(
     Plot!
     """
 
+    # y scale transformations
+    if y_scale == "relative":
+        sample_sums = np.sum(data.X, axis=1, keepdims=True)
+        X = data.X/sample_sums
+        value_name = "Proportion"
     # add pseudocount 1 if using log scale (needs to be improved)
-    if log_scale:
+    elif y_scale == "log":
         X = np.log(data.X + 1)
         value_name = "log(count)"
-    else:
+    elif y_scale == "count":
         X = data.X
         value_name = "count"
+    else:
+        raise ValueError("Invalid y_scale transformation")
 
     count_df = pd.DataFrame(X, columns=data.var.index, index=data.obs.index).\
         merge(data.obs[feature_name], left_index=True, right_index=True)
