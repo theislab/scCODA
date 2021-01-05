@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scanpy/tree/master/scanpy/model/other_models.py#L739-L802
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L739-L802
 
 sccoda.model.other\_models.DirichRegModel
 =========================================

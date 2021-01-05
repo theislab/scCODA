@@ -200,7 +200,7 @@ def boxplots(
 
     Returns
     -------
-    Plot!
+    A plot
     """
 
     # y scale transformations

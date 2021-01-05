@@ -1,6 +1,4 @@
-:github_url: https://github.com/theislab/scanpy/tree/master/scanpy/model/other_models.py#L537-L595
-
-
+:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L537-L595
 
 sccoda.model.other\_models.ALDEx2Model.fit\_model
 =================================================

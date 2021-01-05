@@ -1,6 +1,4 @@
-:github_url: {{ fullname | modurl }}
-
-{{ fullname | api_image }}
+:github_url: {{ fullname | github_url }}
 
 {% extends "!autosummary/base.rst" %}
 

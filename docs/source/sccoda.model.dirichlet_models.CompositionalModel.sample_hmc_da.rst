@@ -1,6 +1,4 @@
-:github_url: https://github.com/theislab/scanpy/tree/master/scanpy/model/dirichlet_models.py#L320-L444
-
-
+:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/dirichlet_models.py#L320-L444
 
 sccoda.model.dirichlet\_models.CompositionalModel.sample\_hmc\_da
 =================================================================

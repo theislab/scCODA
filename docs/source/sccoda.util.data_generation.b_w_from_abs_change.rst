@@ -1,6 +1,4 @@
-﻿:github_url: https://github.com/theislab/scanpy/tree/master/scanpy/util/data_generation.py#L110-L152
-
-
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/util/data_generation.py#L110-L152
 
 sccoda.util.data\_generation.b\_w\_from\_abs\_change
 ====================================================

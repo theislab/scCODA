@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scanpy/tree/master/scanpy/util/comp_ana.py#L12-L68
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/util/comp_ana.py#L12-L68
 
 sccoda.util.comp\_ana.CompositionalAnalysis
 ===========================================
