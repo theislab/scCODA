@@ -34,14 +34,16 @@ from urllib.request import urlretrieve
 
 notebooks_url = "https://github.com/theislab/scCODA/raw/release_0.1/tutorials/"
 notebooks = [
-    "getting started.ipynb",
-    "Data import and visualization.ipynb"
-    "Modeling options and result analysis.ipynb"
+    "getting_started.ipynb",
+    "Data_import_and_visualization.ipynb"
+    "Modeling_options_and_result_analysis.ipynb"
 ]
 for nb in notebooks:
     try:
         urlretrieve(notebooks_url + nb, nb)
+        print("success!!!!!!!")
     except:
+        print("fail!!!!!!!")
         pass
 
 # -- Project information -----------------------------------------------------
@@ -118,7 +120,7 @@ pygments_style = 'sphinx'
 
 # Add notebooks prolog to Google Colab and nbviewer
 nbsphinx_prolog = r"""
-{% set docname = 'github/theislab/scCODA/blob/master/' + env.doc2path(env.docname, base=None) %}
+{% set docname = 'github/theislab/scCODA/blob/release_0.1/' + env.doc2path(env.docname, base=None) %}
 .. raw:: html
 
     <div class="note">
