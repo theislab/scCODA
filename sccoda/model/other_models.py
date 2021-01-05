@@ -15,6 +15,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 import skbio
 from tensorflow_probability.python.experimental import edward2 as ed
+from anndata import AnnData
 
 import statsmodels as sm
 from statsmodels.formula.api import glm
@@ -22,6 +23,7 @@ from scipy import stats
 
 from sccoda.util import result_classes as res
 from sccoda.model import dirichlet_models as dm
+from typing import Optional, Tuple, Collection, Union, List
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -33,7 +35,25 @@ class SimpleModel(dm.CompositionalModel):
 
     """
 
-    def __init__(self, reference_cell_type, *args, **kwargs):
+    def __init__(
+            self,
+            reference_cell_type: int,
+            *args,
+            **kwargs):
+
+        """
+        Constructor of model class. Defines model structure, log-probability function, parameter names,
+        and MCMC starting values.
+
+        Parameters
+        ----------
+        reference_cell_type
+            Index of reference cell type (column in count data matrix)
+        args
+            arguments passed to top-level class
+        kwargs
+            arguments passed to top-level class
+        """
 
         super(self.__class__, self).__init__(*args, **kwargs)
         self.reference_cell_type = reference_cell_type
@@ -80,28 +100,47 @@ class SimpleModel(dm.CompositionalModel):
                        tf.random.normal(mean=0, stddev=1, name="init_b", shape=beta_size, dtype=dtype),
                        ]
 
-    def sample_hmc(self, num_results=int(20e3), num_burnin=int(5e3), num_adapt_steps=None,
-                   num_leapfrog_steps=10, step_size=0.01):
+    def sample_hmc(
+            self,
+            num_results: int = int(20e3),
+            num_burnin: int = int(5e3),
+            num_adapt_steps: Optional[int] = None,
+            num_leapfrog_steps: Optional[int] = 10,
+            step_size: float = 0.01
+    ) -> res.CAResult:
+
         """
-        HMC sampling
+        Hamiltonian Monte Carlo (HMC) sampling in tensorflow 2.
+
+        Tracked diagnostic statistics:
+
+        - `target_log_prob`: Value of the model's log-probability
+
+        - `diverging`: Marks samples as diverging (NOTE: Handle with care, the spike-and-slab prior of scCODA usually leads to many samples being flagged as diverging)
+
+        - `is_accepted`: Whether the proposed sample was accepted in the algorithm's acceptance step
+
+        - `step_size`: The step size used by the algorithm in each step
 
         Parameters
         ----------
-        num_results -- int
+        num_results
             MCMC chain length (default 20000)
-        num_burnin -- int
+        num_burnin
             Number of burnin iterations (default 5000)
-        num_adapt_steps -- int
+        num_adapt_steps
             Length of step size adaptation procedure
-        num_leapfrog_steps -- int
+        num_leapfrog_steps
             HMC leapfrog steps (default 10)
-        step_size -- float
+        step_size
             Initial step size (default 0.01)
 
         Returns
         -------
+        results object
+
         result
-            scCODA.util.result_data object
+            Compositional analysis result
         """
 
         # identity bijectors
@@ -177,21 +216,29 @@ class SimpleModel(dm.CompositionalModel):
                                                                    model_specs=model_specs)
 
     # Calculate predicted cell counts (for analysis purposes)
-    def get_y_hat(self, states_burnin, num_results, num_burnin):
+    def get_y_hat(
+            self,
+            states_burnin: List[any],
+            num_results: int,
+            num_burnin: int
+    ) -> np.ndarray:
         """
-        Calculate posterrior mod of cell counts (for analysis purposes) and add intermediate parameters to MCMC results
+        Calculate posterior mode of cell counts (for analysis purposes) and add intermediate parameters
+        that are no priors to MCMC results.
 
         Parameters
         ----------
-        states_burnin -- list
-            MCMC chain without burnin samples
-        num_results -- int
-            Chain length (with burnin)
-        num_burnin -- int
-            Number of burnin samples
+        states_burnin
+            MCMC chain without burn-in samples
+        num_results
+            Chain length (with burn-in)
+        num_burnin
+            Number of burn-in samples
 
         Returns
         -------
+        posterior mode
+
         y_mean
             posterior mode of cell counts
         """
@@ -232,20 +279,17 @@ class scdney_model:
     wrapper for using the scdney package for R (Cao et al., 2019) with scCODA data
     """
 
-    def __init__(self, data):
+    def __init__(
+            self,
+            data: AnnData
+    ):
         """
         Prepares R sampling
 
         Parameters
         ----------
-        data -- scCODA data object
+        data
             scCODA data object
-        ns -- list
-            number of samples per condition
-
-        Returns
-        -------
-        Creates .txt objects
         """
 
         # prepare list generation
@@ -284,14 +328,24 @@ class scdney_model:
                 self.scdc_subject.append(current_subject)
                 self.scdc_cond.append(current_condition)
 
-    def analyze(self, server=False):
+    def analyze(
+            self,
+            server: bool = False
+    ) -> Tuple[pd.DataFrame, Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
         """
         Analyzes results from R script for SCDC from scdney packege.
         It is assumed that the effect on the first cell type is significant, all others are not.
 
+        Parameters
+        ----------
+        server
+            Execution on server
+
         Returns
         -------
-        Tuple:
+        summary and classification results
+
+        Tuple
             Tuple(raw summary from R, True positive...)
         """
         if server:
@@ -340,7 +394,18 @@ class NonBaysesianModel:
     Superclass for making non-Bayesian models from scCODA data.
     """
 
-    def __init__(self, data):
+    def __init__(
+            self,
+            data: AnnData
+    ):
+        """
+        Model initialization.
+
+        Parameters
+        ----------
+        data
+            CompositionalData object
+        """
 
         x = data.obs.to_numpy()
         y = data.X
@@ -361,21 +426,27 @@ class NonBaysesianModel:
         if N != len(self.n_total):
             raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(y.shape[0], len(self.n_total)))
 
-    def eval_model(self, alpha=0.05, fdr_correct=True):
+    def eval_model(
+            self,
+            alpha: float = 0.05,
+            fdr_correct: bool = True
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Evaluates array of p-values.
         It is assumed that the effect on the first cell type is significant, all others are not.
 
         Parameters
         ----------
-        alpha -- float
+        alpha
             p-value (or q-value if using FDR correction) threshold
-        fdr_correct -- bool
+        fdr_correct
             Whether to use Benjamini-Hochberg FDR correction for multiple testing
 
         Returns
         -------
-        tp, tn, fp, fn : Tuple
+        classification results
+
+        tp, tn, fp, fn
             Number of True positive, ... effects
         """
 
@@ -408,7 +479,7 @@ class HaberModel(NonBaysesianModel):
 
         Returns
         -------
-        p_val : list
+        p_val
             p-values for differential abundance test of all cell types
         """
 
@@ -440,7 +511,7 @@ class CLRModel(NonBaysesianModel):
 
         Returns
         -------
-        p_val : list
+        p_val
             p-values for differential abundance test of all cell types
         """
 
@@ -475,7 +546,7 @@ class TTest(NonBaysesianModel):
 
         Returns
         -------
-        p_val : list
+        p_val
             p-values for differential abundance test of all cell types
         """
 
@@ -506,7 +577,7 @@ class CLRModel_ttest(NonBaysesianModel):
 
         Returns
         -------
-        p_val : list
+        p_val
             p-values for differential abundance test of all cell types
         """
 
@@ -534,20 +605,26 @@ class ALDEx2Model(NonBaysesianModel):
     Wrapper for using the ALDEx2 package for R (Fernandes et al., 2014)
     """
 
-    def fit_model(self, method="we.eBH", server=False, *args, **kwargs):
+    def fit_model(
+            self,
+            method: str = "we.eBH",
+            server: bool = False,
+            *args,
+            **kwargs
+    ):
         """
         Fits ALDEx2 model.
 
         Parameters
         ----------
-        method -- str
+        method
             method that is used to calculate p-values (column name in ALDEx2's output)
-        server -- bool
+        server
             indicator for remote execution
-        args -- dict
-            passed to ``ALDEx2.clr``
-        kwargs -- dict
-            passed to ``ALDEx2.clr``
+        args
+            passed to `ALDEx2.clr`
+        kwargs
+            passed to `ALDEx2.clr`
 
         Returns
         -------
@@ -600,13 +677,23 @@ class ALRModel_ttest(NonBaysesianModel):
     Implements a ALR transform and subsequent t-test on each cell type.
     """
 
-    def fit_model(self, reference_cell_type):
+    def fit_model(
+            self,
+            reference_cell_type: int
+    ):
         """
         Fits ALR model with t-test
 
+        Parameters
+        ----------
+        reference_cell_type
+            index of reference cell type
+
         Returns
         -------
-        p_val : list
+        p-values
+
+        p_val
             p-values for differential abundance test of all cell types
         """
 
@@ -636,13 +723,23 @@ class ALRModel_wilcoxon(NonBaysesianModel):
     Implements a ALR transform and subsequent Wilcoxon rank-sum test on each cell type.
     """
 
-    def fit_model(self, reference_cell_type):
+    def fit_model(
+            self,
+            reference_cell_type: int
+    ):
         """
         Fits ALR model with Wilcoxon rank-sum test
 
+        Parameters
+        ----------
+        reference_cell_type
+            index of reference cell type
+
         Returns
         -------
-        p_val : list
+        p-values
+
+        p_val
             p-values for differential abundance test of all cell types
         """
 
@@ -672,7 +769,18 @@ class AncomModel():
         Wrapper for the ancom model for compositional differentiation analysis (Mandal et al., 2015)
     """
 
-    def __init__(self, data):
+    def __init__(
+            self,
+            data: AnnData
+    ):
+        """
+        Model initialization.
+
+        Parameters
+        ----------
+        data
+            CompositionalData object
+        """
         x = data.obs
         y = pd.DataFrame(data.X, index=data.obs.index)
         self.x = x
@@ -696,7 +804,9 @@ class AncomModel():
 
         Returns
         -------
-        p_val : list
+        p-values
+
+        p_val
             p-values for differential abundance test of all cell types
         """
 
@@ -709,14 +819,16 @@ class AncomModel():
 
         self.ancom_out = ancom_out
 
-    def eval_model(self):
+    def eval_model(self) -> Tuple[int, int, int, int]:
         """
         Evaluates array of p-values.
         It is assumed that the effect on the first cell type is significant, all others are not.
 
         Returns
         -------
-        tp, tn, fp, fn : Tuple
+        classification results
+
+        tp, tn, fp, fn
             Number of True positive, ... effects
         """
         K = self.y.shape[1]
@@ -742,14 +854,17 @@ class DirichRegModel(NonBaysesianModel):
     Wrapper for using the DirichReg package in R (Maier, 2014) with scCODA's infrastructure
     """
 
-    def fit_model(self, server=False):
+    def fit_model(
+            self,
+            server: bool = False
+    ):
 
         """
         fits the DirichReg model.
 
         Parameters
         ----------
-        server -- bool
+        server
             indicator for remote execution
 
         Returns

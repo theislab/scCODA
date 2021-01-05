@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/dirichlet_models.py#L23-L587
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/dirichlet_models.py#L24-L642
 
 sccoda.model.dirichlet\_models.CompositionalModel
 =================================================
@@ -8,8 +8,6 @@ sccoda.model.dirichlet\_models.CompositionalModel
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: CompositionalModel
-
-    
 
     
     
@@ -39,6 +37,4 @@ sccoda.model.dirichlet\_models.CompositionalModel
             ~sccoda.model.dirichlet_models.CompositionalModel.sampling
             
     
-    
-
     

@@ -8,8 +8,6 @@
 
 .. autoclass:: {{ objname }}
 
-    {% if objname != "CAResult" %}
-
     {% block attributes %}
     {% if attributes %}
     .. rubric:: Attributes
@@ -37,5 +35,3 @@
     {%- endfor %}
     {% endif %}
     {% endblock %}
-
-    {% endif %}

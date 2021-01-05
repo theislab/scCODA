@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L467-L495
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L538-L566
 
 sccoda.model.other\_models.TTest
 ================================
@@ -8,8 +8,6 @@ sccoda.model.other\_models.TTest
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: TTest
-
-    
 
     
     
@@ -30,6 +28,4 @@ sccoda.model.other\_models.TTest
             ~sccoda.model.other_models.TTest.fit_model
             
     
-    
-
     

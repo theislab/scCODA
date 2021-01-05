@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L670-L736
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L767-L848
 
 sccoda.model.other\_models.AncomModel
 =====================================
@@ -8,8 +8,6 @@ sccoda.model.other\_models.AncomModel
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: AncomModel
-
-    
 
     
     
@@ -30,6 +28,4 @@ sccoda.model.other\_models.AncomModel
             ~sccoda.model.other_models.AncomModel.fit_model
             
     
-    
-
     

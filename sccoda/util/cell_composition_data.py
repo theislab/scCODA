@@ -6,9 +6,17 @@ Helper functions to convert single-cell data to scCODA compositional analysis da
 import pandas as pd
 import anndata as ad
 import os
+import numpy as np
+
+from anndata import AnnData
+from typing import Optional, Tuple, Collection, Union, List
 
 
-def read_anndata_one_sample(adata, cell_type_identifier, covariate_key=None):
+def read_anndata_one_sample(
+        adata: AnnData,
+        cell_type_identifier: str,
+        covariate_key: Optional[str] = None
+) -> Tuple[np.ndarray, dict]:
     """
     Converts a single scRNA-seq data set from scanpy (anndata format) to a row of a cell count matrix.
 
@@ -21,19 +29,21 @@ def read_anndata_one_sample(adata, cell_type_identifier, covariate_key=None):
 
     Parameters
     ----------
-    adata: :class:`~anndata.AnnData`
+    adata
         single-cell data object from scanpy
-    cell_type_identifier: `str`
+    cell_type_identifier
         column name in adata.obs that specifies the cell types
-    covariate_key: `str`
+    covariate_key
         key for adata.uns, where the covariate values are stored
 
     Returns
     -------
-    cell_counts: :class:`~numpy.array`
+    A numpy array for the cell counts and a dict for the covariates
+
+    cell_counts
         cell count vector
-    covs: `list`
-        covariate vector
+    covs
+        covariate dictionary
     """
 
     # Calculate cell counts for the sample
@@ -48,7 +58,12 @@ def read_anndata_one_sample(adata, cell_type_identifier, covariate_key=None):
         return cell_counts
 
 
-def from_scanpy_list(samples, cell_type_identifier, covariate_key=None, covariate_df=None):
+def from_scanpy_list(
+        samples: List[AnnData],
+        cell_type_identifier: str,
+        covariate_key: Optional[str] = None,
+        covariate_df: Optional[pd.DataFrame] = None
+) -> AnnData:
     """
     Creates a compositional analysis data set from a list of scanpy data sets.
 
@@ -61,18 +76,20 @@ def from_scanpy_list(samples, cell_type_identifier, covariate_key=None, covariat
 
     Parameters
     ----------
-    samples -- list
+    samples
         list of scanpy data sets
-    cell_type_identifier -- str
+    cell_type_identifier
         column name in adata.obs that specifies the cell types
-    covariate_key -- str
+    covariate_key
         key for adata.uns, where covariate values are stored
-    covariate_df -- DataFrame
+    covariate_df
         DataFrame with covariates
 
     Returns
     -------
-    data -- CompositionalData object
+    A compositional analysis data set
+
+    data
         A compositional analysis data set
     """
 
@@ -103,7 +120,12 @@ def from_scanpy_list(samples, cell_type_identifier, covariate_key=None, covariat
                       obs=covariate_data)
 
 
-def from_scanpy_dir(path, cell_type_identifier, covariate_key=None, covariate_df=None):
+def from_scanpy_dir(
+        path: str,
+        cell_type_identifier: str,
+        covariate_key: Optional[str] = None,
+        covariate_df: Optional[pd.DataFrame] = None
+) -> AnnData:
     """
     Creates a compositional analysis data set from all scanpy data sets in a directory.
 
@@ -115,18 +137,20 @@ def from_scanpy_dir(path, cell_type_identifier, covariate_key=None, covariate_df
 
     Parameters
     ----------
-    path -- str
+    path
         path to directory
-    cell_type_identifier -- str
+    cell_type_identifier
         column name in adata.obs that specifies the cell types
-    covariate_key -- str
+    covariate_key
         key for adata.uns, where covariate values are stored
-    covariate_df -- DataFrame
+    covariate_df
         DataFrame with covariates
 
     Returns
     -------
-    data -- CompositionalData object
+    A compositional analysis data set
+
+    data
         A compositional analysis data set
     """
 
@@ -160,7 +184,13 @@ def from_scanpy_dir(path, cell_type_identifier, covariate_key=None, covariate_df
                       obs=covariate_data)
 
 
-def from_scanpy(adata, cell_type_identifier, sample_identifier, covariate_key=None, covariate_df=None):
+def from_scanpy(
+        adata: AnnData,
+        cell_type_identifier: str,
+        sample_identifier: str,
+        covariate_key: Optional[str] = None,
+        covariate_df: Optional[pd.DataFrame] = None
+) -> AnnData:
 
     """
     Creates a compositional analysis dataset from a single anndata object, as it is produced by e.g. scanpy.
@@ -172,20 +202,22 @@ def from_scanpy(adata, cell_type_identifier, sample_identifier, covariate_key=No
 
     Parameters
     ----------
-    adata -- list
+    adata
         list of scanpy data sets
-    cell_type_identifier -- str
+    cell_type_identifier
         column name in adata.obs that specifies the cell types
-    sample_identifier -- str
+    sample_identifier
         column name in adata.obs that specifies the sample
-    covariate_key -- str
+    covariate_key
         key for adata.uns, where covariate values are stored
-    covariate_df -- DataFrame
+    covariate_df
         DataFrame with covariates
 
     Returns
     -------
-    data -- CompositionalData object
+    A compositional analysis data set
+
+    data
         A compositional analysis data set
 
     """
@@ -205,7 +237,10 @@ def from_scanpy(adata, cell_type_identifier, sample_identifier, covariate_key=No
                       obs=covariate_df)
 
 
-def from_pandas(df, covariate_columns):
+def from_pandas(
+        df: pd.DataFrame,
+        covariate_columns: List[str]
+) -> AnnData:
     """
     Converts a Pandas DataFrame into a compositional analysis data set.
     The DataFrame must contain one row per sample, columns can be cell types or covariates
@@ -217,14 +252,16 @@ def from_pandas(df, covariate_columns):
 
     Parameters
     ----------
-    df -- DataFrame
+    df
         A pandas DataFrame with each row representing a sample; the columns can be cell counts or covariates
-    covariate_columns -- List
+    covariate_columns
         List of column names that are interpreted as covariates; all other columns will be seen as cell types
 
     Returns
     -------
-    data -- CompositionalData object
+    A compositional analysis data set
+
+    data
         A compositional analysis data set
     """
 

@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L230-L335
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L277-L389
 
 sccoda.model.other\_models.scdney\_model
 ========================================
@@ -8,8 +8,6 @@ sccoda.model.other\_models.scdney\_model
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: scdney_model
-
-    
 
     
     
@@ -27,6 +25,4 @@ sccoda.model.other\_models.scdney\_model
             ~sccoda.model.other_models.scdney_model.analyze
             
     
-    
-
     

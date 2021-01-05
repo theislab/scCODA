@@ -14,11 +14,9 @@
 import os
 import sys
 import datetime
-import inspect
 import matplotlib
 
 from pathlib import Path
-from typing import Optional, Union, Mapping
 
 matplotlib.use('agg')
 
@@ -28,6 +26,8 @@ import sccoda
 
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
 
+needs_sphinx = "2.0"
+
 # -- Retrieve notebooks ------------------------------------------------
 
 from urllib.request import urlretrieve
@@ -35,15 +35,13 @@ from urllib.request import urlretrieve
 notebooks_url = "https://github.com/theislab/scCODA/raw/release_0.1/tutorials/"
 notebooks = [
     "getting_started.ipynb",
-    "Data_import_and_visualization.ipynb"
+    "Data_import_and_visualization.ipynb",
     "Modeling_options_and_result_analysis.ipynb"
 ]
 for nb in notebooks:
     try:
         urlretrieve(notebooks_url + nb, nb)
-        print("success!!!!!!!")
     except:
-        print("fail!!!!!!!")
         pass
 
 # -- Project information -----------------------------------------------------
@@ -58,10 +56,15 @@ release = version
 
 # -- General configuration ---------------------------------------------------
 
-needs_sphinx = "2.0"
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ['_templates']
+source_suffix = [".rst", ".ipynb"]
+master_doc = 'index'
+default_role = 'literal'
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+pygments_style = 'sphinx'
 
-extensions = ['numpydoc',
-              'sphinx.ext.autodoc',
+extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
               'sphinx.ext.doctest',
               'sphinx.ext.coverage',
@@ -88,17 +91,6 @@ autodoc_mock_imports = ["tensorflow",
                         "pickle",
                         ]
 
-intersphinx_mapping = dict(
-    python=("https://docs.python.org/3", None),
-    anndata=("https://anndata.readthedocs.io/en/latest/", None),
-    scanpy=("https://scanpy.readthedocs.io/en/latest/", None),
-    numpy=("https://numpy.org/doc/stable/", None),
-    matplotlib=('https://matplotlib.org/', None),
-    pandas=('https://pandas.pydata.org/pandas-docs/stable/', None),
-    seaborn=('https://seaborn.pydata.org/', None),
-
-)
-
 # Generate the API documentation when building
 autosummary_generate = True
 autodoc_member_order = 'bysource'
@@ -110,13 +102,16 @@ napoleon_use_param = True
 napoleon_custom_sections = [('Params', 'Parameters')]
 todo_include_todos = False
 
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
-source_suffix = [".rst", ".ipynb"]
-master_doc = 'index'
-default_role = 'literal'
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-pygments_style = 'sphinx'
+intersphinx_mapping = dict(
+    python=("https://docs.python.org/3", None),
+    anndata=("https://anndata.readthedocs.io/en/latest/", None),
+    scanpy=("https://scanpy.readthedocs.io/en/latest/", None),
+    numpy=("https://numpy.org/doc/stable/", None),
+    matplotlib=('https://matplotlib.org/', None),
+    pandas=('https://pandas.pydata.org/pandas-docs/stable/', None),
+    seaborn=('https://seaborn.pydata.org/', None),
+
+)
 
 # Add notebooks prolog to Google Colab and nbviewer
 nbsphinx_prolog = r"""
@@ -127,7 +122,7 @@ nbsphinx_prolog = r"""
       <a href="https://colab.research.google.com/{{ docname|e }}" target="_parent">
       <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
       <a href="https://nbviewer.jupyter.org/{{ docname|e }}" target="_parent">
-      <img src="https://github.com/theislab/scCODA/raw/release_0.1/docs/_static/nbviewer_badge.svg" alt="Open In nbviewer"/></a>
+      <img src="https://github.com/theislab/scCODA/raw/release_0.1/docs/source/_static/nbviewer_badge.svg" alt="Open In nbviewer"/></a>
     </div>
 """
 
@@ -164,5 +159,4 @@ texinfo_documents = [
 # -- Override some classnames in autodoc --------------------------------------------
 
 qualname_overrides = {
-    "anndata.base.AnnData": "anndata.AnnData",
 }

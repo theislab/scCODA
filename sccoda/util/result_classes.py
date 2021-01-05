@@ -12,6 +12,8 @@ import arviz as az
 import pandas as pd
 import pickle as pkl
 
+from typing import Optional, Tuple, Collection, Union, List
+
 
 class CAResultConverter(az.data.io_dict.DictConverter):
     """
@@ -51,7 +53,12 @@ class CAResult(az.InferenceData):
     It supports all functionality from az.InferenceData.
     """
 
-    def __init__(self, sampling_stats, model_specs, **kwargs):
+    def __init__(
+            self,
+            sampling_stats: dict,
+            model_specs: dict,
+            **kwargs
+    ):
         """
         Gathers sampling information from a compositional model and converts it to a ``az.InferenceData`` object.
         The following attributes are added during class initialization:
@@ -64,7 +71,7 @@ class CAResult(az.InferenceData):
 
         Parameters
         ----------
-        sampling_stats -- dict
+        sampling_stats
             Information and statistics about the MCMC sampling procedure.
             Default keys:
             - "chain_length": Length of MCMC chain (with burnin samples)
@@ -72,7 +79,7 @@ class CAResult(az.InferenceData):
             - "acc_rate": MCMC Acceptance rate
             - "duration": Duration of MCMC sampling
 
-        model_specs -- dict
+        model_specs
             All information and statistics about the model specifications.
             Default keys:
             - "formula": Formula string
@@ -80,7 +87,7 @@ class CAResult(az.InferenceData):
 
             Added during class initialization:
             - "threshold_prob": Threshold for inclusion probability that separates significant from non-significant effects
-        kwargs -- dict
+        kwargs
             passed to az.InferenceData. This includes the MCMC chain states and statistics for eachs MCMC sample.
         """
         super(self.__class__, self).__init__(**kwargs)
@@ -93,18 +100,26 @@ class CAResult(az.InferenceData):
         self.intercept_df = intercept_df
         self.effect_df = effect_df
 
-    def summary_prepare(self, *args, **kwargs):
+    def summary_prepare(
+            self,
+            *args,
+            **kwargs
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Generates summary dataframes for intercepts and slopes.
         This function builds on and supports all functionalities from ``az.summary``.
 
         Parameters
         ----------
-        args -- Passed to ``az.summary``
-        kwargs -- Passed to ``az.summary``
+        args
+            Passed to ``az.summary``
+        kwargs
+            Passed to ``az.summary``
 
         Returns
         -------
+        Intercept and effect DataFrames
+
         intercept_df -- pandas df
             Summary of intercept parameters. Contains one row per cell type.
 
@@ -163,21 +178,27 @@ class CAResult(az.InferenceData):
 
         return intercept_df, effect_df
 
-    def complete_beta_df(self, intercept_df, effect_df):
+    def complete_beta_df(
+            self,
+            intercept_df: pd.DataFrame,
+            effect_df: pd.DataFrame
+    ) -> pd.DataFrame:
         """
         Evaluation of MCMC results for effect parameters. This function is only used within self.summary_prepare.
         This function also calculates the posterior inclusion probability for each effect and decides whether effects are significant.
 
         Parameters
         ----------
-        intercept_df -- Data frame
+        intercept_df
             Intercept summary, see ``self.summary_prepare``
-        effect_df -- Data frame
+        effect_df
             Effect summary, see ``self.summary_prepare``
 
         Returns
         -------
-        effect_df -- DataFrame
+        effect DataFrame
+
+        effect_df
             DataFrame with inclusion probability, final parameters, expected sample
         """
         beta_inc_prob = []
@@ -234,18 +255,23 @@ class CAResult(az.InferenceData):
 
         return effect_df
 
-    def complete_alpha_df(self, intercept_df):
+    def complete_alpha_df(
+            self,
+            intercept_df: pd.DataFrame
+    ) -> pd.DataFrame:
         """
         Evaluation of MCMC results for intercepts. This function is only used within self.summary_prepare.
 
         Parameters
         ----------
-        intercept_df -- Data frame
+        intercept_df
             Intercept summary, see self.summary_prepare
 
         Returns
         -------
-        intercept_df -- DataFrame
+        intercept DataFrame
+
+        intercept_df
             Summary DataFrame with expected sample, final parameters
         """
 
@@ -259,7 +285,11 @@ class CAResult(az.InferenceData):
 
         return intercept_df
 
-    def summary(self, *args, **kwargs):
+    def summary(
+            self,
+            *args,
+            **kwargs
+    ):
         """
         Printing method for scCODA's summary.
 
@@ -267,11 +297,14 @@ class CAResult(az.InferenceData):
 
         Parameters
         ----------
-        args -- Passed to az.summary
-        kwargs -- Passed to az.summary
+        args
+            Passed to az.summary
+        kwargs
+            Passed to az.summary
 
         Returns
         -------
+        prints to console
 
         """
 
@@ -307,18 +340,25 @@ class CAResult(az.InferenceData):
         print("Effects:")
         print(betas_print)
 
-    def summary_extended(self, *args, **kwargs):
+    def summary_extended(
+            self,
+            *args,
+            **kwargs
+    ):
 
         """
         Extended (diagnostic) printing function that shows more info about the sampling result
 
         Parameters
         ----------
-        args -- Passed to az.summary
-        kwargs -- Passed to az.summary
+        args
+            Passed to az.summary
+        kwargs
+            Passed to az.summary
 
         Returns
         -------
+        Prints to console
 
         """
 
@@ -354,25 +394,35 @@ class CAResult(az.InferenceData):
         print("Effects:")
         print(effect_df)
 
-    def compare_parameters_to_truth(self, b_true, w_true, *args, **kwargs):
+    def compare_parameters_to_truth(
+            self,
+            b_true: pd.Series,
+            w_true: pd.Series,
+            *args,
+            **kwargs
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Extends data frames from summary_prepare by a comparison to some ground truth slope and intercept values that are
         assumed to be from the same generative model (e.g. in data_generation)
 
         Parameters
         ----------
-        b_true -- pandas Series
+        b_true
             Ground truth slope values. Length must be same as number of cell types
-        w_true -- pandas Series
+        w_true
             Ground truth intercept values. Length must be same as number of cell types*number of covariates
-        args -- Passed to az.summary
-        kwargs -- Passed to az.summary
+        args
+            Passed to az.summary
+        kwargs
+            Passed to az.summary
 
         Returns
         -------
-        intercept_df -- DataFrame
+        Extends intercept and effect DataFrames
+
+        intercept_df
             Summary DataFrame for intercepts
-        effect_df -- DataFrame
+        effect_df
             Summary DataFrame for effects
         """
 
@@ -395,13 +445,16 @@ class CAResult(az.InferenceData):
 
         return intercept_df, effect_df
 
-    def distance_to_truth(self):
+    def distance_to_truth(self) -> pd.DataFrame:
         """
         Compares real cell count matrix to the posterior mode cell count matrix that arises from the calculated parameters
 
         Returns
         -------
-        ret: DataFrame
+        DataFrame with distances
+
+        ret
+            DataFrame
         """
 
         # Get absolute (counts) and relative error matrices
@@ -428,19 +481,24 @@ class CAResult(az.InferenceData):
         ret['Cell Type'][0] = 'Total'
         return ret
 
-    def credible_effects(self, inc_prob_threshold=None):
+    def credible_effects(
+            self,
+            inc_prob_threshold: float = None
+    ) -> pd.Series:
 
         """
         Decides which effects of the scCODA model are credible based on an adjustable inclusion probability threshold.
 
         Parameters
         ----------
-        inc_prob_threshold -- float
+        inc_prob_threshold
             Inclusion probability threshold value. Must be between 0 and 1. Per default, the value depends on the number of cell types.
 
         Returns
         -------
-        out -- Pandas series
+        Credible effect decision series
+
+        out
             Boolean values whether effects are credible under inc_prob_threshold
         """
 
@@ -455,13 +513,16 @@ class CAResult(az.InferenceData):
 
         return out
 
-    def save(self, path_to_file):
+    def save(
+            self,
+            path_to_file: str
+    ):
         """
         Function to save scCODA results to disk via pickle. Caution: Files can quickly become very large!
 
         Parameters
         ----------
-        path_to_file -- str
+        path_to_file
             saving location on disk
 
         Returns

@@ -44,16 +44,13 @@ implementations of other statistical models that can be used as comparisons.
     installation
     api
 
-Tutorials
-^^^^^^^^^^
-
 .. toctree::
     :caption: Tutorials
     :maxdepth: 1
 
-    getting started
-    Data import and visualization
-    Modeling options and result analysis
+    getting_started
+    Data_import_and_visualization
+    Modeling_options_and_result_analysis
 
 Reference
 ^^^^^^^^^^

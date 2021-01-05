@@ -1,7 +1,11 @@
 import numpy as np
 
 
-def sample_size_estimate(mcc_desired, increase, lf_increase):
+def sample_size_estimate(
+        mcc_desired: float,
+        increase: float,
+        lf_increase: float
+) -> int:
     """
     calculates the estimated number of required samples for
     fixed MCC, absolute increase and log2-fold change using the fitted linear model from
@@ -21,15 +25,17 @@ def sample_size_estimate(mcc_desired, increase, lf_increase):
 
     Parameters
     ----------
-    mcc_desired -- float
+    mcc_desired
         desired MCC value
-    increase -- float
+    increase
         mean absolute increase of cells between the groups
-    lf_increase -- float
+    lf_increase
         mean log2-fold increase of cells from one group to the other
 
     Returns
     -------
+    sample size estimate
+
     n_samples -- int
         estimated number of required samples
 

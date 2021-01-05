@@ -15,47 +15,50 @@ from matplotlib import cm, rcParams
 sns.set_style("ticks")
 
 from anndata import AnnData
-from typing import Optional, Tuple, Collection, Union
+from typing import Optional, Tuple, Collection, Union, List
 
 
 
 def stackbar(
-        y,
-        type_names,
-        title,
-        level_names,
-        figsize=None,
-        dpi=100,
-        cmap=cm.tab20,
-        plot_legend=True,
-):
+        y: np.ndarray,
+        type_names: List[str],
+        title: str,
+        level_names: List[str],
+        figsize: Optional[Tuple[int, int]] = None,
+        dpi: Optional[int] = 100,
+        cmap: Optional[str] = "Blues",
+        plot_legend: Optional[bool] = True,
+) -> plt.Subplot:
     """
     Plots a stacked barplot for one (discrete) covariate
     Typical use (only inside stacked_barplot): plot_one_stackbar(data.X, data.var.index, "xyz", data.obs.index)
 
     Parameters
     ----------
-    y: :class:`~numpy.array`
-        The count data, collapsed onto the level of interest. i.e. a binary covariate has two rows containing the count
-        mean of all samples of each cell type
-    type_names: `list`-like
+    y
+        The count data, collapsed onto the level of interest. i.e. a binary covariate has two rows, one for each group, containing the count
+        mean of each cell type
+    type_names
         The names of all cell types
-    title: `string`
+    title
         Plot title, usually the covariate's name
-    level_names: `list`-like
+    level_names
         names of the covariate's levels
-    figsize: tuple
+    figsize
         figure size
-    dpi: `int`, default: 100
+    dpi
         dpi setting
-    cmap: matplotlib.cm colormap, default: "tap20"
+    cmap
         The color map for the barplot
-    plot_legend: `bool`, default: True
+    plot_legend
         If True, adds a legend
 
     Returns
     -------
-    ax: plot
+    Returns a plot
+
+    ax
+        a plot
 
     """
     n_bars, n_types = y.shape
@@ -85,13 +88,13 @@ def stackbar(
 
 
 def stacked_barplot(
-        data,
-        feature_name,
-        figsize=None,
-        dpi=100,
-        cmap=cm.tab20,
-        plot_legend=True,
-):
+        data: AnnData,
+        feature_name: str,
+        figsize: Optional[Tuple[int, int]] = None,
+        dpi: Optional[int] = 100,
+        cmap: Optional[str] = "Blues",
+        plot_legend: Optional[bool] = True,
+) -> plt.Subplot:
 
     """
     Plots a stacked barplot for all levels of a covariate or all samples (if feature_name=="samples").
@@ -99,22 +102,25 @@ def stacked_barplot(
 
     Parameters
     ----------
-    data -- AnnData object
+    data
         A scCODA compositional data object
-    feature_name -- string
+    feature_name
         The name of the covariate to plot. If feature_name=="samples", one bar for every sample will be plotted
-    figsize -- tuple
+    figsize
         figure size
-    dpi -- int
+    dpi
         dpi setting
-    cmap -- matplotlib.cm colormap
+    cmap
         The color map for the barplot
-    plot_legend -- bool
+    plot
         If True, adds a legend
 
     Returns
     -------
-    g -- plot
+    Returns a plot
+
+    g:
+        a plot
 
     """
 
@@ -164,12 +170,12 @@ def boxplots(
         add_dots: bool = False,
         args_boxplot: Optional[dict] = {},
         args_swarmplot: Optional[dict] = {},
-        figsize: Optional[bool] = None,
+        figsize: Optional[Tuple[int, int]] = None,
         dpi: Optional[int] = 100,
         cmap: Optional[str] = "Blues",
         plot_legend: Optional[bool] = True,
-) -> plt.plot:
-    """
+) -> Optional[Tuple[plt.Subplot, sns.axisgrid.FacetGrid]]:
+    """\
     Grouped boxplot visualization. The cell counts for each cell type are shown as a group of boxplots,
     with intra--group separation by a covariate from data.obs.
 
@@ -200,7 +206,12 @@ def boxplots(
 
     Returns
     -------
-    A plot
+    Depending on `plot_facets`, returns a :class:`~plt.AxesSubplot` (`plot_facets = False`) or :class:`~sns.axisgrid.FacetGrid` (`plot_facets = True`) object
+
+    ax
+        if `plot_facets = False`
+    g
+        if `plot_facets = True`
     """
 
     # y scale transformations

@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L364-L397
+:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L429-L468
 
 sccoda.model.other\_models.DirichRegModel.eval\_model
 =====================================================

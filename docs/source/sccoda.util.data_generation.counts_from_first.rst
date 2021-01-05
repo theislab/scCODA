@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/util/data_generation.py#L155-L176
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/util/data_generation.py#L174-L201
 
 sccoda.util.data\_generation.counts\_from\_first
 ================================================

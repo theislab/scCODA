@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/dirichlet_models.py#L104-L147
+:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/dirichlet_models.py#L114-L168
 
 sccoda.model.other\_models.SimpleModel.sampling
 ===============================================

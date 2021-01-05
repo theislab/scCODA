@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L400-L429
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L471-L500
 
 sccoda.model.other\_models.HaberModel
 =====================================
@@ -8,8 +8,6 @@ sccoda.model.other\_models.HaberModel
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: HaberModel
-
-    
 
     
     
@@ -30,6 +28,4 @@ sccoda.model.other\_models.HaberModel
             ~sccoda.model.other_models.HaberModel.fit_model
             
     
-    
-
     

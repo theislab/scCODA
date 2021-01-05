@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/dirichlet_models.py#L446-L587
+:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/dirichlet_models.py#L493-L642
 
 sccoda.model.dirichlet\_models.CompositionalModel.sample\_nuts
 ==============================================================

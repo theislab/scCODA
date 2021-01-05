@@ -15,6 +15,7 @@ import tensorflow_probability as tfp
 from tensorflow_probability.python.experimental import edward2 as ed
 
 from sccoda.util import result_classes as res
+from typing import Optional, Tuple, Collection, Union, List
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -60,19 +61,28 @@ class CompositionalModel:
 
     """
 
-    def __init__(self, covariate_matrix, data_matrix, cell_types, covariate_names, formula, *args, **kwargs):
+    def __init__(
+            self,
+            covariate_matrix: np.ndarray,
+            data_matrix: np.ndarray,
+            cell_types: List[str],
+            covariate_names: List[str],
+            formula: str,
+            *args,
+            **kwargs
+    ):
         """
         Generalized Constructor of Bayesian compositional model class.
 
         Parameters
         ----------
-        covariate_matrix -- numpy array [NxD]
-            covariate matrix
-        data_matrix -- numpy array [NxK]
-            cell count matrix
-        cell_types -- list
+        covariate_matrix
+            covariate matrix, size NxD
+        data_matrix
+            cell count matrix, size NxK
+        cell_types
             Cell type names
-        covariate_names -- List
+        covariate_names
             Covariate names
         """
 
@@ -101,28 +111,39 @@ class CompositionalModel:
         if self.N != len(self.n_total):
             raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(self.x.shape[0], len(self.n_total)))
 
-    def sampling(self, num_results, num_burnin, kernel, init_state, trace_fn):
+    def sampling(
+            self,
+            kernel,
+            init_state: dict,
+            trace_fn,
+            num_results: int = 20000,
+            num_burnin: int = 5000,
+    ) -> Tuple[List[any], List[any], float]:
         """
         MCMC sampling process (tensorflow 2)
 
         Parameters
         ----------
-        num_results -- int
+        num_results
             MCMC chain length (default 20000)
-        num_burnin -- int
+        num_burnin
             Number of burnin iterations (default 5000)
-        kernel --
+        kernel
             tensorflow MCMC kernel object
-        init_state -- dict
+        init_state
             Starting parameters
+        trace_fn
+            tracing function
 
         Returns
         -------
-        states -- list
+        MCMC chain states and results
+
+        states
             States of MCMC chain
-        kernel_results -- list
+        kernel_results
             sampling meta-information
-        duration -- float
+        duration
             Duration of MCMC sampling process
         """
 
@@ -146,27 +167,37 @@ class CompositionalModel:
 
         return states, kernel_results, duration
 
-    def get_chains_after_burnin(self, samples, kernel_results, num_burnin, is_nuts=False):
+    def get_chains_after_burnin(
+            self,
+            samples: List[any],
+            kernel_results: List[any],
+            num_burnin: int,
+            is_nuts: bool = False
+    ) -> Tuple[List[any], dict, float]:
         """
         Application of burn-in after MCMC sampling.
         Cuts the first `num_burnin` samples from all inferred variables and diagnostic statistics.
 
         Parameters
         ----------
-        samples -- list
+        samples
             all kernel states
-        kernel_results  -- list
+        kernel_results
             Kernel meta-information. The tracked statistics depend on the sampling method.
-        num_burnin -- int
+        num_burnin
             number of burn-in iterations
-        is_nuts -- boolean
+        is_nuts
             Specifies whether NUTS sampling was used
 
         Returns
         -------
-        states_burnin -- list
+        MCMC chain without burn-in, sampling statistics, acceptance rate
+
+        states_burnin
             Kernel states without burn-in samples
-        p_accept -- float
+        stats
+            sampling statistics
+        p_accept
             acceptance rate of MCMC process
         """
 
@@ -194,8 +225,14 @@ class CompositionalModel:
 
         return states_burnin, stats, p_accept
 
-    def sample_hmc(self, num_results=int(20e3), num_burnin=int(5e3), num_adapt_steps=None,
-                   num_leapfrog_steps=10, step_size=0.01):
+    def sample_hmc(
+            self,
+            num_results: int = int(20e3),
+            num_burnin: int = int(5e3),
+            num_adapt_steps: Optional[int] = None,
+            num_leapfrog_steps: Optional[int] = 10,
+            step_size: float = 0.01
+    ) -> res.CAResult:
 
         """
         Hamiltonian Monte Carlo (HMC) sampling in tensorflow 2.
@@ -212,20 +249,22 @@ class CompositionalModel:
 
         Parameters
         ----------
-        num_results -- int
+        num_results
             MCMC chain length (default 20000)
-        num_burnin -- int
+        num_burnin
             Number of burnin iterations (default 5000)
-        num_adapt_steps -- int
+        num_adapt_steps
             Length of step size adaptation procedure
-        num_leapfrog_steps --  int
+        num_leapfrog_steps
             HMC leapfrog steps (default 10)
-        step_size -- float
+        step_size
             Initial step size (default 0.01)
 
         Returns
         -------
-        result -- scCODA.util.result_data.CAResult object
+        results object
+
+        result
             Compositional analysis result
         """
 
@@ -317,8 +356,14 @@ class CompositionalModel:
                                      coords=coords).to_result_data(sampling_stats=sampling_stats,
                                                                    model_specs=model_specs)
 
-    def sample_hmc_da(self, num_results=int(20e3), num_burnin=int(5e3), num_adapt_steps=None,
-                      num_leapfrog_steps=10, step_size=0.01):
+    def sample_hmc_da(
+            self,
+            num_results: int = int(20e3),
+            num_burnin: int = int(5e3),
+            num_adapt_steps: Optional[int] = None,
+            num_leapfrog_steps: Optional[int] = 10,
+            step_size: float = 0.01
+    ) -> res.CAResult:
         """
         HMC sampling with dual-averaging step size adaptation (Nesterov, 2009)
 
@@ -336,20 +381,22 @@ class CompositionalModel:
 
         Parameters
         ----------
-        num_results -- int
+        num_results
             MCMC chain length (default 20000)
-        num_burnin -- int
+        num_burnin
             Number of burnin iterations (default 5000)
-        num_adapt_steps -- int
+        num_adapt_steps
             Length of step size adaptation procedure
-        num_leapfrog_steps --  int
+        num_leapfrog_steps
             HMC leapfrog steps (default 10)
-        step_size -- float
+        step_size
             Initial step size (default 0.01)
 
         Returns
         -------
-        result -- scCODA.util.result_data.CAResult object
+        result object
+
+        result
             Compositional analysis result
         """
 
@@ -443,8 +490,14 @@ class CompositionalModel:
                                      coords=coords).to_result_data(sampling_stats=sampling_stats,
                                                                    model_specs=model_specs)
 
-    def sample_nuts(self, num_results=int(10e3), num_burnin=int(5e3), num_adapt_steps=None,
-                    max_tree_depth=10, step_size=0.01):
+    def sample_nuts(
+            self,
+            num_results: int = int(10e3),
+            num_burnin: int = int(5e3),
+            num_adapt_steps: Optional[int] = None,
+            max_tree_depth: int = 10,
+            step_size: float = 0.01
+    ) -> res.CAResult:
         """
         HMC with No-U-turn (NUTS) sampling.
         This method is untested and might yield different results than expected.
@@ -469,20 +522,22 @@ class CompositionalModel:
 
         Parameters
         ----------
-        num_results -- int
+        num_results
             MCMC chain length (default 10000)
-        num_burnin -- int
+        num_burnin
             Number of burnin iterations (default 5000)
-        num_adapt_steps -- int
+        num_adapt_steps
             Length of step size adaptation procedure
-        max_tree_depth --  int
+        max_tree_depth
             Maximum tree depth (default 10)
-        step_size -- float
+        step_size
             Initial step size (default 0.01)
 
         Returns
         -------
-        result -- scCODA.util.result_data.CAResult object
+        result object
+
+        result
             Compositional analysis result
         """
 
@@ -614,7 +669,11 @@ class ReferenceModel(CompositionalModel):
 
     """
 
-    def __init__(self, reference_cell_type, *args, **kwargs):
+    def __init__(
+            self,
+            reference_cell_type: int,
+            *args,
+            **kwargs):
 
         """
         Constructor of model class. Defines model structure, log-probability function, parameter names,
@@ -622,10 +681,12 @@ class ReferenceModel(CompositionalModel):
 
         Parameters
         ----------
-        reference_cell_type -- string or int
+        reference_cell_type
             Index of reference cell type (column in count data matrix)
-        args -- arguments passed to top-level class
-        kwargs -- arguments passed to top-level class
+        args
+            arguments passed to top-level class
+        kwargs
+            arguments passed to top-level class
         """
         super(self.__class__, self).__init__(*args, **kwargs)
 
@@ -636,17 +697,20 @@ class ReferenceModel(CompositionalModel):
         self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw",
                             "ind", "b_raw", "beta", "concentration", "prediction"]
 
-        def define_model(x, n_total, K):
+        def define_model(
+                x: np.ndarray,
+                n_total: np.ndarray,
+                K: int):
             """
             Model definition in Edward2
 
             Parameters
             ----------
-            x -- numpy array [NxD]
-                covariate matrix
-            n_total -- numpy array [N]
-                number of cells per sample
-            K -- int
+            x
+                covariate matrix, size NxD
+            n_total
+                number of cells per sample, size N
+            K
                 Number of cell types
             """
             dtype = tf.float64
@@ -714,22 +778,29 @@ class ReferenceModel(CompositionalModel):
                             ]
 
     # Calculate predicted cell counts (for analysis purposes)
-    def get_y_hat(self, states_burnin, num_results, num_burnin):
+    def get_y_hat(
+            self,
+            states_burnin: List[any],
+            num_results: int,
+            num_burnin: int
+    ) -> np.ndarray:
         """
         Calculate posterior mode of cell counts (for analysis purposes) and add intermediate parameters
         that are no priors to MCMC results.
 
         Parameters
         ----------
-        states_burnin -- List
-            MCMC chain without burnin samples
-        num_results -- int
-            Chain length (with burnin)
-        num_burnin -- int
-            Number of burnin samples
+        states_burnin
+            MCMC chain without burn-in samples
+        num_results
+            Chain length (with burn-in)
+        num_burnin
+            Number of burn-in samples
 
         Returns
         -------
+        posterior mode
+
         y_mean
             posterior mode of cell counts
         """

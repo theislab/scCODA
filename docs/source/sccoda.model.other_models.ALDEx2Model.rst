@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L532-L595
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L603-L672
 
 sccoda.model.other\_models.ALDEx2Model
 ======================================
@@ -8,8 +8,6 @@ sccoda.model.other\_models.ALDEx2Model
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: ALDEx2Model
-
-    
 
     
     
@@ -30,6 +28,4 @@ sccoda.model.other\_models.ALDEx2Model
             ~sccoda.model.other_models.ALDEx2Model.fit_model
             
     
-    
-
     

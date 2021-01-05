@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L432-L464
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L503-L535
 
 sccoda.model.other\_models.CLRModel
 ===================================
@@ -8,8 +8,6 @@ sccoda.model.other\_models.CLRModel
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: CLRModel
-
-    
 
     
     
@@ -30,6 +28,4 @@ sccoda.model.other\_models.CLRModel
             ~sccoda.model.other_models.CLRModel.fit_model
             
     
-    
-
     

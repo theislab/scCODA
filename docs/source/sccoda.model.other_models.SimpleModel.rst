@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L30-L227
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/other_models.py#L32-L274
 
 sccoda.model.other\_models.SimpleModel
 ======================================
@@ -8,8 +8,6 @@ sccoda.model.other\_models.SimpleModel
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: SimpleModel
-
-    
 
     
     
@@ -42,6 +40,4 @@ sccoda.model.other\_models.SimpleModel
             ~sccoda.model.other_models.SimpleModel.sampling
             
     
-    
-
     

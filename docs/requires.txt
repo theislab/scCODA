@@ -2,7 +2,6 @@ sphinx
 sphinx_autodoc_typehints
 sphinx_rtd_theme
 docutils
-numpydoc
 numpy<1.19.0,>=1.16.0
 pandas>=1.0
 seaborn
@@ -13,3 +12,4 @@ setuptools
 setuptools_scm
 ipykernel
 nbsphinx
+scanpydoc

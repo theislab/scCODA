@@ -25,33 +25,46 @@ import anndata as ad
 import pandas as pd
 from scipy.special import softmax
 
+from anndata import AnnData
+from typing import Optional, Tuple, Collection, Union, List
 
-def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5, 5],
-                          sigma=None, b_true=None, w_true=None):
+
+def generate_case_control(
+        cases: int = 1,
+        K: int = 5,
+        n_total: int = 1000,
+        n_samples: List[any] = [5, 5],
+        sigma: Optional[np.ndarray] = None,
+        b_true: Optional[np.ndarray] = None,
+        w_true: Optional[np.ndarray] = None
+) -> AnnData:
     """
     Generates compositional data with binary covariates.
 
     Parameters
     ----------
-    cases -- int
+    cases
         number of covariates.
         This will lead to D=2**cases columns in X, one for each combination of active/inactive covariates.
-    K -- int
+    K
         Number of cell types
-    n_total -- int
+    n_total
         number of cells per sample
-    n_samples -- list
+    n_samples
         Number of samples per case combination. len(n_samples)=[2**cases]
-    sigma -- numpy array [KxK]
-        correlation matrix for cell types
-    b_true -- numpy array [K]
-        bias coefficients
-    w_true -- numpy array [DxK]
-        Effect matrix
+    sigma
+        correlation matrix for cell types,size KxK
+    b_true
+        bias coefficients, size K
+    w_true
+        Effect matrix, size DxK
 
     Returns
     -------
-    Anndata object
+    compositional data
+
+    data
+        Anndata object
     """
     D = cases**2
 
@@ -107,24 +120,30 @@ def generate_case_control(cases=1, K=5, n_total=1000, n_samples=[5, 5],
     return data
 
 
-def b_w_from_abs_change(counts_before=np.array([200, 200, 200, 200, 200]), abs_change=50, n_total=1000):
+def b_w_from_abs_change(
+        counts_before: np.ndarray = np.array([200, 200, 200, 200, 200]),
+        abs_change: int = 50,
+        n_total: int = 1000
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Calculates intercepts and slopes from a starting count and an absolute change for the first cell type
 
     Parameters
     ----------
-    counts_before -- numpy array
+    counts_before
         cell counts for control samples
-    abs_change -- int
+    abs_change
         change of first cell type in terms of cell counts
-    n_total -- int
+    n_total
         number of cells per sample. This stays constant over all samples!!!
 
     Returns
     -------
-    intercepts -- numpy array
+    Returns an intercept and an effect array
+
+    intercepts
         intercept parameters
-    slopes -- numpy array
+    slopes
         slope parameters
     """
 
@@ -152,23 +171,29 @@ def b_w_from_abs_change(counts_before=np.array([200, 200, 200, 200, 200]), abs_c
     return b, w
 
 
-def counts_from_first(b_0=200, n_total=1000, K=5):
+def counts_from_first(
+        b_0: int = 200,
+        n_total: int = 1000,
+        K: int = 5
+) -> np.ndarray:
     """
     Calculates a count vector from a given first entry, length and sum. The entries 2...K will get the same value.
 
     Parameters
     ----------
-    b_0 -- int
+    b_0
         size of first entry
-    n_total -- int
+    n_total
         total sum of all entries
-    K -- int
+    K
         length of output vector (number of cell types)
 
     Returns
     -------
-    b -- numpy array [K]
-        count vector (not necessarily integer)
+    An intercept array
+
+    b
+        count vector (not necessarily integer), size K
 
     """
     b = np.repeat((n_total-b_0)/(K-1), K)
@@ -176,23 +201,30 @@ def counts_from_first(b_0=200, n_total=1000, K=5):
     return b
 
 
-def sparse_effect_matrix(D, K, n_d, n_k):
+def sparse_effect_matrix(
+        D: int,
+        K: int,
+        n_d: int,
+        n_k: int
+) -> np.ndarray:
     """
     Generates a sparse effect matrix
 
     Parameters
     ----------
-    D -- int
+    D
         Number of covariates
-    K -- int
+    K
         Number of cell types
-    n_d -- int
+    n_d
         Number of covariates that effect each cell type
-    n_k -- int
+    n_k
         Number of cell types that are affected by each covariate
 
     Returns
     -------
+    An effect matrix
+
     w_true
         Effect matrix
     """

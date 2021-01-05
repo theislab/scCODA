@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/dirichlet_models.py#L590-L778
+﻿:github_url: https://github.com/theislab/scCODA/tree/release_0.1/sccoda/model/dirichlet_models.py#L645-L849
 
 sccoda.model.dirichlet\_models.ReferenceModel
 =============================================
@@ -8,8 +8,6 @@ sccoda.model.dirichlet\_models.ReferenceModel
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: ReferenceModel
-
-    
 
     
     
@@ -42,6 +40,4 @@ sccoda.model.dirichlet\_models.ReferenceModel
             ~sccoda.model.dirichlet_models.ReferenceModel.sampling
             
     
-    
-
     

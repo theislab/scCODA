@@ -6,7 +6,9 @@ Initialization of scCODA models.
 import numpy as np
 import patsy as pt
 
+from anndata import AnnData
 from sccoda.model import dirichlet_models as dm
+from typing import Union
 
 
 class CompositionalAnalysis:
@@ -16,7 +18,12 @@ class CompositionalAnalysis:
     Please refer to the tutorial for using this class.
     """
 
-    def __new__(cls, data, formula, reference_cell_type=None):
+    def __new__(
+            cls,
+            data: AnnData,
+            formula: str,
+            reference_cell_type: Union[str, int]
+    ) -> dm.ReferenceModel:
         """
         Builds count and covariate matrix, returns a CompositionalModel object
 
@@ -24,17 +31,19 @@ class CompositionalAnalysis:
 
         Parameters
         ----------
-        data -- anndata object
+        data
             anndata object with cell counts as data.X and covariates saved in data.obs
-        formula -- string
+        formula
             R-style formula for building the covariate matrix.
             Categorical covariates are handled automatically, with the covariate value of the first sample being used as the reference category.
             To set a different level as the base category for a categorical covariate, use "C(<CovariateName>, Treatment('<ReferenceLevelName>'))"
-        reference_cell_type -- string or int
+        reference_cell_type
             Column index that sets the reference cell type. Can either reference the name of a column or the n-th column (indexed at 0)
 
         Returns
         -------
+        A compositionnal model
+
         model
             A scCODA.models.dirichlet_models.CompositionalModel object
         """
