@@ -22,7 +22,6 @@ matplotlib.use('agg')
 
 HERE = Path(__file__).parent
 sys.path[:0] = [str(HERE.parent), str(HERE / '_ext')]
-import sccoda
 
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
 
@@ -51,7 +50,7 @@ title = 'scCODA: A Bayesian model for compositional single-cell data analysis'
 author = 'Johannes Ostner, Maren Büttner, Benjamin Schubert'
 copyright = f"{datetime.datetime.now():%Y}, {author}"
 
-version = sccoda.__version__.replace(".dirty", "")
+version = "0.1"
 release = version
 
 # -- General configuration ---------------------------------------------------
