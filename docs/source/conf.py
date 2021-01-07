@@ -88,6 +88,7 @@ autodoc_mock_imports = ["tensorflow",
                         "statsmodels",
                         "rpy2",
                         "pickle",
+                        "sccoda"
                         ]
 
 # Generate the API documentation when building
