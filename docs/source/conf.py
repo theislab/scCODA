@@ -128,8 +128,8 @@ html_context = dict(
 html_static_path = ['_static']
 html_show_sphinx = False
 
-def setup(app):
-    app.warningiserror = on_rtd
+# def setup(app):
+#     app.warningiserror = on_rtd
 
 # -- Options for other output ------------------------------------------
 
