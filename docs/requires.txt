@@ -13,4 +13,3 @@ setuptools_scm
 ipykernel
 nbsphinx
 scanpydoc
-sccoda
