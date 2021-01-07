@@ -24,7 +24,7 @@ VERSION = "0.1"
 REQUIRED = [
     "numpy", "scipy", "tensorflow", "tensorflow-probability",
     "arviz", "seaborn", "pandas", "matplotlib", "scanpy", "anndata",
-    "patsy", "sklearn", "statsmodels", "scikit-bio", "rpy2",
+    "patsy", "sklearn", "statsmodels", "git+git://github.com/biocore/scikit-bio@master", "rpy2",
 ]
 
 # What packages are optional?
