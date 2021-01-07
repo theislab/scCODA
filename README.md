@@ -41,7 +41,3 @@ To install scCODA from source:
 Import scCODA in a Python session via:
 
     `import sccoda`
-
-
-
-
