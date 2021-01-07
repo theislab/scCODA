@@ -54,3 +54,4 @@ The ``Final Parameter`` column of the effects data frame shows the significances
 If the value is 0, the effect is not found to be statistically credible, otherwise it is.
 The sign of the effect indicates a decrease or increase in abundance (relative to the reference cell type).
 However, the numerical value of these effects should not be used for analysis, as it depends on multiple things.
+Please refer to the tutorials for more information on how to evaluate scCODA's results.

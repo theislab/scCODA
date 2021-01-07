@@ -113,11 +113,11 @@ class CompositionalModel:
 
     def sampling(
             self,
+            num_results: int,
+            num_burnin: int,
             kernel,
             init_state: dict,
             trace_fn,
-            num_results: int = 20000,
-            num_burnin: int = 5000,
     ) -> Tuple[List[any], List[any], float]:
         """
         MCMC sampling process (tensorflow 2)
