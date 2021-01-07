@@ -1,5 +1,5 @@
 """
-Unit tests for SCDCdm
+Unit tests for scCODA
 """
 
 import unittest
@@ -12,11 +12,9 @@ import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('..'))
 
-from scdcdm.util import cell_composition_data as dat
-from scdcdm.util import comp_ana as mod
-from scdcdm.util import multi_parameter_sampling as mult
-from scdcdm.util import multi_parameter_analysis_functions as ana
-from scdcdm.util import data_generation as gen
+from sccoda.util import cell_composition_data as dat
+from sccoda.util import comp_ana as mod
+from sccoda.util import data_generation as gen
 
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
@@ -45,67 +43,6 @@ class TestDataGeneration(unittest.TestCase):
         self.b_true = None
         self.w_true = None
 
-    def test_case_1(self):
-
-        np.random.seed(1234)
-
-        test_1 = True
-        data_sc_1 = gen.generate_normal_uncorrelated(self.N, self.D, self.K, self.n_total, self.noise_std_true)
-        if any(np.abs(data_sc_1.obs["x_0"] - [-0.720589, 0.887163, 0.859588]) > 1e-5):
-            print("scenario1.obs is not correct!")
-            test_1 = False
-        if not np.array_equal(data_sc_1.X, np.array([[591., 409.], [959., 41.], [965.,  35.]])):
-            print("scenario1.X is not correct!")
-            test_1 = False
-
-        self.assertTrue(test_1)
-
-    def test_case_2(self):
-        np.random.seed(1234)
-
-        test_2 = True
-        data_sc_2 = gen.generate_normal_correlated(self.N, self.D, self.K, self.n_total, self.noise_std_true,
-                                                   self.covariate_mean, self.covariate_var)
-        if any(np.abs(data_sc_2.obs["x_0"] - [-0.720589, 0.887163, 0.859588]) > 1e-5):
-            print("scenario2.obs is not correct!")
-            test_2 = False
-        if not np.array_equal(data_sc_2.X, np.array([[591., 409.], [959., 41.], [965., 35.]])):
-            print("scenario2.X is not correct!")
-            test_2 = False
-
-        self.assertTrue(test_2)
-
-    def test_case_3(self):
-        np.random.seed(1234)
-
-        test_3 = True
-        data_sc_3 = gen.generate_normal_xy_correlated(self.N, self.D, self.K, self.n_total, self.noise_std_true,
-                                                      self.covariate_mean, self.covariate_var, self.sigma)
-        if any(np.abs(data_sc_3.obs["x_0"] - [-0.720589, 0.887163, 0.859588]) > 1e-5):
-            print("scenario3.obs is not correct!")
-            test_3 = False
-        if not np.array_equal(data_sc_3.X, np.array([[570., 430.], [957., 43.], [923., 77.]])):
-            print("scenario3.X is not correct!")
-            test_3 = False
-
-        self.assertTrue(test_3)
-
-    def test_case_4(self):
-        np.random.seed(1234)
-
-        test_4 = True
-        data_sc_4 = gen.generate_sparse_xy_correlated(self.N, self.D, self.K, self.n_total, self.noise_std_true,
-                                                      self.covariate_mean, self.covariate_var, self.sigma,
-                                                      self.b_true, self.w_true)
-        if any(np.abs(data_sc_4.obs["x_0"] - [0.662509, 0.675246, -0.940298]) > 1e-5):
-            print("scenario4.obs is not correct!")
-            test_4 = False
-        if not np.array_equal(data_sc_4.X, np.array([[12., 988.], [13., 987.], [26., 974.]])):
-            print("scenario4.X is not correct!")
-            test_4 = False
-
-        self.assertTrue(test_4)
-
     def test_case_control_gen(self):
         """
         Tests data generation for case/control scenarios
@@ -124,7 +61,7 @@ class TestDataGeneration(unittest.TestCase):
         b_true = None
         w_true = None
 
-        data = gen.generate_case_control(cases, K, n_total, n_samples, noise_std_true, sigma, b_true, w_true)
+        data = gen.generate_case_control(cases, K, n_total, n_samples, sigma, b_true, w_true)
 
         test = True
         if any(np.abs(data.obs["x_0"] - [0, 0, 1, 1]) > 1e-5):
@@ -133,7 +70,7 @@ class TestDataGeneration(unittest.TestCase):
         if not np.array_equal(data.X, np.array([[74., 926.], [58., 942.], [32., 968.], [53., 947.]])):
             print("X is not correct!")
             test = False
-        if not np.array_equal(data.uns["b_true"], np.array([-1.8508832,  0.7326526], dtype=np.float32)) & \
+        if not np.array_equal(data.uns["b_true"], np.array([-1.8508832,  0.7326526], dtype=np.float64)) & \
            np.array_equal(data.uns["w_true"], np.array([[0., 0.]])):
             print("uns is not correct!")
             test = False
@@ -178,7 +115,7 @@ class TestDataImport(unittest.TestCase):
 
     def test_from_pandas(self):
         # Get Haber Salmonella data
-        data_raw = pd.read_csv("./data/haber_counts.csv")
+        data_raw = pd.read_csv(os.path.abspath("../../data/haber_counts.csv"))
 
         salm_indices = [0, 1, 2, 3, 8, 9]
         salm_df = data_raw.iloc[salm_indices, :]
@@ -215,7 +152,7 @@ class TestModels(unittest.TestCase):
     def setUp(self):
 
         # Get Haber count data
-        data_raw = pd.read_csv("./data/haber_counts.csv")
+        data_raw = pd.read_csv(os.path.abspath("../../data/haber_counts.csv"))
 
         salm_indices = [0, 1, 2, 3, 8, 9]
         salm_df = data_raw.iloc[salm_indices, :]
@@ -224,14 +161,14 @@ class TestModels(unittest.TestCase):
         data_salm.obs["Condition"] = data_salm.obs["Mouse"].str.replace(r"_[0-9]", "")
         self.data = data_salm
 
-    def test_no_baseline(self):
+    def test_no_reference(self):
         np.random.seed(1234)
         tf.random.set_seed(5678)
 
-        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", baseline_index=None)
+        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", reference_cell_type=None)
 
         # Run MCMC
-        sim_results = model_salm.sample_hmc(num_results=20000, n_burnin=5000)
+        sim_results = model_salm.sample_hmc(num_results=20000, num_burnin=5000)
         alpha_df, beta_df = sim_results.summary_prepare()
 
         # Mean cell counts for both groups
@@ -239,8 +176,8 @@ class TestModels(unittest.TestCase):
         betas_true = np.round(np.mean(self.data.X[4:], 0), 0)
 
         # Mean cell counts for simulated data
-        final_alphas = np.round(alpha_df.loc[:, "expected_sample"].tolist(), 0)
-        final_betas = np.round(beta_df.loc[:, "expected_sample"].tolist(), 0)
+        final_alphas = np.round(alpha_df.loc[:, "Expected Sample"].tolist(), 0)
+        final_betas = np.round(beta_df.loc[:, "Expected Sample"].tolist(), 0)
 
         # Check if model approximately predicts ground truth
         differing_alphas = any(np.abs(alphas_true - final_alphas) > 30)
@@ -248,14 +185,14 @@ class TestModels(unittest.TestCase):
 
         self.assertTrue((not differing_alphas) & (not differing_betas))
 
-    def test_baseline(self):
+    def test_reference(self):
         np.random.seed(1234)
         tf.random.set_seed(5678)
 
-        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", baseline_index=5)
+        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", reference_cell_type=5)
 
         # Run MCMC
-        sim_results = model_salm.sample_hmc(num_results=20000, n_burnin=5000)
+        sim_results = model_salm.sample_hmc(num_results=20000, num_burnin=5000)
         alpha_df, beta_df = sim_results.summary_prepare()
 
         # Mean cell counts for both groups
@@ -263,8 +200,8 @@ class TestModels(unittest.TestCase):
         betas_true = np.round(np.mean(self.data.X[4:], 0), 0)
 
         # Mean cell counts for simulated data
-        final_alphas = np.round(alpha_df.loc[:, "expected_sample"].tolist(), 0)
-        final_betas = np.round(beta_df.loc[:, "expected_sample"].tolist(), 0)
+        final_alphas = np.round(alpha_df.loc[:, "Expected Sample"].tolist(), 0)
+        final_betas = np.round(beta_df.loc[:, "Expected Sample"].tolist(), 0)
 
         # Check if model approximately predicts ground truth
         differing_alphas = any(np.abs(alphas_true - final_alphas) > 30)

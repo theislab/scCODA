@@ -12,24 +12,23 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = 'scdcdm'
+NAME = 'scCODA'
 DESCRIPTION = 'A Dirichlet-Multinomial approach to identify compositional changes in count data.'
-URL = 'https://github.com/theislab/SCDCpy'
-EMAIL = 'benjamin.schubert@helmholtz-muenchen.de'
-AUTHOR = 'Benjamin Schubert'
+URL = 'https://github.com/theislab/scCODA'
+EMAIL = 'johannes.ostner@helmholtz-muenchen.de'
+AUTHOR = 'Johannes Ostner, Benjamin Schubert'
 REQUIRES_PYTHON = '>=3.7.0'
-VERSION = "0.0.1"
+VERSION = "0.1"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
     "numpy", "scipy", "tensorflow", "tensorflow-probability",
     "arviz", "seaborn", "pandas", "matplotlib", "scanpy", "anndata",
-    "patsy", "sklearn"
+    "patsy", "sklearn", "statsmodels", "scikit-bio", "rpy2",
 ]
 
 # What packages are optional?
 EXTRAS = {
-#     'visualization': ['arviz'],
 }
 
 # The rest you shouldn't have to touch too much :)
@@ -104,24 +103,27 @@ setup(
     author_email=EMAIL,
     python_requires=REQUIRES_PYTHON,
     url=URL,
-    packages=find_packages(exclude=('prototyping', 'data', 'paper_simulation_scripts', 'tests')),
-    # If your package is a single module, use this instead of 'packages':
-    # py_modules=['mypackage'],
-
-    # entry_points={
-    #     'console_scripts': ['mycli=mymodule:cli'],
-    # },
+    packages=find_packages(exclude=("data", "tests", "tutorials")),
     install_requires=REQUIRED,
     extras_require=EXTRAS,
     include_package_data=True,
-    license='MIT',
+    license='BSD',
+    keywords=[
+        "RNA",
+        "single cell",
+        "composition",
+        "CODA",
+        "compositional analysis"
+    ],
     classifiers=[
         # Trove classifiers
         # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
-        'License :: OSI Approved :: MIT License',
+        "License :: OSI Approved :: BSD License",
+        "Intended Audience :: Science/Research",
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
     ],
     # $ setup.py publish support.
     cmdclass={

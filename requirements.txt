@@ -4,10 +4,13 @@ seaborn
 matplotlib
 tensorflow>=2.1.0
 tensorflow-probability>=0.9.0
-arviz>=0.8
+arviz>=0.10
 scipy==1.4.1
 anndata
 patsy
 sklearn
 scanpy
 statsmodels
+scikit-bio
+rpy2
+pickle
