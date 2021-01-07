@@ -28,7 +28,7 @@ REQUIRED = [
 ]
 
 # What packages are optional?
-EXTRAS = []
+EXTRAS = {}
 
 # The rest you shouldn't have to touch too much :)
 # ------------------------------------------------
