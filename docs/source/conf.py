@@ -31,7 +31,7 @@ needs_sphinx = "2.0"
 
 from urllib.request import urlretrieve
 
-notebooks_url = "https://github.com/theislab/scCODA/raw/release_0.1/tutorials/"
+notebooks_url = "https://github.com/theislab/scCODA/raw/master/tutorials/"
 notebooks = [
     "getting_started.ipynb",
     "Data_import_and_visualization.ipynb",
@@ -76,21 +76,6 @@ extensions = ['sphinx.ext.autodoc',
               *[p.stem for p in (HERE / 'extensions').glob('*.py')],
               ]
 
-autodoc_mock_imports = ["tensorflow",
-                        "tensorflow_probability",
-                        "skbio",
-                        "arviz",
-                        "scipy",
-                        "anndata",
-                        "patsy",
-                        "sklearn",
-                        "scanpy",
-                        "statsmodels",
-                        "rpy2",
-                        "pickle",
-                        "sccoda"
-                        ]
-
 # Generate the API documentation when building
 autosummary_generate = True
 autodoc_member_order = 'bysource'
@@ -115,14 +100,14 @@ intersphinx_mapping = dict(
 
 # Add notebooks prolog to Google Colab and nbviewer
 nbsphinx_prolog = r"""
-{% set docname = 'github/theislab/scCODA/blob/release_0.1/' + env.doc2path(env.docname, base=None) %}
+{% set docname = 'github/theislab/scCODA/blob/master/' + env.doc2path(env.docname, base=None) %}
 .. raw:: html
 
     <div class="note">
       <a href="https://colab.research.google.com/{{ docname|e }}" target="_parent">
       <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
       <a href="https://nbviewer.jupyter.org/{{ docname|e }}" target="_parent">
-      <img src="https://github.com/theislab/scCODA/raw/release_0.1/docs/source/_static/nbviewer_badge.svg" alt="Open In nbviewer"/></a>
+      <img src="https://github.com/theislab/scCODA/raw/master/docs/source/_static/nbviewer_badge.svg" alt="Open In nbviewer"/></a>
     </div>
 """
 
@@ -136,7 +121,7 @@ html_context = dict(
     display_github=True,  # Integrate GitHub
     github_user='theislab',  # Username
     github_repo='scCODA',  # Repo name
-    github_version='release_0.1',  # Version
+    github_version='master',  # Version
     conf_py_path='/docs/',  # Path in the checkout to the docs root
 )
 html_static_path = ['_static']
