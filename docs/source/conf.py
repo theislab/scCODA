@@ -22,6 +22,8 @@ matplotlib.use('agg')
 
 HERE = Path(__file__).parent
 sys.path[:0] = [str(HERE.parent), str(HERE / '_ext')]
+sys.path.append(os.path.abspath("../.."))
+sys.path.append(os.path.abspath(".."))
 
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
 
