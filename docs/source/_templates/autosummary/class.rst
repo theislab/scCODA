@@ -28,10 +28,18 @@
 
     .. autosummary::
         :toctree: .
-    {% for item in methods %}
-            {% if item[0] != "_" %}
-            ~{{ fullname }}.{{ item }}
-            {% endif %}
-    {%- endfor %}
+    {% if objname != "CAResult" %}
+        {% for item in methods %}
+                {% if item[0] != "_" %}
+                ~{{ fullname }}.{{ item }}
+                {% endif %}
+        {%- endfor %}
+    {% else %}
+        {% for item in methods %}
+                {% if ((item[0] != "_") and (item not in inherited_members)) %}
+                ~{{ fullname }}.{{ item }}
+                {% endif %}
+        {%- endfor %}
+    {% endif %}
     {% endif %}
     {% endblock %}

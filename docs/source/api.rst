@@ -97,7 +97,6 @@ non-compositional tests that can be used for comparison.
 
     sccoda.model.other_models.SimpleModel
     sccoda.model.other_models.scdney_model
-    sccoda.model.other_models.NonBayesianModel
     sccoda.model.other_models.HaberModel
     sccoda.model.other_models.CLRModel
     sccoda.model.other_models.TTest
