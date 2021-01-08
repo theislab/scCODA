@@ -1,12 +1,16 @@
 Installation
 ============
 
-A functioning python environment (>=3.7) is necessary to run this package.
+A functioning python environment (==3.8) is necessary to run this package.
 
-This package uses the tensorflow (>=2.1.0) and tensorflow-probability (>=0.9.0) packages.
+This package uses the tensorflow (==2.3.2) and tensorflow-probability (==0.11.0) packages.
 The GPU versions of these packages have not been tested with scCODA and are thus not recommended.
 
-To install scCODA from source:
+**To install scCODA via pip, call**::
+
+    pip install sccoda
+
+**To install scCODA from source**:
 
 - Navigate to the directory you want scCODA in
 - Clone the repository from Github (https://github.com/theislab/scCODA)::
@@ -21,7 +25,7 @@ To install scCODA from source:
 
     pip install -r requirements.txt
 
-Import scCODA in a Python session via::
+**Import scCODA in a Python session via**::
 
     import sccoda
 
