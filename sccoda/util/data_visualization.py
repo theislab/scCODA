@@ -11,6 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib import cm, rcParams
+from matplotlib.colors import ListedColormap
 
 sns.set_style("ticks")
 
@@ -26,7 +27,7 @@ def stackbar(
         level_names: List[str],
         figsize: Optional[Tuple[int, int]] = None,
         dpi: Optional[int] = 100,
-        cmap: Optional[str] = "Blues",
+        cmap: Optional[ListedColormap] = cm.tab20,
         plot_legend: Optional[bool] = True,
 ) -> plt.Subplot:
     """
@@ -92,7 +93,7 @@ def stacked_barplot(
         feature_name: str,
         figsize: Optional[Tuple[int, int]] = None,
         dpi: Optional[int] = 100,
-        cmap: Optional[str] = "Blues",
+        cmap: Optional[ListedColormap] = cm.tab20,
         plot_legend: Optional[bool] = True,
 ) -> plt.Subplot:
 

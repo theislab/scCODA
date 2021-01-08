@@ -14,7 +14,6 @@ import os
 import tensorflow as tf
 import tensorflow_probability as tfp
 import skbio
-from tensorflow_probability.python.experimental import edward2 as ed
 from anndata import AnnData
 
 import statsmodels as sm
@@ -60,45 +59,55 @@ class SimpleModel(dm.CompositionalModel):
         dtype = tf.float64
 
         # All parameters that are returned for analysis
-        self.param_names = ["alpha", "b", "beta", "concentration", "prediction"]
-
-        # Model definition
-        def define_model(x, n_total, K):
-            N, D = x.shape
-            dtype = tf.float64
-
-            alpha = ed.Normal(loc=tf.zeros([K], dtype=dtype), scale=tf.ones([K], dtype=dtype), name="alpha")
-            b = ed.Normal(loc=tf.zeros([D, K-1], dtype=dtype), scale=tf.ones([D, K-1], dtype=dtype), name="b")
-
-            beta = tf.concat(axis=1, values=[b[:, :reference_cell_type],
-                                             tf.fill(value=0., dims=[D, 1]),
-                                             b[:, reference_cell_type:]])
-
-            concentration_ = tf.exp(alpha + tf.matmul(x, beta))
-
-            # Likelihood
-            predictions = ed.DirichletMultinomial(n_total, concentration=concentration_, name="predictions")
-            return predictions
-
-        # Joint posterior distribution
-        self.log_joint = ed.make_log_joint_fn(define_model)
-        # Function to compute log posterior probability
-
-        self.target_log_prob_fn = lambda alpha_, b_: \
-            self.log_joint(x=self.x,
-                           n_total=self.n_total,
-                           K=self.K,
-                           predictions=self.y,
-                           alpha=alpha_,
-                           b=b_,
-                           )
+        self.param_names = ["b", "alpha", "beta", "concentration", "prediction"]
 
         alpha_size = [self.K]
-        beta_size = [self.D, self.K-1]
+        beta_size = [self.D, self.K]
+        beta_nobl_size = [self.D, self.K-1]
 
-        self.params = [tf.random.normal(mean=0, stddev=1, name="init_alpha", shape=alpha_size, dtype=dtype),
-                       tf.random.normal(mean=0, stddev=1, name="init_b", shape=beta_size, dtype=dtype),
-                       ]
+        Root = tfd.JointDistributionCoroutine.Root
+
+        def model():
+
+            beta = yield Root(tfd.Independent(
+                tfd.Normal(
+                    loc=tf.zeros(beta_nobl_size, dtype=dtype),
+                    scale=tf.ones(beta_nobl_size, dtype=dtype),
+                    name="b"),
+                reinterpreted_batch_ndims=2))
+
+            beta = tf.concat(axis=1, values=[beta[:, :reference_cell_type],
+                                             tf.zeros(shape=[self.D, 1], dtype=dtype),
+                                             beta[:, reference_cell_type:]])
+
+
+            alpha = yield Root(tfd.Independent(
+                tfd.Normal(
+                    loc=tf.zeros(alpha_size, dtype=dtype),
+                    scale=tf.ones(alpha_size, dtype=dtype) * 5,
+                    name="alpha"),
+                reinterpreted_batch_ndims=1))
+
+            concentrations = tf.exp(alpha + tf.matmul(self.x, beta))
+
+            # Cell count prediction via DirMult
+            predictions = yield Root(tfd.Independent(
+                tfd.DirichletMultinomial(
+                    total_count=tf.cast(self.n_total, dtype),
+                    concentration=concentrations,
+                    name="predictions"),
+                reinterpreted_batch_ndims=1))
+
+        self.model_struct = tfd.JointDistributionCoroutine(model)
+
+        # Joint posterior distribution
+        self.target_log_prob_fn = lambda *args:\
+            self.model_struct.log_prob(list(args) + [tf.cast(self.y, dtype)])
+
+        self.init_params = [
+            tf.random.normal(beta_nobl_size, 0, 1, name="init_b", dtype=dtype),
+            tf.random.normal(alpha_size, 0, 1, name="init_alpha", dtype=dtype),
+        ]
 
     def sample_hmc(
             self,
@@ -143,11 +152,8 @@ class SimpleModel(dm.CompositionalModel):
             Compositional analysis result
         """
 
-        # identity bijectors
-        constraining_bijectors = [
-            tfb.Identity(),
-            tfb.Identity(),
-        ]
+        # bijectors (not in use atm, therefore identity)
+        constraining_bijectors = [tfb.Identity() for x in range(len(self.init_params))]
 
         # HMC transition kernel
         hmc_kernel = tfp.mcmc.HamiltonianMonteCarlo(
@@ -157,15 +163,15 @@ class SimpleModel(dm.CompositionalModel):
         hmc_kernel = tfp.mcmc.TransformedTransitionKernel(
             inner_kernel=hmc_kernel, bijector=constraining_bijectors)
 
-        # Set default value for adaptation steps
+        # Set default value for adaptation steps if none given
         if num_adapt_steps is None:
             num_adapt_steps = int(0.8 * num_burnin)
 
-        # Add step size adaptation
+        # Add step size adaptation (Andrieu, Thomas - 2008)
         hmc_kernel = tfp.mcmc.SimpleStepSizeAdaptation(
             inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8)
 
-        # tracing function
+        # diagnostics tracing function
         def trace_fn(_, pkr):
             return {
                 'target_log_prob': pkr.inner_results.inner_results.accepted_results.target_log_prob,
@@ -174,12 +180,15 @@ class SimpleModel(dm.CompositionalModel):
                 'step_size': pkr.inner_results.inner_results.accepted_results.step_size,
             }
 
-        # HMC sampling
-        states, kernel_results, duration = self.sampling(num_results, num_burnin, hmc_kernel, self.params, trace_fn)
+        # The actual HMC sampling process
+        states, kernel_results, duration = self.sampling(num_results, num_burnin,
+                                                         hmc_kernel, self.init_params, trace_fn)
 
-        # apply burnin
-        states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, num_burnin)
+        # apply burn-in
+        states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, num_burnin,
+                                                                             is_nuts=False)
 
+        # Calculate posterior predictive
         y_hat = self.get_y_hat(states_burnin, num_results, num_burnin)
 
         params = dict(zip(self.param_names, states_burnin))
@@ -245,19 +254,19 @@ class SimpleModel(dm.CompositionalModel):
         chain_size_beta = [num_results - num_burnin, self.D, self.K]
         chain_size_y = [num_results - num_burnin, self.N, self.K]
 
-        alphas = states_burnin[0]
+        alphas = states_burnin[1]
         alphas_final = alphas.mean(axis=0)
 
-        b = states_burnin[1]
-        beta = np.zeros(chain_size_beta)
+        b = states_burnin[0]
+        beta_ = np.zeros(chain_size_beta)
         for i in range(num_results - num_burnin):
-            beta[i] = np.concatenate([b[i, :, :self.reference_cell_type],
+            beta_[i] = np.concatenate([b[i, :, :self.reference_cell_type],
                                       np.zeros(shape=[self.D, 1], dtype=np.float64),
                                       b[i, :, self.reference_cell_type:]], axis=1)
 
-        betas_final = beta.mean(axis=0)
+        betas_final = beta_.mean(axis=0)
 
-        conc_ = np.exp(np.einsum("jk, ...kl->...jl", self.x, beta)
+        conc_ = np.exp(np.einsum("jk, ...kl->...jl", self.x, beta_)
                        + alphas.reshape((num_results - num_burnin, 1, self.K))).astype(np.float64)
 
         predictions_ = np.zeros(chain_size_y)
@@ -265,7 +274,7 @@ class SimpleModel(dm.CompositionalModel):
             pred = tfd.DirichletMultinomial(self.n_total, conc_[i, :, :]).mean().numpy()
             predictions_[i, :, :] = pred
 
-        states_burnin.append(beta)
+        states_burnin.append(beta_)
         states_burnin.append(conc_)
         states_burnin.append(predictions_)
 

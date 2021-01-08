@@ -3,8 +3,6 @@
 sccoda.model.other\_models.ALRModel\_wilcoxon
 =============================================
 
-.. currentmodule:: sccoda.model.other_models
-
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: ALRModel_wilcoxon

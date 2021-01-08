@@ -3,8 +3,6 @@
 sccoda.model.other\_models.SimpleModel
 ======================================
 
-.. currentmodule:: sccoda.model.other_models
-
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: SimpleModel

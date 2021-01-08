@@ -12,7 +12,6 @@ import warnings
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow_probability.python.experimental import edward2 as ed
 
 from sccoda.util import result_classes as res
 from typing import Optional, Tuple, Collection, Union, List
@@ -674,7 +673,6 @@ class ReferenceModel(CompositionalModel):
             reference_cell_type: int,
             *args,
             **kwargs):
-
         """
         Constructor of model class. Defines model structure, log-probability function, parameter names,
         and MCMC starting values.
@@ -688,94 +686,93 @@ class ReferenceModel(CompositionalModel):
         kwargs
             arguments passed to top-level class
         """
+
         super(self.__class__, self).__init__(*args, **kwargs)
 
         self.reference_cell_type = reference_cell_type
         dtype = tf.float64
 
         # All parameters that are returned for analysis
-        self.param_names = ["alpha", "mu_b", "sigma_b", "b_offset", "ind_raw",
+        self.param_names = ["mu_b", "sigma_b", "b_offset", "ind_raw", "alpha",
                             "ind", "b_raw", "beta", "concentration", "prediction"]
 
-        def define_model(
-                x: np.ndarray,
-                n_total: np.ndarray,
-                K: int):
-            """
-            Model definition in Edward2
+        alpha_size = [self.K]
+        beta_size = [self.D, self.K]
+        beta_nobl_size = [self.D, self.K-1]
 
-            Parameters
-            ----------
-            x
-                covariate matrix, size NxD
-            n_total
-                number of cells per sample, size N
-            K
-                Number of cell types
-            """
-            dtype = tf.float64
-            N, D = x.shape
+        Root = tfd.JointDistributionCoroutine.Root
 
-            # normal prior on bias
-            alpha = ed.Normal(loc=tf.zeros([K], dtype=dtype), scale=tf.ones([K], dtype=dtype) * 5, name="alpha")
+        def model():
+            mu_b = yield Root(tfd.Independent(
+                tfd.Normal(loc=tf.zeros(1, dtype=dtype),
+                           scale=tf.ones(1, dtype=dtype),
+                           name="mu_b"),
+                reinterpreted_batch_ndims=1))
 
-            # Noncentered parametrization for raw slopes of all cell types except reference type (before spike-and-slab)
-            mu_b = ed.Normal(loc=tf.zeros(1, dtype=dtype), scale=tf.ones(1, dtype=dtype), name="mu_b")
-            sigma_b = ed.HalfCauchy(tf.zeros(1, dtype=dtype), tf.ones(1, dtype=dtype), name="sigma_b")
-            b_offset = ed.Normal(loc=tf.zeros([D, K-1], dtype=dtype), scale=tf.ones([D, K-1], dtype=dtype),
-                                 name="b_offset")
+            sigma_b = yield Root(tfd.Independent(
+                tfd.HalfCauchy(tf.zeros(1, dtype=dtype),
+                               tf.ones(1, dtype=dtype),
+                               name="sigma_b"),
+                reinterpreted_batch_ndims=1))
+
+            b_offset = yield Root(tfd.Independent(
+                tfd.Normal(
+                    loc=tf.zeros(beta_nobl_size, dtype=dtype),
+                    scale=tf.ones(beta_nobl_size, dtype=dtype),
+                    name="b_offset"),
+                reinterpreted_batch_ndims=2))
+
+            # Spike-and-slab
+            ind_raw = yield Root(tfd.Independent(
+                tfd.Normal(
+                    loc=tf.zeros(shape=beta_nobl_size, dtype=dtype),
+                    scale=tf.ones(shape=beta_nobl_size, dtype=dtype),
+                    name='ind_raw'),
+                reinterpreted_batch_ndims=2))
+
+            ind_scaled = ind_raw * 50
+            ind = tf.exp(ind_scaled) / (1 + tf.exp(ind_scaled))
 
             b_raw = mu_b + sigma_b * b_offset
 
-            # Spike-and-slab priors
-            sigma_ind_raw = ed.Normal(
-                loc=tf.zeros(shape=[D, K-1], dtype=dtype),
-                scale=tf.ones(shape=[D, K-1], dtype=dtype),
-                name='sigma_ind_raw')
-            ind_t = sigma_ind_raw * 50
-            ind = tf.exp(ind_t) / (1 + tf.exp(ind_t))
-
-            # Calculate betas
             beta = ind * b_raw
 
             # Include slope 0 for reference cell type
             beta = tf.concat(axis=1, values=[beta[:, :reference_cell_type],
-                                             tf.zeros(shape=[D, 1], dtype=dtype),
+                                             tf.zeros(shape=[self.D, 1], dtype=dtype),
                                              beta[:, reference_cell_type:]])
 
-            # Concentration vector from intercepts, slopes
-            concentration_ = tf.exp(alpha + tf.matmul(x, beta))
+            alpha = yield Root(tfd.Independent(
+                tfd.Normal(
+                    loc=tf.zeros(alpha_size, dtype=dtype),
+                    scale=tf.ones(alpha_size, dtype=dtype) * 5,
+                    name="alpha"),
+                reinterpreted_batch_ndims=1))
+
+            concentrations = tf.exp(alpha + tf.matmul(self.x, beta))
 
             # Cell count prediction via DirMult
-            predictions = ed.DirichletMultinomial(n_total, concentration=concentration_, name="predictions")
-            return predictions
+            predictions = yield Root(tfd.Independent(
+                tfd.DirichletMultinomial(
+                    total_count=tf.cast(self.n_total, dtype),
+                    concentration=concentrations,
+                    name="predictions"),
+                reinterpreted_batch_ndims=1))
+
+        self.model_struct = tfd.JointDistributionCoroutine(model)
 
         # Joint posterior distribution
-        self.log_joint = ed.make_log_joint_fn(define_model)
-        # Function to compute log posterior probability
-
-        self.target_log_prob_fn = lambda alpha_, mu_b_, sigma_b_, b_offset_, sigma_ind_raw_:\
-            self.log_joint(x=self.x,
-                           n_total=self.n_total,
-                           K=self.K,
-                           predictions=self.y,
-                           alpha=alpha_,
-                           mu_b=mu_b_,
-                           sigma_b=sigma_b_,
-                           b_offset=b_offset_,
-                           sigma_ind_raw=sigma_ind_raw_,
-                           )
-
-        alpha_size = [self.K]
-        beta_size = [self.D, self.K-1]
+        self.target_log_prob_fn = lambda *args:\
+            self.model_struct.log_prob(list(args) + [tf.cast(self.y, dtype)])
 
         # MCMC starting values
-        self.init_params = [tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype),
-                            tf.zeros(1, name="init_mu_b", dtype=dtype),
-                            tf.ones(1, name="init_sigma_b", dtype=dtype),
-                            tf.random.normal(beta_size, 0, 1, name='init_b_offset', dtype=dtype),
-                            tf.zeros(beta_size, name='init_sigma_ind_raw', dtype=dtype),
-                            ]
+        self.init_params = [
+            tf.zeros(1, name="init_mu_b", dtype=dtype),
+            tf.ones(1, name="init_sigma_b", dtype=dtype),
+            tf.random.normal(beta_nobl_size, 0, 1, name='init_b_offset', dtype=dtype),
+            tf.zeros(beta_nobl_size, name='init_ind_raw', dtype=dtype),
+            tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype)
+        ]
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(
@@ -805,17 +802,16 @@ class ReferenceModel(CompositionalModel):
             posterior mode of cell counts
         """
 
-        chain_size_beta = [num_results - num_burnin, self.D, self.K]
-        chain_size_beta_raw = [num_results - num_burnin, self.D, self.K-1]
         chain_size_y = [num_results - num_burnin, self.N, self.K]
+        chain_size_beta = [num_results - num_burnin, self.D, self.K]
 
-        alphas = states_burnin[0]
+        alphas = states_burnin[4]
         alphas_final = alphas.mean(axis=0)
 
-        ind_raw = states_burnin[4] * 50
-        mu_b = states_burnin[1]
-        sigma_b = states_burnin[2]
-        b_offset = states_burnin[3]
+        ind_raw = states_burnin[3] * 50
+        mu_b = states_burnin[0]
+        sigma_b = states_burnin[1]
+        b_offset = states_burnin[2]
 
         ind_ = np.exp(ind_raw) / (1 + np.exp(ind_raw))
 
@@ -828,9 +824,8 @@ class ReferenceModel(CompositionalModel):
             beta_[i] = np.concatenate([beta_temp[i, :, :self.reference_cell_type],
                                        np.zeros(shape=[self.D, 1], dtype=np.float64),
                                        beta_temp[i, :, self.reference_cell_type:]], axis=1)
-
         conc_ = np.exp(np.einsum("jk, ...kl->...jl", self.x, beta_)
-                       + alphas.reshape((num_results - num_burnin, 1, self.K))).astype(np.float64)
+                       + alphas.reshape((num_results - num_burnin, 1, self.K)))
 
         predictions_ = np.zeros(chain_size_y)
         for i in range(num_results - num_burnin):
@@ -845,5 +840,7 @@ class ReferenceModel(CompositionalModel):
         states_burnin.append(predictions_)
 
         concentration = np.exp(np.matmul(self.x, betas_final) + alphas_final).astype(np.float64)
+
         y_mean = concentration / np.sum(concentration, axis=1, keepdims=True) * self.n_total.numpy()[:, np.newaxis]
+
         return y_mean

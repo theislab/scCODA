@@ -3,8 +3,6 @@
 sccoda.model.dirichlet\_models.ReferenceModel
 =============================================
 
-.. currentmodule:: sccoda.model.dirichlet_models
-
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: ReferenceModel

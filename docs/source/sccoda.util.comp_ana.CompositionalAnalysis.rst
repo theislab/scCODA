@@ -3,8 +3,6 @@
 sccoda.util.comp\_ana.CompositionalAnalysis
 ===========================================
 
-.. currentmodule:: sccoda.util.comp_ana
-
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: CompositionalAnalysis

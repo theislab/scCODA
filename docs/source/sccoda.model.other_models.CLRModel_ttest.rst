@@ -3,8 +3,6 @@
 sccoda.model.other\_models.CLRModel\_ttest
 ==========================================
 
-.. currentmodule:: sccoda.model.other_models
-
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: CLRModel_ttest

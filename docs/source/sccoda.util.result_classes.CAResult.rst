@@ -3,8 +3,6 @@
 sccoda.util.result\_classes.CAResult
 ====================================
 
-.. currentmodule:: sccoda.util.result_classes
-
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: CAResult

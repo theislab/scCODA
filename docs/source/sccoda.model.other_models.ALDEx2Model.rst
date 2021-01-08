@@ -3,8 +3,6 @@
 sccoda.model.other\_models.ALDEx2Model
 ======================================
 
-.. currentmodule:: sccoda.model.other_models
-
 .. add toctree option to make autodoc generate the pages
 
 .. autoclass:: ALDEx2Model
