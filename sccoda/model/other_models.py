@@ -13,7 +13,7 @@ import os
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-import skbio
+from skbio.stats.composition import ancom
 from anndata import AnnData
 
 import statsmodels as sm
@@ -830,7 +830,7 @@ class AncomModel():
         if self.y.shape[0] == 2:
             ancom_out = [False for _ in range(K)]
         else:
-            ancom_out = skbio.stats.composition.ancom(self.y, self.x)
+            ancom_out = ancom(self.y, self.x)
 
         self.ancom_out = ancom_out
 
