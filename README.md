@@ -42,6 +42,10 @@ The GPU versions of these packages have not been tested with scCODA and are thus
 
     `pip install -r requirements.txt`
 
+- Install the package:
+
+    `python setup.py install`
+
 **Import scCODA in a Python session via**:
 
     import sccoda
