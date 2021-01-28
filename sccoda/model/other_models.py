@@ -309,8 +309,8 @@ class scdney_model:
         cell_types[0] = "cell_" + str(k)
         conditions = ["Cond_0", "Cond_1"]
 
-        # get number of samples for both conditionas
-        ns_0 = int(sum(data.obs[covariate_column]))
+        # get number of samples for both conditions
+        ns_0 = int(sum(pd.factorize(data.obs[covariate_column])[0] == 0))
         ns = [ns_0, n-ns_0]
 
         subjects = []
@@ -419,7 +419,6 @@ class NonBaysesianModel:
         """
 
         x = data.obs.loc[:, covariate_column].to_numpy()
-        print(x)
         y = data.X
         self.var = data.var
 
@@ -664,7 +663,9 @@ class ALDEx2Model(NonBaysesianModel):
             import rpy2.robjects.packages as rpackages
             aldex2 = rpackages.importr("ALDEx2")
 
-            cond = rp.vectors.FloatVector(self.x.astype("str").flatten().tolist())
+            x_fact = pd.factorize(self.x)[0]
+
+            cond = rp.vectors.FloatVector(x_fact.astype("str").flatten().tolist())
 
             X_t = self.y.T
             nr, nc = X_t.shape
@@ -813,16 +814,21 @@ class AncomModel():
 
     def fit_model(
             self,
+            *args,
+            **kwargs,
     ):
         """
-        Fits ancom model
+
+        Parameters
+        ----------
+        args
+            passed to skbio.stats.composition.ancom
+        kwargs
+            passed to skbio.stats.composition.ancom
 
         Returns
         -------
-        p-values
 
-        p_val
-            p-values for differential abundance test of all cell types
         """
 
         K = self.y.shape[1]
@@ -830,7 +836,7 @@ class AncomModel():
         if self.y.shape[0] == 2:
             ancom_out = [False for _ in range(K)]
         else:
-            ancom_out = ancom(self.y, self.x)
+            ancom_out = ancom(self.y, self.x, *args, **kwargs)
 
         self.ancom_out = ancom_out
 

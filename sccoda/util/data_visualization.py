@@ -318,3 +318,58 @@ def boxplots(
         plt.tight_layout()
 
         return ax
+
+
+def rel_abundance_variance_plot(
+        data: AnnData,
+        figsize: Optional[Tuple[int, int]] = None,
+        dpi: Optional[int] = 100,
+        default_color: Optional[str] = "Grey",
+        min_color: Optional[str] = "Red",
+
+) -> plt.Subplot:
+    """
+    Plots total variance of relative abundance of all cell types for determination of a reference cell type.
+
+    Parameters
+    ----------
+    data
+        A scCODA compositional data object
+    figsize
+        figure size
+    dpi
+        dpi setting
+    default_color
+        bar color for all non-minimal cell types, default: "Grey"
+    min_color
+        bar color for te cell type with minimal variance, default: "Red"
+
+    Returns
+    -------
+    Returns a plot
+
+    ax
+        a plot
+    """
+
+
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+
+    rel_abun = data.X / np.sum(data.X, axis=1, keepdims=True)
+    cell_type_variance = np.var(rel_abun, axis=0)
+    min_var = np.min(cell_type_variance)
+    min_index = np.where(cell_type_variance == min_var)[0][0]
+
+    colors = [default_color for x in range(data.X.shape[1])]
+    colors[min_index] = min_color
+
+    plot_df = pd.DataFrame({"total Variance": cell_type_variance, "Cell type": data.var.index})
+
+    sns.barplot(data=plot_df, x="Cell type", y="total Variance", palette=colors)
+
+    cell_types = pd.unique(plot_df["Cell type"])
+    ax.set_xticklabels(cell_types, rotation=90)
+
+    plt.tight_layout()
+    return ax
+

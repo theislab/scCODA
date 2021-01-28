@@ -51,6 +51,7 @@ implementations of other statistical models that can be used as comparisons.
     getting_started
     Data_import_and_visualization
     Modeling_options_and_result_analysis
+    using_other_comositional_methods
 
 Reference
 ^^^^^^^^^^

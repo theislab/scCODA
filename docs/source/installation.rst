@@ -13,7 +13,7 @@ The GPU versions of these packages have not been tested with scCODA and are thus
 **To install scCODA from source**:
 
 - Navigate to the directory you want scCODA in
-- Clone the repository from Github (https://github.com/theislab/scCODA)::
+- Clone the repository from `github <https://github.com/theislab/scCODA>`_::
 
     git clone https://github.com/theislab/scCODA
 
