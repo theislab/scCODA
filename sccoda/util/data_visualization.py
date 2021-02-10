@@ -322,27 +322,32 @@ def boxplots(
 
 def rel_abundance_variance_plot(
         data: AnnData,
+        abundant_threshold: Optional[float] = 0.03,
+        default_color: Optional[str] = "Grey",
+        abundant_color: Optional[str] = "Red",
         figsize: Optional[Tuple[int, int]] = None,
         dpi: Optional[int] = 100,
-        default_color: Optional[str] = "Grey",
-        min_color: Optional[str] = "Red",
 
 ) -> plt.Subplot:
     """
-    Plots total variance of relative abundance of all cell types for determination of a reference cell type.
+    Plots total variance of relative abundance versus minimum relative abundance of all cell types for determination of a reference cell type.
+    If the relative abundance of a cell type is larger than the abundant_threshold parameter in all samples,
+    the cell type will be marked in a different color.
 
     Parameters
     ----------
     data
         A scCODA compositional data object
+    abundant_threshold
+        threshold for minimum relative abundance, default: 0.03
+    default_color
+        bar color for all non-minimal cell types, default: "Grey"
+    abundant_color
+        bar color for te cell types with minimum rel. abundance larger than abundant_threshold, default: "Red"
     figsize
         figure size
     dpi
         dpi setting
-    default_color
-        bar color for all non-minimal cell types, default: "Grey"
-    min_color
-        bar color for te cell type with minimal variance, default: "Red"
 
     Returns
     -------
@@ -356,19 +361,48 @@ def rel_abundance_variance_plot(
     fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
     rel_abun = data.X / np.sum(data.X, axis=1, keepdims=True)
+
+    # find cell types that always have rel. abundance > abundant_threshold
+    not_always_abundant = np.unique(np.where(rel_abun < abundant_threshold)[1])
+    is_always_abundant = list(set(np.arange(0, rel_abun.shape[1]).tolist()) - set(not_always_abundant))
+
     cell_type_variance = np.var(rel_abun, axis=0)
-    min_var = np.min(cell_type_variance)
-    min_index = np.where(cell_type_variance == min_var)[0][0]
 
-    colors = [default_color for x in range(data.X.shape[1])]
-    colors[min_index] = min_color
+    is_abundant = [x in is_always_abundant for x in range(data.X.shape[1])]
 
-    plot_df = pd.DataFrame({"total Variance": cell_type_variance, "Cell type": data.var.index})
+    # Scatterplot
+    plot_df = pd.DataFrame({
+        "Total variance": cell_type_variance,
+        "Cell type": data.var.index,
+        "Minimal relative abundance": np.min(rel_abun, axis=0),
+        "Is abundant": is_abundant
+    })
 
-    sns.barplot(data=plot_df, x="Cell type", y="total Variance", palette=colors)
+    sns.scatterplot(
+        data=plot_df,
+        x="Minimal relative abundance",
+        y="Total variance",
+        hue="Is abundant",
+        palette=[default_color, abundant_color]
+    )
 
-    cell_types = pd.unique(plot_df["Cell type"])
-    ax.set_xticklabels(cell_types, rotation=90)
+    # Text labels for abundant cell types
+
+    abundant_df = plot_df.loc[plot_df["Is abundant"] == True, :]
+
+    def label_point(x, y, val, ax):
+        a = pd.concat({'x': x, 'y': y, 'val': val}, axis=1)
+        for i, point in a.iterrows():
+            ax.text(point['x'] + .02*ax.get_xlim()[1], point['y'], str(point['val']))
+
+    label_point(
+        abundant_df["Minimal relative abundance"],
+        abundant_df["Total variance"],
+        abundant_df["Cell type"],
+        plt.gca()
+    )
+
+    ax.legend(loc='upper left', bbox_to_anchor=(1, 1), ncol=1, title="Is abundant")
 
     plt.tight_layout()
     return ax
