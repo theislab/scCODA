@@ -131,8 +131,9 @@ def stacked_barplot(
 
     # option to plot one stacked barplot per sample
     if feature_name == "samples":
-        assert set(level_order) == set(data.obs.index), "level order is inconsistent with levels"
-        data = data[level_order]
+        if level_order:
+            assert set(level_order) == set(data.obs.index), "level order is inconsistent with levels"
+            data = data[level_order]
         g = stackbar(
             data.X,
             type_names=data.var.index,
