@@ -95,6 +95,7 @@ def stacked_barplot(
         dpi: Optional[int] = 100,
         cmap: Optional[ListedColormap] = cm.tab20,
         plot_legend: Optional[bool] = True,
+        level_order: List[str] = None
 ) -> plt.Subplot:
 
     """
@@ -130,6 +131,8 @@ def stacked_barplot(
 
     # option to plot one stacked barplot per sample
     if feature_name == "samples":
+        assert set(level_order) == set(data.obs.index), "level order is inconsistent with levels"
+        data = data[level_order]
         g = stackbar(
             data.X,
             type_names=data.var.index,
@@ -141,7 +144,11 @@ def stacked_barplot(
             plot_legend=plot_legend,
             )
     else:
-        levels = pd.unique(data.obs[feature_name])
+        if level_order:
+            assert set(level_order) == set(data.obs[feature_name]), "level order is inconsistent with levels"
+            levels = level_order
+        else:
+            levels = pd.unique(data.obs[feature_name])
         n_levels = len(levels)
         feature_totals = np.zeros([n_levels, data.X.shape[1]])
 
