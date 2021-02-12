@@ -76,7 +76,7 @@ class CompositionalAnalysis:
 
         # Invoke instance of the correct model depending on reference cell type
         # Automatic reference selection
-        if reference_cell_type == "automatic":
+        if reference_cell_type == "variance":
             rel_abun = data_matrix / np.sum(data_matrix, axis=1, keepdims=True)
 
             # find cell types that always have rel. abundance > 0.03
@@ -130,7 +130,7 @@ class CompositionalAnalysis:
             )
 
         # Compositional variance
-        if reference_cell_type == "CV":
+        if reference_cell_type == "CompVar":
             percent_zero = np.sum(data_matrix == 0, axis=0) / data_matrix.shape[1]
             nonrare_ct = np.where(percent_zero < 0.1)[0]
 
@@ -165,6 +165,42 @@ class CompositionalAnalysis:
                 formula=formula
             )
 
+        # Proportional variability (Heath, 2006)
+        if reference_cell_type == "PropVar":
+            percent_zero = np.sum(data_matrix == 0, axis=0) / data_matrix.shape[1]
+            nonrare_ct = np.where(percent_zero < 0.1)[0]
+
+            rel_abun = data_matrix / np.sum(data_matrix, axis=1, keepdims=True)
+
+            def prop_var(c: np.ndarray):
+
+                ind = np.transpose(np.triu_indices(c.shape[0], 1))
+                C = ind.shape[0]
+
+                D = 0.
+                for i in ind:
+                    z_1 = c[i[0]]
+                    z_2 = c[i[1]]
+                    D += np.abs(z_1 - z_2) / np.max([z_1, z_2])
+                D = D / C
+                return D
+
+            pv = np.apply_along_axis(prop_var, 0, rel_abun)
+
+            min_var = np.min(pv[nonrare_ct])
+            ref_index = np.where(pv == min_var)[0][0]
+
+            ref_cell_type = cell_types[ref_index]
+            print(f"Automatic reference selection (Proportional variance)! Reference cell type set to {ref_cell_type}")
+
+            return dm.ReferenceModel(
+                covariate_matrix=np.array(covariate_matrix),
+                data_matrix=data_matrix,
+                cell_types=cell_types,
+                covariate_names=covariate_names,
+                reference_cell_type=ref_index,
+                formula=formula
+            )
 
         # Column name as reference cell type
         if reference_cell_type in cell_types:
