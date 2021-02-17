@@ -9,6 +9,7 @@ import patsy as pt
 from anndata import AnnData
 from sccoda.model import dirichlet_models as dm
 from typing import Union, Optional
+from statsmodels.robust.scale import Huber
 
 
 class CompositionalAnalysis:
@@ -76,7 +77,7 @@ class CompositionalAnalysis:
 
         # Invoke instance of the correct model depending on reference cell type
         # Automatic reference selection
-        if reference_cell_type == "variance":
+        if reference_cell_type == "Var":
             rel_abun = data_matrix / np.sum(data_matrix, axis=1, keepdims=True)
 
             # find cell types that always have rel. abundance > 0.03
@@ -106,7 +107,7 @@ class CompositionalAnalysis:
             )
 
         # Dispersion-based selection
-        if reference_cell_type == "dispersion":
+        if reference_cell_type == "Disp":
             percent_zero = np.sum(data_matrix == 0, axis=0)/data_matrix.shape[1]
             nonrare_ct = np.where(percent_zero < 0.1)[0]
 
@@ -130,7 +131,7 @@ class CompositionalAnalysis:
             )
 
         # Compositional variance
-        if reference_cell_type == "CompVar":
+        if reference_cell_type == "CoVa":
             percent_zero = np.sum(data_matrix == 0, axis=0) / data_matrix.shape[1]
             nonrare_ct = np.where(percent_zero < 0.1)[0]
 
@@ -166,7 +167,7 @@ class CompositionalAnalysis:
             )
 
         # Proportional variability (Heath, 2006)
-        if reference_cell_type == "PropVar":
+        if reference_cell_type == "PV":
             percent_zero = np.sum(data_matrix == 0, axis=0) / data_matrix.shape[1]
             nonrare_ct = np.where(percent_zero < 0.1)[0]
 
@@ -192,6 +193,131 @@ class CompositionalAnalysis:
 
             ref_cell_type = cell_types[ref_index]
             print(f"Automatic reference selection (Proportional variance)! Reference cell type set to {ref_cell_type}")
+
+            return dm.ReferenceModel(
+                covariate_matrix=np.array(covariate_matrix),
+                data_matrix=data_matrix,
+                cell_types=cell_types,
+                covariate_names=covariate_names,
+                reference_cell_type=ref_index,
+                formula=formula
+            )
+
+        # Robust variance via Huber M-estimation
+        if reference_cell_type == "Var_r":
+            percent_zero = np.sum(data_matrix == 0, axis=0) / data_matrix.shape[1]
+            nonrare_ct = np.where(percent_zero < 0.1)[0]
+
+            rel_abun = data_matrix / np.sum(data_matrix, axis=1, keepdims=True)
+
+            def huber(x: np.ndarray, k):
+
+                h = Huber(maxiter=100)
+                try:
+                    loc, scale = h(x)
+                except ValueError:
+                    print(f"not converged! - {cell_types[k]}")
+                    loc, scale = (np.nan, np.nan)
+
+                return loc, scale
+
+            K = rel_abun.shape[1]
+
+            huber_res = [huber(rel_abun[:, a], a) for a in range(K)]
+            var_huber = np.array([x[1] for x in huber_res])
+
+            min_var = np.nanmin(var_huber[nonrare_ct])
+            ref_index = np.where(var_huber == min_var)[0][0]
+            ref_cell_type = cell_types[ref_index]
+
+            print(f"Automatic reference selection (Robust variance)! Reference cell type set to {ref_cell_type}")
+
+            return dm.ReferenceModel(
+                covariate_matrix=np.array(covariate_matrix),
+                data_matrix=data_matrix,
+                cell_types=cell_types,
+                covariate_names=covariate_names,
+                reference_cell_type=ref_index,
+                formula=formula
+            )
+
+        # Robust dispersion via Huber M-estimation
+        if reference_cell_type == "Disp_r":
+            percent_zero = np.sum(data_matrix == 0, axis=0) / data_matrix.shape[1]
+            nonrare_ct = np.where(percent_zero < 0.1)[0]
+
+            rel_abun = data_matrix / np.sum(data_matrix, axis=1, keepdims=True)
+
+            def huber(x: np.ndarray, k):
+
+                h = Huber(maxiter=100)
+                try:
+                    loc, scale = h(x)
+                except ValueError:
+                    print(f"not converged! - {cell_types[k]}")
+                    loc, scale = (np.nan, np.nan)
+
+                return loc, scale
+
+            K = rel_abun.shape[1]
+
+            huber_res = [huber(rel_abun[:, a], a) for a in range(K)]
+            mean_huber = np.array([x[0] for x in huber_res])
+            var_huber = np.array([x[1] for x in huber_res])
+            disp_huber = var_huber / mean_huber
+
+            min_var = np.nanmin(disp_huber[nonrare_ct])
+            ref_index = np.where(disp_huber == min_var)[0][0]
+            ref_cell_type = cell_types[ref_index]
+
+            print(f"Automatic reference selection (Robust dispersion)! Reference cell type set to {ref_cell_type}")
+
+            return dm.ReferenceModel(
+                covariate_matrix=np.array(covariate_matrix),
+                data_matrix=data_matrix,
+                cell_types=cell_types,
+                covariate_names=covariate_names,
+                reference_cell_type=ref_index,
+                formula=formula
+            )
+
+        # Robust compositional variance via Huber M-estimation
+        if reference_cell_type == "CoVa_r":
+            percent_zero = np.sum(data_matrix == 0, axis=0) / data_matrix.shape[1]
+            nonrare_ct = np.where(percent_zero < 0.1)[0]
+
+            # pseudocount if data contains zeros
+            if not np.all(data_matrix):
+                print("Zeroes encountered! Adding a pseudocount of 1")
+                data_matrix_ = data_matrix + 1
+            else:
+                data_matrix_ = data_matrix
+
+            rel_abun = data_matrix_ / np.sum(data_matrix_, axis=1, keepdims=True)
+
+            def comp_var_huber(x: np.ndarray, k):
+
+                logratio = np.log(np.outer(x, (1 / x)))
+
+                h = Huber(maxiter=100)
+                try:
+                    loc, scale = h(logratio.flatten())
+                except ValueError:
+                    print(f"not converged (comp)! - {cell_types[k]}")
+                    loc, scale = (np.nan, np.nan)
+
+                return loc, scale
+
+            K = rel_abun.shape[1]
+
+            huber_res_cv = [comp_var_huber(rel_abun[:, a], a) for a in range(K)]
+            cv_huber = np.array([x[1] for x in huber_res_cv])
+
+            min_var = np.nanmin(cv_huber[nonrare_ct])
+            ref_index = np.where(cv_huber == min_var)[0][0]
+            ref_cell_type = cell_types[ref_index]
+
+            print(f"Automatic reference selection (Robust compositional variance)! Reference cell type set to {ref_cell_type}")
 
             return dm.ReferenceModel(
                 covariate_matrix=np.array(covariate_matrix),

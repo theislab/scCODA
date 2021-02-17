@@ -114,8 +114,10 @@ def stacked_barplot(
         dpi setting
     cmap
         The color map for the barplot
-    plot
+    plot_legend
         If True, adds a legend
+    level_orer
+        Custom ordering of bars on the x-axis
 
     Returns
     -------
@@ -145,9 +147,12 @@ def stacked_barplot(
             plot_legend=plot_legend,
             )
     else:
+        # Order levels
         if level_order:
             assert set(level_order) == set(data.obs[feature_name]), "level order is inconsistent with levels"
             levels = level_order
+        elif hasattr(data.obs[feature_name], 'cat'):
+            levels = data.obs[feature_name].cat.categories.to_list()
         else:
             levels = pd.unique(data.obs[feature_name])
         n_levels = len(levels)
