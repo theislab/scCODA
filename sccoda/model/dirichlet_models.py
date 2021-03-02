@@ -147,7 +147,7 @@ class CompositionalModel:
         """
 
         # HMC sampling function
-        @tf.function(autograph=False)
+        @tf.function
         def sample_mcmc(num_results_, num_burnin_, kernel_, current_state_, trace_fn):
 
             return tfp.mcmc.sample_chain(
