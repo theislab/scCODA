@@ -74,7 +74,7 @@ class CompositionalAnalysis:
         # Invoke instance of the correct model depending on reference cell type
         # Automatic reference selection (dispersion-based)
         if reference_cell_type == "automatic":
-            percent_zero = np.sum(data_matrix == 0, axis=0)/data_matrix.shape[1]
+            percent_zero = np.sum(data_matrix == 0, axis=0)/data_matrix.shape[0]
             nonrare_ct = np.where(percent_zero < 0.1)[0]
 
             rel_abun = data_matrix / np.sum(data_matrix, axis=1, keepdims=True)
