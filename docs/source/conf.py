@@ -37,6 +37,7 @@ notebooks = [
     "getting_started.ipynb",
     "Data_import_and_visualization.ipynb",
     "Modeling_options_and_result_analysis.ipynb"
+    "using_other_comositional_methods.ipynb"
 ]
 for nb in notebooks:
     try:

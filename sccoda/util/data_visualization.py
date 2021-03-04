@@ -95,6 +95,7 @@ def stacked_barplot(
         dpi: Optional[int] = 100,
         cmap: Optional[ListedColormap] = cm.tab20,
         plot_legend: Optional[bool] = True,
+        level_order: List[str] = None
 ) -> plt.Subplot:
 
     """
@@ -113,8 +114,10 @@ def stacked_barplot(
         dpi setting
     cmap
         The color map for the barplot
-    plot
+    plot_legend
         If True, adds a legend
+    level_orer
+        Custom ordering of bars on the x-axis
 
     Returns
     -------
@@ -130,6 +133,9 @@ def stacked_barplot(
 
     # option to plot one stacked barplot per sample
     if feature_name == "samples":
+        if level_order:
+            assert set(level_order) == set(data.obs.index), "level order is inconsistent with levels"
+            data = data[level_order]
         g = stackbar(
             data.X,
             type_names=data.var.index,
@@ -141,7 +147,14 @@ def stacked_barplot(
             plot_legend=plot_legend,
             )
     else:
-        levels = pd.unique(data.obs[feature_name])
+        # Order levels
+        if level_order:
+            assert set(level_order) == set(data.obs[feature_name]), "level order is inconsistent with levels"
+            levels = level_order
+        elif hasattr(data.obs[feature_name], 'cat'):
+            levels = data.obs[feature_name].cat.categories.to_list()
+        else:
+            levels = pd.unique(data.obs[feature_name])
         n_levels = len(levels)
         feature_totals = np.zeros([n_levels, data.X.shape[1]])
 
@@ -318,3 +331,103 @@ def boxplots(
         plt.tight_layout()
 
         return ax
+
+
+def rel_abundance_dispersion_plot(
+        data: AnnData,
+        abundant_threshold: Optional[float] = 0.9,
+        default_color: Optional[str] = "Grey",
+        abundant_color: Optional[str] = "Red",
+        label_cell_types: bool = "True",
+        figsize: Optional[Tuple[int, int]] = None,
+        dpi: Optional[int] = 100,
+
+) -> plt.Subplot:
+    """
+    Plots total variance of relative abundance versus minimum relative abundance of all cell types for determination of a reference cell type.
+    If the count of the cell type is larger than 0 in more than abundant_threshold percent of all samples,
+    the cell type will be marked in a different color.
+
+    Parameters
+    ----------
+    data
+        A scCODA compositional data object
+    abundant_threshold
+        Presence threshold for abundant cell types.
+    default_color
+        bar color for all non-minimal cell types, default: "Grey"
+    abundant_color
+        bar color for cell types with abundant percentage larger than abundant_threshold, default: "Red"
+    label_cell_types
+        boolean - label dots with cell type names
+    figsize
+        figure size
+    dpi
+        dpi setting
+
+    Returns
+    -------
+    Returns a plot
+
+    ax
+        a plot
+    """
+
+
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+
+    rel_abun = data.X / np.sum(data.X, axis=1, keepdims=True)
+
+    percent_zero = np.sum(data.X == 0, axis=0) / data.X.shape[0]
+    nonrare_ct = np.where(percent_zero < 1-abundant_threshold)[0]
+
+    # select reference
+    cell_type_disp = np.var(rel_abun, axis=0) / np.mean(rel_abun, axis=0)
+
+    is_abundant = [x in nonrare_ct for x in range(data.X.shape[1])]
+
+    # Scatterplot
+    plot_df = pd.DataFrame({
+        "Total dispersion": cell_type_disp,
+        "Cell type": data.var.index,
+        "Presence": percent_zero,
+        "Is abundant": is_abundant
+    })
+
+    if len(np.unique(plot_df["Is abundant"])) > 1:
+        palette = [default_color, abundant_color]
+    elif np.unique(plot_df["Is abundant"]) == [False]:
+        palette = [default_color]
+    else:
+        palette = [abundant_color]
+
+    sns.scatterplot(
+        data=plot_df,
+        x="Presence",
+        y="Total dispersion",
+        hue="Is abundant",
+        palette=palette
+    )
+
+    # Text labels for abundant cell types
+
+    abundant_df = plot_df.loc[plot_df["Is abundant"] == True, :]
+
+    def label_point(x, y, val, ax):
+        a = pd.concat({'x': x, 'y': y, 'val': val}, axis=1)
+        for i, point in a.iterrows():
+            ax.text(point['x'] + .02*ax.get_xlim()[1], point['y'], str(point['val']))
+
+    if label_cell_types:
+        label_point(
+            abundant_df["Presence"],
+            abundant_df["Total dispersion"],
+            abundant_df["Cell type"],
+            plt.gca()
+        )
+
+    ax.legend(loc='upper left', bbox_to_anchor=(1, 1), ncol=1, title="Is abundant")
+
+    plt.tight_layout()
+    return ax
+

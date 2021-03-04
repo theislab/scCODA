@@ -13,8 +13,8 @@ Its main purpose is to provide a platform and implementation for the *scCODA* mo
 
 The package is available on `github <https://github.com/theislab/scCODA>`_.
 
-Please also check out the `tutorial <https://github.com/theislab/scCODA/blob/master/tutorials/Tutorial.ipynb>`_
-that explains the most important functionalities.
+Please also check out the `tutorials <https://github.com/theislab/scCODA/blob/master/tutorials>`_
+that explain the most important functionalities.
 
 Motivation
 ^^^^^^^^^^^^
@@ -51,6 +51,7 @@ implementations of other statistical models that can be used as comparisons.
     getting_started
     Data_import_and_visualization
     Modeling_options_and_result_analysis
+    using_other_comositional_methods
 
 Reference
 ^^^^^^^^^^

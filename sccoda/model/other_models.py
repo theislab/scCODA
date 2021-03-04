@@ -13,7 +13,7 @@ import os
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-import skbio
+from skbio.stats.composition import ancom
 from anndata import AnnData
 
 import statsmodels as sm
@@ -290,7 +290,8 @@ class scdney_model:
 
     def __init__(
             self,
-            data: AnnData
+            data: AnnData,
+            covariate_column: str = "x_0",
     ):
         """
         Prepares R sampling
@@ -308,8 +309,8 @@ class scdney_model:
         cell_types[0] = "cell_" + str(k)
         conditions = ["Cond_0", "Cond_1"]
 
-        # get number of samples for both conditionas
-        ns_0 = int(sum(data.obs["x_0"]))
+        # get number of samples for both conditions
+        ns_0 = int(sum(pd.factorize(data.obs[covariate_column])[0] == 0))
         ns = [ns_0, n-ns_0]
 
         subjects = []
@@ -339,7 +340,8 @@ class scdney_model:
 
     def analyze(
             self,
-            server: bool = False
+            r_home: str = "",
+            r_path: str = r"",
     ) -> Tuple[pd.DataFrame, Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
         """
         Analyzes results from R script for SCDC from scdney packege.
@@ -347,8 +349,11 @@ class scdney_model:
 
         Parameters
         ----------
-        server
-            Execution on server
+        r_home
+            path to R installation on your machine, e.g. "C:/Program Files/R/R-4.0.3"
+        r_path
+            path to R executable on your machine, e.g. "C:/Program Files/R/R-4.0.3/bin/x64"
+
 
         Returns
         -------
@@ -357,13 +362,9 @@ class scdney_model:
         Tuple
             Tuple(raw summary from R, True positive...)
         """
-        if server:
-            os.environ["R_HOME"] = "/home/icb/johannes.ostner/anaconda3/lib/R"
-            os.environ["PATH"] = r"/home/icb/johannes.ostner/anaconda3/lib/R/bin" + ";" + os.environ["PATH"]
-        else:
-            os.environ["R_HOME"] = "C:/Program Files/R/R-4.0.3"
-            if "C:/Program Files/R/R-4.0.3/bin/x64" not in os.environ["PATH"]:
-                os.environ["PATH"] = r"C:/Program Files/R/R-4.0.3/bin/x64" + ";" + os.environ["PATH"]
+
+        os.environ["R_HOME"] = r_home
+        os.environ["PATH"] = r_path + ";" + os.environ["PATH"]
 
         import rpy2.robjects as rp
         from rpy2.robjects import numpy2ri, pandas2ri
@@ -405,7 +406,8 @@ class NonBaysesianModel:
 
     def __init__(
             self,
-            data: AnnData
+            data: AnnData,
+            covariate_column: Optional[str] = "x_0"
     ):
         """
         Model initialization.
@@ -416,13 +418,14 @@ class NonBaysesianModel:
             CompositionalData object
         """
 
-        x = data.obs.to_numpy()
+        x = data.obs.loc[:, covariate_column].to_numpy()
         y = data.X
         self.var = data.var
 
         self.x = x
         self.y = y
         self.n_total = np.sum(y, axis=1)
+        self.covariate_column = covariate_column
 
         self.p_val = {}
 
@@ -617,7 +620,8 @@ class ALDEx2Model(NonBaysesianModel):
     def fit_model(
             self,
             method: str = "we.eBH",
-            server: bool = False,
+            r_home: str = "",
+            r_path: str = r"",
             *args,
             **kwargs
     ):
@@ -628,8 +632,10 @@ class ALDEx2Model(NonBaysesianModel):
         ----------
         method
             method that is used to calculate p-values (column name in ALDEx2's output)
-        server
-            indicator for remote execution
+        r_home
+            path to R installation on your machine, e.g. "C:/Program Files/R/R-4.0.3"
+        r_path
+            path to R executable on your machine, e.g. "C:/Program Files/R/R-4.0.3/bin/x64"
         args
             passed to `ALDEx2.clr`
         kwargs
@@ -640,12 +646,8 @@ class ALDEx2Model(NonBaysesianModel):
 
         """
 
-        if server:
-            os.environ["R_HOME"] = "/home/icb/johannes.ostner/anaconda3/lib/R"
-            os.environ["PATH"] = r"/home/icb/johannes.ostner/anaconda3/lib/R/bin" + ";" + os.environ["PATH"]
-        else:
-            os.environ["R_HOME"] = "C:/Program Files/R/R-4.0.3"
-            os.environ["PATH"] = r"C:/Program Files/R/R-4.0.3/bin/x64" + ";" + os.environ["PATH"]
+        os.environ["R_HOME"] = r_home
+        os.environ["PATH"] = r_path + ";" + os.environ["PATH"]
 
         K = self.y.shape[1]
 
@@ -661,7 +663,9 @@ class ALDEx2Model(NonBaysesianModel):
             import rpy2.robjects.packages as rpackages
             aldex2 = rpackages.importr("ALDEx2")
 
-            cond = rp.vectors.FloatVector(self.x.astype("str").flatten().tolist())
+            x_fact = pd.factorize(self.x)[0]
+
+            cond = rp.vectors.FloatVector(x_fact.astype("str").flatten().tolist())
 
             X_t = self.y.T
             nr, nc = X_t.shape
@@ -780,7 +784,8 @@ class AncomModel():
 
     def __init__(
             self,
-            data: AnnData
+            data: AnnData,
+            covariate_column: Optional[str] = "x_0",
     ):
         """
         Model initialization.
@@ -790,7 +795,7 @@ class AncomModel():
         data
             CompositionalData object
         """
-        x = data.obs
+        x = data.obs.loc[:, covariate_column]
         y = pd.DataFrame(data.X, index=data.obs.index)
         self.x = x
         self.y = y
@@ -807,16 +812,23 @@ class AncomModel():
         if N != len(self.n_total):
             raise ValueError("Wrong input dimensions X[{},:] != n_total[{}]".format(y.shape[0], len(self.n_total)))
 
-    def fit_model(self):
+    def fit_model(
+            self,
+            *args,
+            **kwargs,
+    ):
         """
-        Fits ancom model
+
+        Parameters
+        ----------
+        args
+            passed to skbio.stats.composition.ancom
+        kwargs
+            passed to skbio.stats.composition.ancom
 
         Returns
         -------
-        p-values
 
-        p_val
-            p-values for differential abundance test of all cell types
         """
 
         K = self.y.shape[1]
@@ -824,7 +836,7 @@ class AncomModel():
         if self.y.shape[0] == 2:
             ancom_out = [False for _ in range(K)]
         else:
-            ancom_out = skbio.stats.composition.ancom(self.y, self.x["x_0"])
+            ancom_out = ancom(self.y, self.x, *args, **kwargs)
 
         self.ancom_out = ancom_out
 
@@ -865,7 +877,8 @@ class DirichRegModel(NonBaysesianModel):
 
     def fit_model(
             self,
-            server: bool = False
+            r_home: str = "",
+            r_path: str = r"",
     ):
 
         """
@@ -873,21 +886,18 @@ class DirichRegModel(NonBaysesianModel):
 
         Parameters
         ----------
-        server
-            indicator for remote execution
+        r_home
+            path to R installation on your machine, e.g. "C:/Program Files/R/R-4.0.3"
+        r_path
+            path to R executable on your machine, e.g. "C:/Program Files/R/R-4.0.3/bin/x64"
 
         Returns
         -------
 
         """
 
-        if server:
-            os.environ["R_HOME"] = "/home/icb/johannes.ostner/anaconda3/lib/R"
-            os.environ["PATH"] = r"/home/icb/johannes.ostner/anaconda3/lib/R/bin" + ";" + os.environ["PATH"]
-        else:
-            os.environ["R_HOME"] = "C:/Program Files/R/R-4.0.3"
-            if "C:/Program Files/R/R-4.0.3/bin/x64" not in os.environ["PATH"]:
-                os.environ["PATH"] = r"C:/Program Files/R/R-4.0.3/bin/x64" + ";" + os.environ["PATH"]
+        os.environ["R_HOME"] = r_home
+        os.environ["PATH"] = r_path + ";" + os.environ["PATH"]
 
         K = self.y.shape[1]
 
@@ -906,9 +916,9 @@ class DirichRegModel(NonBaysesianModel):
 
             counts = {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.y, columns=self.var.index)).r_repr()}
             counts$counts = DR_data(counts)
-            data = cbind(counts, {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.x, columns=["x_0"])).r_repr()})
+            data = cbind(counts, {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.x, columns=[self.covariate_column])).r_repr()})
 
-            fit = DirichReg(counts ~ x_0, data)
+            fit = DirichReg(counts ~ {self.covariate_column}, data)
             if(fit$optimization$convergence > 2L) {{
             pvals = matrix(c(0,0,0,0,0),nrow = 1)
             }} else {{
