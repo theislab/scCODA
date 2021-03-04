@@ -1,7 +1,9 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/model/other_models.py#L32-L274
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L31-L283
 
 sccoda.model.other\_models.SimpleModel
 ======================================
+
+.. currentmodule:: sccoda.model.other_models
 
 .. add toctree option to make autodoc generate the pages
 

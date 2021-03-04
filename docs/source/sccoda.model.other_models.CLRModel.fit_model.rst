@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/model/other_models.py#L508-L535
+:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L517-L544
 
 sccoda.model.other\_models.CLRModel.fit\_model
 ==============================================

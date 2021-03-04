@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/model/other_models.py#L608-L672
+:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L617-L681
 
 sccoda.model.other\_models.ALDEx2Model.fit\_model
 =================================================

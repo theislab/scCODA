@@ -1,7 +1,9 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/model/dirichlet_models.py#L24-L642
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/dirichlet_models.py#L23-L641
 
 sccoda.model.dirichlet\_models.CompositionalModel
 =================================================
+
+.. currentmodule:: sccoda.model.dirichlet_models
 
 .. add toctree option to make autodoc generate the pages
 

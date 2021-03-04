@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/model/other_models.py#L680-L718
+:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L689-L727
 
 sccoda.model.other\_models.ALRModel\_ttest.fit\_model
 =====================================================

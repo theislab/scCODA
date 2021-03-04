@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/model/other_models.py#L857-L917
+:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L866-L926
 
 sccoda.model.other\_models.DirichRegModel.fit\_model
 ====================================================

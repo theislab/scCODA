@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/model/other_models.py#L822-L848
+:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L831-L857
 
 sccoda.model.other\_models.AncomModel.eval\_model
 =================================================

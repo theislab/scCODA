@@ -1,7 +1,9 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/util/result_classes.py#L47-L533
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L47-L533
 
 sccoda.util.result\_classes.CAResult
 ====================================
+
+.. currentmodule:: sccoda.util.result_classes
 
 .. add toctree option to make autodoc generate the pages
 

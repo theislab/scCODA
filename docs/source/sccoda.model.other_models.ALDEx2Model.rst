@@ -1,7 +1,9 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/model/other_models.py#L603-L672
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L612-L681
 
 sccoda.model.other\_models.ALDEx2Model
 ======================================
+
+.. currentmodule:: sccoda.model.other_models
 
 .. add toctree option to make autodoc generate the pages
 

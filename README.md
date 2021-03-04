@@ -48,7 +48,7 @@ The GPU computation features of these packages have not been tested with scCODA 
     `python setup.py install`
 
 
-##Usage
+## Usage
 
 Import scCODA in a Python session via:
 

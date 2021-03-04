@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/model/dirichlet_models.py#L781-L849
+:github_url: https://github.com/theislab/scCODA/tree/master/model/dirichlet_models.py#L778-L846
 
 sccoda.model.dirichlet\_models.ReferenceModel.get\_y\_hat
 =========================================================

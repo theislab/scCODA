@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/model/other_models.py#L219-L274
+:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L228-L283
 
 sccoda.model.other\_models.SimpleModel.get\_y\_hat
 ==================================================

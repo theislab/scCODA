@@ -1,7 +1,9 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/model/other_models.py#L569-L600
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L578-L609
 
 sccoda.model.other\_models.CLRModel\_ttest
 ==========================================
+
+.. currentmodule:: sccoda.model.other_models
 
 .. add toctree option to make autodoc generate the pages
 

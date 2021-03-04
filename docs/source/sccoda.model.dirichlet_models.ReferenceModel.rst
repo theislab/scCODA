@@ -1,7 +1,9 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/sccoda/model/dirichlet_models.py#L645-L849
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/dirichlet_models.py#L644-L846
 
 sccoda.model.dirichlet\_models.ReferenceModel
 =============================================
+
+.. currentmodule:: sccoda.model.dirichlet_models
 
 .. add toctree option to make autodoc generate the pages
 
