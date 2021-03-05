@@ -11,4 +11,5 @@ patsy
 sklearn
 scanpy
 statsmodels
-git+git://github.com/biocore/scikit-bio@master
+rpy2
+scikit-bio
