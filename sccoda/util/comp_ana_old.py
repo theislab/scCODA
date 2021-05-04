@@ -35,7 +35,7 @@ class CompositionalAnalysisOld:
             data: AnnData,
             formula: str,
             reference_cell_type: Union[str, int] = "automatic",
-            automatic_reference_absence_threshold: float = 0.1
+            automatic_reference_absence_threshold: float = 0.05
     ) -> dm.ReferenceModel:
         """
         Builds count and covariate matrix, returns a CompositionalModel object
