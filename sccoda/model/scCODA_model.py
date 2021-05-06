@@ -717,7 +717,7 @@ class scCODAModel(CompositionalModel):
             # Spike-and-slab
             ind_raw = yield Root(tfd.Independent(
                 tfd.Normal(
-                    loc=tf.ones(shape=beta_nobl_size, dtype=dtype) * (np.log(0.5) - np.log(1 - 0.5)),
+                    loc=tf.ones(shape=beta_nobl_size, dtype=dtype) * (np.log(0.1) - np.log(1 - 0.1)),
                     scale=tf.ones(shape=beta_nobl_size, dtype=dtype),
                     name="ind_raw"),
                 reinterpreted_batch_ndims=2))
