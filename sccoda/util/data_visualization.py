@@ -390,7 +390,7 @@ def rel_abundance_dispersion_plot(
     plot_df = pd.DataFrame({
         "Total dispersion": cell_type_disp,
         "Cell type": data.var.index,
-        "Presence": percent_zero,
+        "Presence": 1-percent_zero,
         "Is abundant": is_abundant
     })
 
