@@ -794,9 +794,11 @@ class AncomModel():
         ----------
         data
             CompositionalData object
+        covariate_column
+            Column with the (binary) trait
         """
         x = data.obs.loc[:, covariate_column]
-        y = pd.DataFrame(data.X, index=data.obs.index)
+        y = pd.DataFrame(data.X, index=data.obs.index, columns=data.var.index)
         self.x = x
         self.y = y
         self.n_total = np.sum(y, axis=1)
@@ -814,6 +816,8 @@ class AncomModel():
 
     def fit_model(
             self,
+            alpha=0.05,
+            tau=0.02,
             *args,
             **kwargs,
     ):
@@ -836,7 +840,7 @@ class AncomModel():
         if self.y.shape[0] == 2:
             ancom_out = [False for _ in range(K)]
         else:
-            ancom_out = ancom(self.y, self.x, *args, **kwargs)
+            ancom_out = ancom(self.y, self.x, alpha=alpha, tau=tau, *args, **kwargs)
 
         self.ancom_out = ancom_out
 
