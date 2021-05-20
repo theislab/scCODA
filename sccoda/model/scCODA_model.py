@@ -91,7 +91,7 @@ class CompositionalModel:
         # Add pseudocount if zeroes are present.
         if np.count_nonzero(data_matrix) != np.size(data_matrix):
             print("Zero counts encountered in data! Added a pseudocount of 0.5.")
-            data_matrix[data_matrix == 0] = 0.5
+            data_matrix += 0.5
         self.y = tf.convert_to_tensor(data_matrix, dtype)
 
         sample_counts = np.sum(data_matrix, axis=1)
@@ -326,8 +326,7 @@ class CompositionalModel:
 
         observed_data = {"y": self.y}
         dims = {"alpha": ["cell_type"],
-                "mu_b": ["1"],
-                "sigma_b": ["1"],
+                "sigma_d": ["covariate"],
                 "b_offset": ["covariate", "cell_type_nb"],
                 "ind_raw": ["covariate", "cell_type_nb"],
                 "ind": ["covariate", "cell_type_nb"],
@@ -459,8 +458,7 @@ class CompositionalModel:
 
         observed_data = {"y": self.y}
         dims = {"alpha": ["cell_type"],
-                "mu_b": ["1"],
-                "sigma_b": ["1"],
+                "sigma_d": ["covariate"],
                 "b_offset": ["covariate", "cell_type_nb"],
                 "ind_raw": ["covariate", "cell_type_nb"],
                 "ind": ["covariate", "cell_type_nb"],
@@ -611,8 +609,7 @@ class CompositionalModel:
 
         observed_data = {"y": self.y}
         dims = {"alpha": ["cell_type"],
-                "mu_b": ["1"],
-                "sigma_b": ["1"],
+                "sigma_d": ["covariate"],
                 "b_offset": ["covariate", "cell_type_nb"],
                 "ind_raw": ["covariate", "cell_type_nb"],
                 "ind": ["covariate", "cell_type_nb"],
@@ -641,7 +638,7 @@ class CompositionalModel:
                                                                    model_specs=model_specs)
 
 
-class ReferenceModel(CompositionalModel):
+class scCODAModel(CompositionalModel):
     """
     Statistical model for single-cell differential composition analysis with specification of a reference cell type.
     This is the standard scCODA model and recommenced for all uses.
@@ -693,27 +690,22 @@ class ReferenceModel(CompositionalModel):
         dtype = tf.float64
 
         # All parameters that are returned for analysis
-        self.param_names = ["mu_b", "sigma_b", "b_offset", "ind_raw", "alpha",
+        self.param_names = ["sigma_d", "b_offset", "ind_raw", "alpha",
                             "ind", "b_raw", "beta", "concentration", "prediction"]
 
         alpha_size = [self.K]
         beta_size = [self.D, self.K]
+        sigma_size = [self.D, 1]
         beta_nobl_size = [self.D, self.K-1]
 
         Root = tfd.JointDistributionCoroutine.Root
 
         def model():
-            mu_b = yield Root(tfd.Independent(
-                tfd.Normal(loc=tf.zeros(1, dtype=dtype),
-                           scale=tf.ones(1, dtype=dtype),
-                           name="mu_b"),
-                reinterpreted_batch_ndims=1))
-
-            sigma_b = yield Root(tfd.Independent(
-                tfd.HalfCauchy(tf.zeros(1, dtype=dtype),
-                               tf.ones(1, dtype=dtype),
-                               name="sigma_b"),
-                reinterpreted_batch_ndims=1))
+            sigma_d = yield Root(tfd.Independent(
+                tfd.HalfCauchy(tf.zeros(sigma_size, dtype=dtype),
+                               tf.ones(sigma_size, dtype=dtype),
+                               name="sigma_d"),
+                reinterpreted_batch_ndims=2))
 
             b_offset = yield Root(tfd.Independent(
                 tfd.Normal(
@@ -727,13 +719,13 @@ class ReferenceModel(CompositionalModel):
                 tfd.Normal(
                     loc=tf.zeros(shape=beta_nobl_size, dtype=dtype),
                     scale=tf.ones(shape=beta_nobl_size, dtype=dtype),
-                    name='ind_raw'),
+                    name="ind_raw"),
                 reinterpreted_batch_ndims=2))
 
             ind_scaled = ind_raw * 50
             ind = tf.exp(ind_scaled) / (1 + tf.exp(ind_scaled))
 
-            b_raw = mu_b + sigma_b * b_offset
+            b_raw = sigma_d * b_offset
 
             beta = ind * b_raw
 
@@ -767,8 +759,7 @@ class ReferenceModel(CompositionalModel):
 
         # MCMC starting values
         self.init_params = [
-            tf.zeros(1, name="init_mu_b", dtype=dtype),
-            tf.ones(1, name="init_sigma_b", dtype=dtype),
+            tf.ones(sigma_size, name="init_sigma_d", dtype=dtype),
             tf.random.normal(beta_nobl_size, 0, 1, name='init_b_offset', dtype=dtype),
             tf.zeros(beta_nobl_size, name='init_ind_raw', dtype=dtype),
             tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype)
@@ -805,17 +796,16 @@ class ReferenceModel(CompositionalModel):
         chain_size_y = [num_results - num_burnin, self.N, self.K]
         chain_size_beta = [num_results - num_burnin, self.D, self.K]
 
-        alphas = states_burnin[4]
+        alphas = states_burnin[3]
         alphas_final = alphas.mean(axis=0)
 
-        ind_raw = states_burnin[3] * 50
-        mu_b = states_burnin[0]
-        sigma_b = states_burnin[1]
-        b_offset = states_burnin[2]
+        ind_raw = states_burnin[2] * 50
+        sigma_d = states_burnin[0]
+        b_offset = states_burnin[1]
 
         ind_ = np.exp(ind_raw) / (1 + np.exp(ind_raw))
 
-        b_raw_ = mu_b.reshape((num_results - num_burnin, 1, 1)) + np.einsum("...jk, ...j->...jk", b_offset, sigma_b)
+        b_raw_ = np.einsum("...jk, ...jl->...jk", b_offset, sigma_d)
 
         beta_temp = np.einsum("..., ...", ind_, b_raw_)
 

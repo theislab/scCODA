@@ -7,11 +7,11 @@ import numpy as np
 import patsy as pt
 
 from anndata import AnnData
-from sccoda.model import scCODA_model as dm
+from sccoda.model import dirichlet_models as dm
 from typing import Union, Optional
 
 
-class CompositionalAnalysis:
+class CompositionalAnalysisOld:
     """
     Initializer class for scCODA models. This class is called when performing compositional analysis with scCODA.
 
@@ -35,8 +35,8 @@ class CompositionalAnalysis:
             data: AnnData,
             formula: str,
             reference_cell_type: Union[str, int] = "automatic",
-            automatic_reference_absence_threshold: float = 0.05,
-    ) -> dm.scCODAModel:
+            automatic_reference_absence_threshold: float = 0.05
+    ) -> dm.ReferenceModel:
         """
         Builds count and covariate matrix, returns a CompositionalModel object
 
@@ -93,36 +93,36 @@ class CompositionalAnalysis:
             ref_cell_type = cell_types[ref_index]
             print(f"Automatic reference selection! Reference cell type set to {ref_cell_type}")
 
-            return dm.scCODAModel(
+            return dm.ReferenceModel(
                 covariate_matrix=np.array(covariate_matrix),
                 data_matrix=data_matrix,
                 cell_types=cell_types,
                 covariate_names=covariate_names,
                 reference_cell_type=ref_index,
-                formula=formula,
+                formula=formula
             )
 
         # Column name as reference cell type
-        elif reference_cell_type in cell_types:
+        if reference_cell_type in cell_types:
             num_index = cell_types.index(reference_cell_type)
-            return dm.scCODAModel(
+            return dm.ReferenceModel(
                 covariate_matrix=np.array(covariate_matrix),
                 data_matrix=data_matrix,
                 cell_types=cell_types,
                 covariate_names=covariate_names,
                 reference_cell_type=num_index,
-                formula=formula,
+                formula=formula
             )
 
         # Numeric reference cell type
         elif isinstance(reference_cell_type, int) & (reference_cell_type < len(cell_types)) & (reference_cell_type >= 0):
-            return dm.scCODAModel(
+            return dm.ReferenceModel(
                 covariate_matrix=np.array(covariate_matrix),
                 data_matrix=data_matrix,
                 cell_types=cell_types,
                 covariate_names=covariate_names,
                 reference_cell_type=reference_cell_type,
-                formula=formula,
+                formula=formula
             )
 
         # None of the above: Throw error

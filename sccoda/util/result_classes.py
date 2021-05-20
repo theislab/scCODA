@@ -102,6 +102,7 @@ class CAResult(az.InferenceData):
 
     def summary_prepare(
             self,
+            est_fdr = 0.1,
             *args,
             **kwargs
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -156,7 +157,7 @@ class CAResult(az.InferenceData):
 
         # Calculation of columns that are not from az.summary
         intercept_df = self.complete_alpha_df(intercept_df)
-        effect_df = self.complete_beta_df(intercept_df, effect_df)
+        effect_df = self.complete_beta_df(intercept_df, effect_df, est_fdr)
 
         # Give nice column names, remove unnecessary columns
         hdis = intercept_df.columns[intercept_df.columns.str.contains("hdi")]
@@ -181,7 +182,8 @@ class CAResult(az.InferenceData):
     def complete_beta_df(
             self,
             intercept_df: pd.DataFrame,
-            effect_df: pd.DataFrame
+            effect_df: pd.DataFrame,
+            fdr = 0.1,
     ) -> pd.DataFrame:
         """
         Evaluation of MCMC results for effect parameters. This function is only used within self.summary_prepare.
@@ -220,13 +222,33 @@ class CAResult(az.InferenceData):
 
         # Inclusion prob threshold value. For derivation of the functional form, see
         # "scCODA: A Bayesian model for compositional single-cell data analysis" (Büttner, Ostner et al., 2020)
-        threshold = 1-(0.77/(beta_raw.shape[2]**0.29))
+        def est_fdr(effect_df, c):
+
+            inc_probs = effect_df.loc[effect_df["inclusion_prob"] > 0, "inclusion_prob"]
+
+            ips = [1 - ip for ip in inc_probs if ip > c]
+            fdr = np.sum(ips) / len(ips)
+
+            return fdr
+
+        def opt_thresh(result, alpha):
+            c = 0
+            fdr = 1
+
+            while fdr >= alpha:
+                c = np.round(c + 0.001, 3)
+                fdr = est_fdr(result, c)
+
+            return c, fdr
+
+        threshold, fdr = opt_thresh(effect_df, fdr)
+
         self.model_specs["threshold_prob"] = threshold
 
         # Decide whether betas are significant or not, set non-significant ones to 0
         effect_df.loc[:, "final_parameter"] = np.where(effect_df.loc[:, "inclusion_prob"] > threshold,
-                                                      effect_df.loc[:, "mean_nonzero"],
-                                                      0)
+                                                       effect_df.loc[:, "mean_nonzero"],
+                                                       0)
 
         # Get expected sample, log-fold change
         D = len(effect_df.index.levels[0])
