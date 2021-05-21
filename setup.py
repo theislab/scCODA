@@ -22,7 +22,7 @@ VERSION = "0.1.2.post1"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "numpy<1.19.0,>=1.16.0", "scipy", "tensorflow==2.3.2", "tensorflow-probability==0.11.0",
+    "numpy<1.19.0,>=1.16.0", "scipy", "tensorflow==2.5.0", "tensorflow-probability==0.11.0",
     "arviz>=0.10", "seaborn", "pandas>=1.0", "matplotlib", "scanpy", "anndata",
     "patsy", "sklearn", "statsmodels", "rpy2",
 ]
