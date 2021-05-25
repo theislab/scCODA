@@ -934,3 +934,119 @@ class DirichRegModel(NonBaysesianModel):
             p_val = p_val[0]
 
         self.p_val = p_val
+
+class BetaBinomialModel(NonBaysesianModel):
+    """
+    Wrapper for using the corncob package for R (Martin et al., 2020)
+    """
+
+    def fit_model(
+            self,
+            method: str = "we.eBH",
+            r_home: str = "",
+            r_path: str = r"",
+            *args,
+            **kwargs
+    ):
+        """
+        Fits beta-binomial model.
+        Parameters
+        ----------
+        method
+            method that is used to calculate p-values 
+        r_home
+            path to R installation on your machine, e.g. "C:/Program Files/R/R-4.0.3"
+        r_path
+            path to R executable on your machine, e.g. "C:/Program Files/R/R-4.0.3/bin/x64"
+        args
+            passed to `corncob`
+        kwargs
+            passed to `corncob`
+        Returns
+        -------
+        """
+
+        os.environ["R_HOME"] = r_home
+        os.environ["PATH"] = r_path + ";" + os.environ["PATH"]
+
+        K = self.y.shape[1]
+
+        if self.y.shape[0] == 2:
+            p_val = [0 for _ in range(K)]
+            self.result = None
+        else:
+
+            import rpy2.robjects as rp
+            from rpy2.robjects import numpy2ri, pandas2ri
+            numpy2ri.activate()
+            pandas2ri.activate()
+            
+            #import rpy2.robjects.packages as rpackages
+            #corncob = rpackages.importr("corncob")
+            #phyloseq = rpackages.importr("phyloseq")
+            
+            p_val = rp.r(f"""
+            library(corncob)
+            library(phyloseq)
+            
+            
+            #prepare phyloseq data format
+            
+            counts = {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.y, columns=self.var.index)).r_repr()}
+            
+            sample = {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.x, columns=[self.covariate_column])).r_repr()}
+            
+            meta = data.frame(Sample = rep('A', dim(counts)[2]))
+            rownames(meta) = 0:(dim(counts)[2]-1)
+            
+            
+            
+            cell_types = colnames(counts)
+            rownames(meta) = cell_types
+          
+            
+            OTU = otu_table(counts, taxa_are_rows = FALSE)
+            TAX = tax_table(as.matrix(meta))
+            
+         
+            
+            #create phyloseq data object
+            data = phyloseq(OTU, TAX, sample_data(sample))
+            
+
+            
+            # did not converge for the test data set
+            corncob_out = differentialTest(formula = ~ {self.covariate_column},
+                                  phi.formula = ~ {self.covariate_column},
+                                  formula_null = ~ 1,
+                                  phi.formula_null = ~ 1,
+                                  test = "Wald",
+                                  boot = FALSE,
+                                  data = data,
+                                  fdr_cutoff = 0.05
+                                  )
+            
+           
+            
+           
+            #cell_type =  cell_types[1]
+            
+           
+            # Test functions on a single cell type
+            
+            #    corncob = bbdml(formula = cell_type ~ 1,
+            #                    phi.formula = ~ 1,
+            #                    data = data)
+            #    corncob_DA = bbdml(formula = cell_type ~ {self.covariate_column},
+            #                    phi.formula = ~ {self.covariate_column},
+            #                    data = data)
+            #    p_vals[cell_type] = lrtest(mod_null = corncob, mod = corncob_DA)
+            
+            
+             p_vals = corncob_out$p_fdr 
+            
+             p_vals
+            """)
+            
+
+        self.result = p_val
