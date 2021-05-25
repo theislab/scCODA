@@ -122,7 +122,7 @@ def generate_case_control(
 
 def b_w_from_abs_change(
         counts_before: np.ndarray = np.array([200, 200, 200, 200, 200]),
-        abs_change: int = 50,
+        abs_change: np.ndarray = np.array([50, 0, 0, 0, 0]),
         n_total: int = 1000
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -153,12 +153,13 @@ def b_w_from_abs_change(
     b = np.log(counts_before / n_total)
 
     # count vector after applying the effect.
-    # sum(counts_after) = n_total;
-    # counts_after[0] = counts_before[0] + abs_change
-    count_0_after = counts_before[0] + abs_change
-    count_other_after = (n_total - count_0_after) / (K - 1)
-    counts_after = np.repeat(count_other_after, K)
-    counts_after[0] = count_0_after
+    counts_after = counts_before + abs_change
+    da = np.where(abs_change!=0)[0]
+    sum_after_da = np.sum(counts_after[da])
+    non_da = [x for x in np.arange(K) if x not in da]
+    n_non_da = len(non_da)
+    count_non_da = (n_total - sum_after_da)/n_non_da
+    counts_after[non_da] = count_non_da
 
     # Get parameter vector with effect
     b_after = np.log(counts_after / n_total)

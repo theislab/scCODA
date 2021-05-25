@@ -502,7 +502,11 @@ class HaberModel(NonBaysesianModel):
             p_val = [0 for _ in range(K)]
         else:
             for k in range(K):
-                data_ct = pd.DataFrame({"x": self.x[:, 0],
+                if len(self.x.shape) == 1:
+                    x_ = self.x
+                else:
+                    x_ = self.x[:, 0]
+                data_ct = pd.DataFrame({"x": x_,
                                         "y": self.y[:, k]})
 
                 model_ct = glm('y ~ x', data=data_ct,
