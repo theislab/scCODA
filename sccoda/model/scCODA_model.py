@@ -91,7 +91,7 @@ class CompositionalModel:
         # Add pseudocount if zeroes are present.
         if np.count_nonzero(data_matrix) != np.size(data_matrix):
             print("Zero counts encountered in data! Added a pseudocount of 0.5.")
-            data_matrix += 0.5
+            data_matrix[data_matrix == 0] = 0.5
         self.y = tf.convert_to_tensor(data_matrix, dtype)
 
         sample_counts = np.sum(data_matrix, axis=1)

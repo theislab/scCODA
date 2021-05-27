@@ -13,7 +13,7 @@ import os
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-# from skbio.stats.composition import ancom
+from skbio.stats.composition import ancom
 from anndata import AnnData
 
 import statsmodels as sm
@@ -407,7 +407,7 @@ class NonBaysesianModel:
     def __init__(
             self,
             data: AnnData,
-            covariate_column: Optional[str] = "x_0"
+            covariate_column: Optional[str] = "x_0",
     ):
         """
         Model initialization.
@@ -420,6 +420,7 @@ class NonBaysesianModel:
 
         x = data.obs.loc[:, covariate_column].to_numpy()
         y = data.X
+        y[y == 0] = 1
         self.var = data.var
 
         self.x = x
@@ -440,8 +441,9 @@ class NonBaysesianModel:
 
     def eval_model(
             self,
+            ground_truth: List,
             alpha: float = 0.05,
-            fdr_correct: bool = True
+            fdr_correct: bool = True,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Evaluates array of p-values.
@@ -463,19 +465,23 @@ class NonBaysesianModel:
         """
 
         K = self.y.shape[1]
-        ks = list(range(K))[1:]
+
+        true_indices = np.where(ground_truth==True)[0]
+        false_indices = np.where(ground_truth==False)[0]
 
         if fdr_correct:
-            reject, pvals, _, _ = sm.stats.multitest.multipletests(self.p_val, alpha, method="fdr_bh")
-            tp = sum([reject[0] == True])
-            fn = sum([reject[0] == False])
-            tn = sum([reject[k] == False for k in ks])
-            fp = sum([reject[k] == True for k in ks])
+            pval = np.nan_to_num(np.array(self.p_val), nan=1)
+            reject, pvals, _, _ = sm.stats.multitest.multipletests(pval, alpha, method="fdr_bh")
+            tp = sum(reject[true_indices] == True)
+            fn = sum(reject[true_indices] == False)
+            tn = sum(reject[false_indices] == False)
+            fp = sum(reject[false_indices] == True)
         else:
-            tp = sum([self.p_val[0] < alpha])
-            fn = sum([self.p_val[0] >= alpha])
-            tn = sum([self.p_val[k] >= alpha for k in ks])
-            fp = sum([self.p_val[k] < alpha for k in ks])
+            pval = np.nan_to_num(np.array(self.p_val), nan=1)
+            tp = sum(pval[true_indices] < alpha)
+            fn = sum(pval[true_indices] >= alpha)
+            tn = sum(pval[false_indices] >= alpha)
+            fp = sum(pval[false_indices] < alpha)
 
         return tp, tn, fp, fn
 
@@ -802,7 +808,9 @@ class AncomModel():
             Column with the (binary) trait
         """
         x = data.obs.loc[:, covariate_column]
-        y = pd.DataFrame(data.X, index=data.obs.index, columns=data.var.index)
+        y = data.X
+        y[y == 0] = 0.5
+        y = pd.DataFrame(y, index=data.obs.index, columns=data.var.index)
         self.x = x
         self.y = y
         self.n_total = np.sum(y, axis=1)
@@ -848,7 +856,10 @@ class AncomModel():
 
         self.ancom_out = ancom_out
 
-    def eval_model(self) -> Tuple[int, int, int, int]:
+    def eval_model(
+            self,
+            ground_truth: List
+    ) -> Tuple[int, int, int, int]:
         """
         Evaluates array of p-values.
         It is assumed that the effect on the first cell type is significant, all others are not.
@@ -867,12 +878,15 @@ class AncomModel():
         else:
             accept = self.ancom_out[0]["Reject null hypothesis"].tolist()
 
-        ks = list(range(K))[1:]
+        true_indices = np.where(ground_truth == True)[0]
+        false_indices = np.where(ground_truth == False)[0]
 
-        tp = sum([accept[0]])
-        fn = sum([accept[0] is False])
-        tn = sum([accept[k] is False for k in ks])
-        fp = sum([accept[k] for k in ks])
+        accept = np.array(accept)
+
+        tp = sum(accept[true_indices] == True)
+        fn = sum(accept[true_indices] == False)
+        tn = sum(accept[false_indices] == False)
+        fp = sum(accept[false_indices] == True)
 
         return tp, tn, fp, fn
 
@@ -928,7 +942,7 @@ class DirichRegModel(NonBaysesianModel):
 
             fit = DirichReg(counts ~ {self.covariate_column}, data)
             if(fit$optimization$convergence > 2L) {{
-            pvals = matrix(c(0,0,0,0,0),nrow = 1)
+            pvals = matrix(rep(0, {K}),nrow = 1)
             }} else {{
             u = summary(fit)
             pvals = u$coef.mat[grep('Intercept', rownames(u$coef.mat), invert=T), 4]
