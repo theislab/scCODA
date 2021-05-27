@@ -981,10 +981,6 @@ class BetaBinomialModel(NonBaysesianModel):
             numpy2ri.activate()
             pandas2ri.activate()
             
-            #import rpy2.robjects.packages as rpackages
-            #corncob = rpackages.importr("corncob")
-            #phyloseq = rpackages.importr("phyloseq")
-            
             p_val = rp.r(f"""
             library(corncob)
             library(phyloseq)
@@ -996,26 +992,13 @@ class BetaBinomialModel(NonBaysesianModel):
             
             sample = {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.x, columns=[self.covariate_column])).r_repr()}
             
-            meta = data.frame(Sample = rep('A', dim(counts)[2]))
-            rownames(meta) = 0:(dim(counts)[2]-1)
-            
-            
-            
             cell_types = colnames(counts)
-            rownames(meta) = cell_types
-          
             
             OTU = otu_table(counts, taxa_are_rows = FALSE)
-            TAX = tax_table(as.matrix(meta))
-            
-         
             
             #create phyloseq data object
-            data = phyloseq(OTU, TAX, sample_data(sample))
+            data = phyloseq(OTU, sample_data(sample))
             
-
-            
-            # did not converge for the test data set
             corncob_out = differentialTest(formula = ~ {self.covariate_column},
                                   phi.formula = ~ {self.covariate_column},
                                   formula_null = ~ 1,
@@ -1026,12 +1009,6 @@ class BetaBinomialModel(NonBaysesianModel):
                                   fdr_cutoff = 0.05
                                   )
             
-           
-            
-           
-            #cell_type =  cell_types[1]
-            
-           
             # Test functions on a single cell type
             
             #    corncob = bbdml(formula = cell_type ~ 1,
@@ -1042,8 +1019,98 @@ class BetaBinomialModel(NonBaysesianModel):
             #                    data = data)
             #    p_vals[cell_type] = lrtest(mod_null = corncob, mod = corncob_DA)
             
-            
              p_vals = corncob_out$p_fdr 
+            
+             p_vals
+            """)
+            
+
+        self.result = p_val
+
+class ANCOMBCModel(NonBaysesianModel):
+    """
+    Wrapper for using the ANCOMBC package for R (Lin and Peddada, 2020)
+    """
+
+    def fit_model(
+            self,
+            method: str = "fdr",
+            lib_cut: int = 0,
+            r_home: str = "",
+            r_path: str = r"",
+            *args,
+            **kwargs
+    ):
+        """
+        Fits ANCOM with bias correction model.
+        Parameters
+        ----------
+        method
+            method that is used to calculate p-values 
+        lib_cut
+            threshold to filter out classes
+        r_home
+            path to R installation on your machine, e.g. "C:/Program Files/R/R-4.0.3"
+        r_path
+            path to R executable on your machine, e.g. "C:/Program Files/R/R-4.0.3/bin/x64"
+        args
+            passed to `ANCOMBC`
+        kwargs
+            passed to `ANCOMBC`
+        Returns
+        -------
+        """
+
+        os.environ["R_HOME"] = r_home
+        os.environ["PATH"] = r_path + ";" + os.environ["PATH"]
+
+        K = self.y.shape[1]
+
+        if self.y.shape[0] == 2:
+            p_val = [0 for _ in range(K)]
+            self.result = None
+        else:
+
+            import rpy2.robjects as rp
+            from rpy2.robjects import numpy2ri, pandas2ri
+            numpy2ri.activate()
+            pandas2ri.activate()
+            
+            p_val = rp.r(f"""
+            library(ANCOMBC)
+            library(phyloseq)
+            
+            #prepare phyloseq data format
+            
+            counts = {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.y, columns=self.var.index)).r_repr()}
+            
+            sample = {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.x, 
+                                   columns=[self.covariate_column])).r_repr()}
+           
+            cell_types = colnames(counts)
+           
+            OTU = otu_table(t(counts), taxa_are_rows = TRUE)
+            
+            #create phyloseq data object
+            data = phyloseq(OTU, sample_data(sample))
+           
+            ancombc_out = ancombc(phyloseq = data,            
+                                  formula = "{self.covariate_column}",
+                                  p_adj_method = "{method}", 
+                                  zero_cut = 0.90, 
+                                  lib_cut = {lib_cut}, 
+                                  group = "{self.covariate_column}", 
+                                  struc_zero = TRUE, 
+                                  neg_lb = TRUE, tol = 1e-5, 
+                                  max_iter = 100, 
+                                  conserve = TRUE, 
+                                  alpha = 0.05, 
+                                  global = FALSE
+                                  )
+            
+             out = ancombc_out$res
+             #return adjusted p-values
+             p_vals = out$q[,1] 
             
              p_vals
             """)
