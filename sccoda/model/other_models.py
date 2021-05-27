@@ -1025,7 +1025,7 @@ class BetaBinomialModel(NonBaysesianModel):
             """)
             
 
-        self.result = p_val
+        self.p_val = p_val
 
 class ANCOMBCModel(NonBaysesianModel):
     """
@@ -1116,4 +1116,4 @@ class ANCOMBCModel(NonBaysesianModel):
             """)
             
 
-        self.result = p_val
+        self.p_val = p_val
