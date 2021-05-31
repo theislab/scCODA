@@ -102,7 +102,7 @@ class CAResult(az.InferenceData):
 
     def summary_prepare(
             self,
-            est_fdr = 0.1,
+            est_fdr = 0.05,
             *args,
             **kwargs
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:

@@ -383,7 +383,6 @@ class scdney_model:
 
             glm = fitGLM(clust, {rp.vectors.StrVector(self.scdc_sample_cond).r_repr()}, pairwise=FALSE)
             sum = summary(glm$pool_res_random)
-            print(sum)
             sum
             """)
 
@@ -1022,10 +1021,10 @@ class BetaBinomialModel(NonBaysesianModel):
             data = phyloseq(OTU, sample_data(sample))
             
             corncob_out = differentialTest(formula = ~ {self.covariate_column},
-                                  phi.formula = ~ {self.covariate_column},
+                                  phi.formula = ~ 1,
                                   formula_null = ~ 1,
                                   phi.formula_null = ~ 1,
-                                  test = "Wald",
+                                  test = "LRT",
                                   boot = FALSE,
                                   data = data,
                                   fdr_cutoff = 0.05
