@@ -188,6 +188,7 @@ def boxplots(
         dpi: Optional[int] = 100,
         cmap: Optional[str] = "Blues",
         plot_legend: Optional[bool] = True,
+        level_order: List[str] = None
 ) -> Optional[Tuple[plt.Subplot, sns.axisgrid.FacetGrid]]:
     """\
     Grouped boxplot visualization. The cell counts for each cell type are shown as a group of boxplots,
@@ -217,6 +218,8 @@ def boxplots(
         The seaborn color map for the barplot
     plot_legend
         If True, adds a legend
+    level_orer
+        Custom ordering of bars on the x-axis
 
     Returns
     -------
@@ -247,7 +250,13 @@ def boxplots(
         merge(data.obs[feature_name], left_index=True, right_index=True)
     plot_df = pd.melt(count_df, id_vars=feature_name, var_name="Cell type", value_name=value_name)
 
+
+
     if plot_facets:
+
+        if level_order is None:
+            level_order = pd.unique(plot_df[feature_name])
+
 
         K = X.shape[1]
 
@@ -264,7 +273,7 @@ def boxplots(
             feature_name,
             value_name,
             palette=cmap,
-            order=pd.unique(plot_df[feature_name]),
+            order=level_order,
             **args_boxplot
         )
 
@@ -281,7 +290,7 @@ def boxplots(
                     feature_name,
                     value_name,
                     color="black",
-                    order=pd.unique(plot_df[feature_name]),
+                    order=level_order,
                     **args_swarmplot
                 ).set_titles("{col_name}")
             else:
@@ -290,13 +299,17 @@ def boxplots(
                     feature_name,
                     value_name,
                     hue,
-                    order=pd.unique(plot_df[feature_name]),
+                    order=level_order,
                     **args_swarmplot
                 ).set_titles("{col_name}")
 
         return g
 
     else:
+
+        if level_order:
+            args_boxplot["hue_order"] = level_order
+            args_swarmplot["hue_order"] = level_order
 
         fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 

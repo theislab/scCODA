@@ -1001,6 +1001,11 @@ class BetaBinomialModel(NonBaysesianModel):
             from rpy2.robjects import numpy2ri, pandas2ri
             numpy2ri.activate()
             pandas2ri.activate()
+
+            if self.y.shape[0] == 4:
+                phi = 1
+            else:
+                phi = self.covariate_column
             
             p_val = rp.r(f"""
             library(corncob)
@@ -1021,9 +1026,9 @@ class BetaBinomialModel(NonBaysesianModel):
             data = phyloseq(OTU, sample_data(sample))
             
             corncob_out = differentialTest(formula = ~ {self.covariate_column},
-                                  phi.formula = ~ 1,
+                                  phi.formula = ~ {phi},
                                   formula_null = ~ 1,
-                                  phi.formula_null = ~ 1,
+                                  phi.formula_null = ~ {phi},
                                   test = "LRT",
                                   boot = FALSE,
                                   data = data,
