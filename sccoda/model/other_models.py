@@ -13,7 +13,7 @@ import os
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from skbio.stats.composition import ancom
+# from skbio.stats.composition import ancom
 from anndata import AnnData
 
 import statsmodels as sm
@@ -340,8 +340,10 @@ class scdney_model:
 
     def analyze(
             self,
+            ground_truth: List,
             r_home: str = "",
             r_path: str = r"",
+            alpha: float = 0.05,
     ) -> Tuple[pd.DataFrame, Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
         """
         Analyzes results from R script for SCDC from scdney packege.
@@ -390,10 +392,14 @@ class scdney_model:
 
         p_values = r_summary.loc[r_summary["term"].str.contains("condCond_1"), "p.value"].values
 
-        tp = np.sum(p_values[-1] < 0.05)
-        fn = np.sum(p_values[-1] >= 0.05)
-        tn = np.sum(p_values[:-1] >= 0.05)
-        fp = np.sum(p_values[:-1] < 0.05)
+        true_indices = np.where(ground_truth == True)[0]
+        false_indices = np.where(ground_truth == False)[0]
+
+        pval = np.nan_to_num(np.array(self.p_val), nan=1)
+        tp = sum(pval[true_indices] < alpha)
+        fn = sum(pval[true_indices] >= alpha)
+        tn = sum(pval[false_indices] >= alpha)
+        fp = sum(pval[false_indices] < alpha)
 
         return r_summary, (tp, tn, fp, fn)
 
