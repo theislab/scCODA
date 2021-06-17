@@ -163,6 +163,27 @@ class CAResult(az.InferenceData):
         hdis = intercept_df.columns[intercept_df.columns.str.contains("hdi")]
         hdis_new = hdis.str.replace("hdi_", "HDI ")
 
+
+        # Credible interval
+        ind_post = self.posterior["ind"]
+
+        b_raw_sel = self.posterior["b_raw"] * ind_post.where(ind_post >= 1e-3)
+
+        res = az.convert_to_inference_data(b_raw_sel)
+
+        summary_sel = az.summary(res, kind="stats", var_names=["x"], skipna=True, *args, **kwargs)
+
+        ref_index = self.model_specs["reference"]
+
+        def insert_row(idx, df, df_insert):
+            return df.iloc[:idx, ].append(df_insert).append(df.iloc[idx:, ]).reset_index(drop=True)
+
+        summary_sel = insert_row(ref_index, summary_sel,
+                                 pd.DataFrame.from_dict(data={"mean": [0], "sd": [0], hdis[0]: [0], hdis[1]: [0]}))
+
+        effect_df.loc[:, hdis[0]] = list(summary_sel[hdis[0]])
+        effect_df.loc[:, hdis[1]] = list(summary_sel.loc[:, hdis[1]])
+
         intercept_df = intercept_df.loc[:, ["final_parameter", hdis[0], hdis[1], "sd", "expected_sample"]].copy()
         intercept_df = intercept_df.rename(columns=dict(zip(
             intercept_df.columns,
@@ -183,7 +204,7 @@ class CAResult(az.InferenceData):
             self,
             intercept_df: pd.DataFrame,
             effect_df: pd.DataFrame,
-            fdr = 0.1,
+            fdr = 0.05,
     ) -> pd.DataFrame:
         """
         Evaluation of MCMC results for effect parameters. This function is only used within self.summary_prepare.
@@ -222,24 +243,19 @@ class CAResult(az.InferenceData):
 
         # Inclusion prob threshold value. For derivation of the functional form, see
         # "scCODA: A Bayesian model for compositional single-cell data analysis" (Büttner, Ostner et al., 2020)
-        def est_fdr(effect_df, c):
-
-            inc_probs = effect_df.loc[effect_df["inclusion_prob"] > 0, "inclusion_prob"]
-
-            ips = [1 - ip for ip in inc_probs if ip > c]
-            fdr = np.sum(ips) / len(ips)
-
-            return fdr
-
         def opt_thresh(result, alpha):
-            c = 0
-            fdr = 1
 
-            while fdr >= alpha:
-                c = np.round(c + 0.001, 3)
-                fdr = est_fdr(result, c)
+            incs = np.array(result.loc[result["Inclusion probability"] > 0, "Inclusion probability"])
+            incs[::-1].sort()
 
-            return c, fdr
+            for c in np.unique(incs):
+                fdr = np.mean(1 - incs[incs >= c])
+
+                if fdr < alpha:
+                    # ceiling with 3 decimals precision
+                    c = np.floor(c * 10 ** 3) / 10 ** 3
+                    return c, fdr
+            return 1., 0
 
         threshold, fdr = opt_thresh(effect_df, fdr)
 
