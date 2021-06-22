@@ -204,7 +204,7 @@ class CAResult(az.InferenceData):
             self,
             intercept_df: pd.DataFrame,
             effect_df: pd.DataFrame,
-            fdr = 0.05,
+            target_fdr = 0.05,
     ) -> pd.DataFrame:
         """
         Evaluation of MCMC results for effect parameters. This function is only used within self.summary_prepare.
@@ -245,7 +245,7 @@ class CAResult(az.InferenceData):
         # "scCODA: A Bayesian model for compositional single-cell data analysis" (Büttner, Ostner et al., 2020)
         def opt_thresh(result, alpha):
 
-            incs = np.array(result.loc[result["Inclusion probability"] > 0, "Inclusion probability"])
+            incs = np.array(effect_df.loc[result["inclusion_prob"] > 0, "inclusion_prob"])
             incs[::-1].sort()
 
             for c in np.unique(incs):
@@ -257,12 +257,12 @@ class CAResult(az.InferenceData):
                     return c, fdr
             return 1., 0
 
-        threshold, fdr = opt_thresh(effect_df, fdr)
+        threshold, fdr = opt_thresh(effect_df, target_fdr)
 
         self.model_specs["threshold_prob"] = threshold
 
         # Decide whether betas are significant or not, set non-significant ones to 0
-        effect_df.loc[:, "final_parameter"] = np.where(effect_df.loc[:, "inclusion_prob"] > threshold,
+        effect_df.loc[:, "final_parameter"] = np.where(effect_df.loc[:, "inclusion_prob"] >= threshold,
                                                        effect_df.loc[:, "mean_nonzero"],
                                                        0)
 
