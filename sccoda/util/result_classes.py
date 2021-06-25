@@ -95,6 +95,11 @@ class CAResult(az.InferenceData):
         self.sampling_stats = sampling_stats
         self.model_specs = model_specs
 
+        if "ind" in list(self.posterior.data_vars):
+            self.recalc_ci = True
+        else:
+            self.recalc_ci = False
+
         intercept_df, effect_df = self.summary_prepare()
 
         self.intercept_df = intercept_df
@@ -165,24 +170,25 @@ class CAResult(az.InferenceData):
 
 
         # Credible interval
-        ind_post = self.posterior["ind"]
+        if self.recalc_ci is True:
+            ind_post = self.posterior["ind"]
 
-        b_raw_sel = self.posterior["b_raw"] * ind_post.where(ind_post >= 1e-3)
+            b_raw_sel = self.posterior["b_raw"] * ind_post.where(ind_post >= 1e-3)
 
-        res = az.convert_to_inference_data(b_raw_sel)
+            res = az.convert_to_inference_data(b_raw_sel)
 
-        summary_sel = az.summary(res, kind="stats", var_names=["x"], skipna=True, *args, **kwargs)
+            summary_sel = az.summary(res, kind="stats", var_names=["x"], skipna=True, *args, **kwargs)
 
-        ref_index = self.model_specs["reference"]
+            ref_index = self.model_specs["reference"]
 
-        def insert_row(idx, df, df_insert):
-            return df.iloc[:idx, ].append(df_insert).append(df.iloc[idx:, ]).reset_index(drop=True)
+            def insert_row(idx, df, df_insert):
+                return df.iloc[:idx, ].append(df_insert).append(df.iloc[idx:, ]).reset_index(drop=True)
 
-        summary_sel = insert_row(ref_index, summary_sel,
-                                 pd.DataFrame.from_dict(data={"mean": [0], "sd": [0], hdis[0]: [0], hdis[1]: [0]}))
+            summary_sel = insert_row(ref_index, summary_sel,
+                                     pd.DataFrame.from_dict(data={"mean": [0], "sd": [0], hdis[0]: [0], hdis[1]: [0]}))
 
-        effect_df.loc[:, hdis[0]] = list(summary_sel[hdis[0]])
-        effect_df.loc[:, hdis[1]] = list(summary_sel.loc[:, hdis[1]])
+            effect_df.loc[:, hdis[0]] = list(summary_sel[hdis[0]])
+            effect_df.loc[:, hdis[1]] = list(summary_sel.loc[:, hdis[1]])
 
         intercept_df = intercept_df.loc[:, ["final_parameter", hdis[0], hdis[1], "sd", "expected_sample"]].copy()
         intercept_df = intercept_df.rename(columns=dict(zip(
