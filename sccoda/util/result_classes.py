@@ -96,9 +96,9 @@ class CAResult(az.InferenceData):
         self.model_specs = model_specs
 
         if "ind" in list(self.posterior.data_vars):
-            self.recalc_ci = True
+            self.is_sccoda = True
         else:
-            self.recalc_ci = False
+            self.is_sccoda = False
 
         intercept_df, effect_df = self.summary_prepare()
 
@@ -170,7 +170,7 @@ class CAResult(az.InferenceData):
 
 
         # Credible interval
-        if self.recalc_ci is True:
+        if self.is_sccoda is True:
             ind_post = self.posterior["ind"]
 
             b_raw_sel = self.posterior["b_raw"] * ind_post.where(ind_post >= 1e-3)
@@ -249,28 +249,31 @@ class CAResult(az.InferenceData):
 
         # Inclusion prob threshold value. For derivation of the functional form, see
         # "scCODA: A Bayesian model for compositional single-cell data analysis" (Büttner, Ostner et al., 2020)
-        def opt_thresh(result, alpha):
+        if self.is_sccoda is True:
+            def opt_thresh(result, alpha):
 
-            incs = np.array(effect_df.loc[result["inclusion_prob"] > 0, "inclusion_prob"])
-            incs[::-1].sort()
+                incs = np.array(effect_df.loc[result["inclusion_prob"] > 0, "inclusion_prob"])
+                incs[::-1].sort()
 
-            for c in np.unique(incs):
-                fdr = np.mean(1 - incs[incs >= c])
+                for c in np.unique(incs):
+                    fdr = np.mean(1 - incs[incs >= c])
 
-                if fdr < alpha:
-                    # ceiling with 3 decimals precision
-                    c = np.floor(c * 10 ** 3) / 10 ** 3
-                    return c, fdr
-            return 1., 0
+                    if fdr < alpha:
+                        # ceiling with 3 decimals precision
+                        c = np.floor(c * 10 ** 3) / 10 ** 3
+                        return c, fdr
+                return 1., 0
 
-        threshold, fdr = opt_thresh(effect_df, target_fdr)
+            threshold, fdr = opt_thresh(effect_df, target_fdr)
 
-        self.model_specs["threshold_prob"] = threshold
+            self.model_specs["threshold_prob"] = threshold
 
-        # Decide whether betas are significant or not, set non-significant ones to 0
-        effect_df.loc[:, "final_parameter"] = np.where(effect_df.loc[:, "inclusion_prob"] >= threshold,
-                                                       effect_df.loc[:, "mean_nonzero"],
-                                                       0)
+            # Decide whether betas are significant or not, set non-significant ones to 0
+            effect_df.loc[:, "final_parameter"] = np.where(effect_df.loc[:, "inclusion_prob"] >= threshold,
+                                                           effect_df.loc[:, "mean_nonzero"],
+                                                           0)
+        else:
+            effect_df.loc[:, "final_parameter"] = effect_df.loc[:, "mean_nonzero"]
 
         # Get expected sample, log-fold change
         D = len(effect_df.index.levels[0])
