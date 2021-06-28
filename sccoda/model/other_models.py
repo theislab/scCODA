@@ -340,7 +340,7 @@ class scdney_model:
 
     def analyze(
             self,
-            ground_truth: List,
+            ground_truth: np.array,
             r_home: str = "",
             r_path: str = r"",
             alpha: float = 0.05,
@@ -395,7 +395,7 @@ class scdney_model:
         true_indices = np.where(ground_truth == True)[0]
         false_indices = np.where(ground_truth == False)[0]
 
-        pval = np.nan_to_num(np.array(self.p_val), nan=1)
+        pval = np.nan_to_num(np.array(p_values), nan=1)
         tp = sum(pval[true_indices] < alpha)
         fn = sum(pval[true_indices] >= alpha)
         tn = sum(pval[false_indices] >= alpha)
