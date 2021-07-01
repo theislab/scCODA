@@ -63,8 +63,8 @@ type needs to be specified in this step.
     :toctree: .
 
     sccoda.util.comp_ana.CompositionalAnalysis
-    sccoda.model.dirichlet_models.CompositionalModel
-    sccoda.model.dirichlet_models.ReferenceModel
+    sccoda.model.scCODA_model.CompositionalModel
+    sccoda.model.scCODA_model.scCODAModel
 
 **Utility functions**
 

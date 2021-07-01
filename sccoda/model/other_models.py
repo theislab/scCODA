@@ -13,7 +13,7 @@ import os
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-# from skbio.stats.composition import ancom
+from skbio.stats.composition import ancom
 from anndata import AnnData
 
 import statsmodels as sm
@@ -21,7 +21,7 @@ from statsmodels.formula.api import glm
 from scipy import stats
 
 from sccoda.util import result_classes as res
-from sccoda.model import dirichlet_models as dm
+from sccoda.model import scCODA_model as dm
 from typing import Optional, Tuple, Collection, Union, List
 
 tfd = tfp.distributions
@@ -79,7 +79,6 @@ class SimpleModel(dm.CompositionalModel):
             beta = tf.concat(axis=1, values=[beta[:, :reference_cell_type],
                                              tf.zeros(shape=[self.D, 1], dtype=dtype),
                                              beta[:, reference_cell_type:]])
-
 
             alpha = yield Root(tfd.Independent(
                 tfd.Normal(
@@ -304,6 +303,7 @@ class scdney_model:
 
         # prepare list generation
         n, k = data.X.shape
+        self.k = k
         x_vec = data.X.flatten()
         cell_types = ["cell_" + x for x in data.var.index.tolist()]
         cell_types[0] = "cell_" + str(k)
@@ -340,7 +340,7 @@ class scdney_model:
 
     def analyze(
             self,
-            ground_truth: np.array,
+            ground_truth: np.array = None,
             r_home: str = "",
             r_path: str = r"",
             alpha: float = 0.05,
@@ -351,10 +351,14 @@ class scdney_model:
 
         Parameters
         ----------
+        ground_truth
+            binary array for comparison to ground truth
         r_home
             path to R installation on your machine, e.g. "C:/Program Files/R/R-4.0.3"
         r_path
             path to R executable on your machine, e.g. "C:/Program Files/R/R-4.0.3/bin/x64"
+        alpha
+            p-value cutoff
 
 
         Returns
@@ -367,6 +371,9 @@ class scdney_model:
 
         os.environ["R_HOME"] = r_home
         os.environ["PATH"] = r_path + ";" + os.environ["PATH"]
+
+        if ground_truth is None:
+            ground_truth = np.zeros(self.k)
 
         import rpy2.robjects as rp
         from rpy2.robjects import numpy2ri, pandas2ri
@@ -469,10 +476,8 @@ class NonBaysesianModel:
             Number of True positive, ... effects
         """
 
-        K = self.y.shape[1]
-
-        true_indices = np.where(ground_truth==True)[0]
-        false_indices = np.where(ground_truth==False)[0]
+        true_indices = np.where(ground_truth == True)[0]
+        false_indices = np.where(ground_truth == False)[0]
 
         if fdr_correct:
             pval = np.nan_to_num(np.array(self.p_val), nan=1)
@@ -833,8 +838,8 @@ class AncomModel():
 
     def fit_model(
             self,
-            alpha=0.05,
-            tau=0.02,
+            alpha: float = 0.05,
+            tau: float = 0.02,
             *args,
             **kwargs,
     ):
@@ -842,6 +847,10 @@ class AncomModel():
 
         Parameters
         ----------
+        alpha
+            FDR level for multiplicity correction
+        tau
+            cutoff parameter
         args
             passed to skbio.stats.composition.ancom
         kwargs
@@ -962,6 +971,7 @@ class DirichRegModel(NonBaysesianModel):
 
         self.p_val = p_val
 
+
 class BetaBinomialModel(NonBaysesianModel):
     """
     Wrapper for using the corncob package for R (Martin et al., 2020)
@@ -969,14 +979,14 @@ class BetaBinomialModel(NonBaysesianModel):
 
     def fit_model(
             self,
-            method: str = "we.eBH",
             r_home: str = "",
             r_path: str = r"",
             *args,
             **kwargs
     ):
         """
-        Fits beta-binomial model.
+        Fits Beta-Binomial model.
+
         Parameters
         ----------
         method
@@ -1055,9 +1065,9 @@ class BetaBinomialModel(NonBaysesianModel):
             
              p_vals
             """)
-            
 
         self.p_val = p_val
+
 
 class ANCOMBCModel(NonBaysesianModel):
     """
@@ -1146,6 +1156,5 @@ class ANCOMBCModel(NonBaysesianModel):
             
              p_vals
             """)
-            
 
         self.p_val = p_val

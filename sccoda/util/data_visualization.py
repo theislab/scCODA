@@ -13,11 +13,10 @@ import seaborn as sns
 from matplotlib import cm, rcParams
 from matplotlib.colors import ListedColormap
 
-sns.set_style("ticks")
-
 from anndata import AnnData
 from typing import Optional, Tuple, Collection, Union, List
 
+sns.set_style("ticks")
 
 
 def stackbar(
@@ -116,7 +115,7 @@ def stacked_barplot(
         The color map for the barplot
     plot_legend
         If True, adds a legend
-    level_orer
+    level_order
         Custom ordering of bars on the x-axis
 
     Returns
@@ -218,7 +217,7 @@ def boxplots(
         The seaborn color map for the barplot
     plot_legend
         If True, adds a legend
-    level_orer
+    level_order
         Custom ordering of bars on the x-axis
 
     Returns
@@ -250,13 +249,10 @@ def boxplots(
         merge(data.obs[feature_name], left_index=True, right_index=True)
     plot_df = pd.melt(count_df, id_vars=feature_name, var_name="Cell type", value_name=value_name)
 
-
-
     if plot_facets:
 
         if level_order is None:
             level_order = pd.unique(plot_df[feature_name])
-
 
         K = X.shape[1]
 
@@ -386,7 +382,6 @@ def rel_abundance_dispersion_plot(
         a plot
     """
 
-
     fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
     rel_abun = data.X / np.sum(data.X, axis=1, keepdims=True)
@@ -443,4 +438,3 @@ def rel_abundance_dispersion_plot(
 
     plt.tight_layout()
     return ax
-

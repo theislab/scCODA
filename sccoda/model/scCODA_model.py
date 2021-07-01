@@ -503,7 +503,7 @@ class CompositionalModel:
 
         - `target_log_prob`: Value of the model's log-probability
 
-        - `leapfros_taken`: Number of leapfrog steps taken by hte integrator
+        - `leapfrogs_taken`: Number of leapfrog steps taken by the integrator
 
         - `diverging`: Marks samples as diverging (NOTE: Handle with care, the spike-and-slab prior of scCODA usually leads to many samples being flagged as diverging)
 

@@ -61,7 +61,7 @@ class CompositionalAnalysis:
         A compositional model
 
         model
-            A scCODA.models.dirichlet_models.CompositionalModel object
+            A scCODA.models.scCODA_model.CompositionalModel object
         """
 
         cell_types = data.var.index.to_list()

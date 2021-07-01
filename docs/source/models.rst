@@ -2,7 +2,7 @@ The scCODA model
 ================
 
 scCODA uses Bayesian modeling to detect statistically credible changes in compositional data.
-The model is implemented in ``sccoda.model.dirichlet_models``.
+The model is implemented in ``sccoda.model.scCODA_model``.
 The easiest way to call a compositional model is via calling an instance of ``sccoda.util.comp_ana.CompositionalAnalysis``.
 It requires an ``anndata`` object that contains the compositional data and covariates, a formula string that defines the covariate matrix
 (see the `patsy <https://patsy.readthedocs.io/en/latest/>`_ syntax for details), and a reference cell type.

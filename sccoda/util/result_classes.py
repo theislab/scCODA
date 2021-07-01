@@ -107,7 +107,7 @@ class CAResult(az.InferenceData):
 
     def summary_prepare(
             self,
-            est_fdr = 0.05,
+            est_fdr: float = 0.05,
             *args,
             **kwargs
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -117,6 +117,8 @@ class CAResult(az.InferenceData):
 
         Parameters
         ----------
+        est_fdr
+            Desired FDR value
         args
             Passed to ``az.summary``
         kwargs
@@ -180,12 +182,15 @@ class CAResult(az.InferenceData):
             summary_sel = az.summary(res, kind="stats", var_names=["x"], skipna=True, *args, **kwargs)
 
             ref_index = self.model_specs["reference"]
+            n_conditions = len(self.posterior.coords["covariate"])
+            n_cell_types = len(self.posterior.coords["cell_type"])
 
             def insert_row(idx, df, df_insert):
                 return df.iloc[:idx, ].append(df_insert).append(df.iloc[idx:, ]).reset_index(drop=True)
 
-            summary_sel = insert_row(ref_index, summary_sel,
-                                     pd.DataFrame.from_dict(data={"mean": [0], "sd": [0], hdis[0]: [0], hdis[1]: [0]}))
+            for i in range(n_conditions):
+                summary_sel = insert_row((i*n_cell_types) + ref_index, summary_sel,
+                                         pd.DataFrame.from_dict(data={"mean": [0], "sd": [0], hdis[0]: [0], hdis[1]: [0]}))
 
             effect_df.loc[:, hdis[0]] = list(summary_sel[hdis[0]])
             effect_df.loc[:, hdis[1]] = list(summary_sel.loc[:, hdis[1]])
@@ -210,7 +215,7 @@ class CAResult(az.InferenceData):
             self,
             intercept_df: pd.DataFrame,
             effect_df: pd.DataFrame,
-            target_fdr = 0.05,
+            target_fdr: float=0.05,
     ) -> pd.DataFrame:
         """
         Evaluation of MCMC results for effect parameters. This function is only used within self.summary_prepare.
@@ -222,6 +227,8 @@ class CAResult(az.InferenceData):
             Intercept summary, see ``self.summary_prepare``
         effect_df
             Effect summary, see ``self.summary_prepare``
+        target_fdr
+            Desired FDR value
 
         Returns
         -------
@@ -247,8 +254,7 @@ class CAResult(az.InferenceData):
         effect_df.loc[:, "inclusion_prob"] = beta_inc_prob
         effect_df.loc[:, "mean_nonzero"] = beta_nonzero_mean
 
-        # Inclusion prob threshold value. For derivation of the functional form, see
-        # "scCODA: A Bayesian model for compositional single-cell data analysis" (Büttner, Ostner et al., 2020)
+        # Inclusion prob threshold value. Direct posterior probability approach cf. Newton et al. (2004)
         if self.is_sccoda is True:
             def opt_thresh(result, alpha):
 
@@ -264,7 +270,7 @@ class CAResult(az.InferenceData):
                         return c, fdr
                 return 1., 0
 
-            threshold, fdr = opt_thresh(effect_df, target_fdr)
+            threshold, fdr_ = opt_thresh(effect_df, target_fdr)
 
             self.model_specs["threshold_prob"] = threshold
 
@@ -426,7 +432,8 @@ class CAResult(az.InferenceData):
         print("Data: %d samples, %d cell types" % data_dims)
         print("Reference index: %s" % str(self.model_specs["reference"]))
         print("Formula: %s" % self.model_specs["formula"])
-        print("Spike-and-slab threshold: {threshold:.3f}".format(threshold=self.model_specs["threshold_prob"]))
+        if self.is_sccoda:
+            print("Spike-and-slab threshold: {threshold:.3f}".format(threshold=self.model_specs["threshold_prob"]))
         print("")
         print("MCMC Sampling: Sampled {num_results} chain states ({num_burnin} burnin samples) in {duration:.3f} sec. "
               "Acceptance rate: {ar:.1f}%".format(num_results=self.sampling_stats["chain_length"],
@@ -578,3 +585,30 @@ class CAResult(az.InferenceData):
         """
         with open(path_to_file, "wb") as f:
             pkl.dump(self, file=f, protocol=4)
+
+    def set_fdr(
+            self,
+            est_fdr: float,
+            *args,
+            **kwargs):
+        """
+        Direct posterior probability approach to calculate credible effects while keeping the expected FDR at a certain level
+
+        Parameters
+        ----------
+        est_fdr
+            Desired FDR value
+        args
+            passed to self.summary_prepare
+        kwargs
+            passed to self.summary_prepare
+
+        Returns
+        -------
+        Adjusts self.intercept_df and self.effect_df
+        """
+
+        intercept_df, effect_df = self.summary_prepare(est_fdr=est_fdr, *args, **kwargs)
+
+        self.intercept_df = intercept_df
+        self.effect_df = effect_df
