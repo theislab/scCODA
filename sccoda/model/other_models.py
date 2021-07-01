@@ -13,7 +13,7 @@ import os
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from skbio.stats.composition import ancom
+# from skbio.stats.composition import ancom
 from anndata import AnnData
 
 import statsmodels as sm
@@ -306,7 +306,7 @@ class scdney_model:
         self.k = k
         x_vec = data.X.flatten()
         cell_types = ["cell_" + x for x in data.var.index.tolist()]
-        cell_types[0] = "cell_" + str(k)
+        # cell_types[0] = "cell_" + str(k)
         conditions = ["Cond_0", "Cond_1"]
 
         # get number of samples for both conditions
@@ -390,12 +390,14 @@ class scdney_model:
                                              calCI_method=c("BCa"),
                                              nboot=100)
 
-            glm = fitGLM(clust, {rp.vectors.StrVector(self.scdc_sample_cond).r_repr()}, pairwise=FALSE)
-            sum = summary(glm$pool_res_random)
+            glm = fitGLM(clust, {rp.vectors.StrVector(self.scdc_sample_cond).r_repr()}, pairwise=FALSE, subject_effect=FALSE)
+            sum = summary(glm$pool_res_fixed)
             sum
             """)
 
         r_summary = pd.DataFrame(r_summary)
+
+        print(r_summary)
 
         p_values = r_summary.loc[r_summary["term"].str.contains("condCond_1"), "p.value"].values
 
