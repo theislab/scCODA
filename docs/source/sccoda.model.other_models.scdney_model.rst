@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L286-L398
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L285-L411
 
 sccoda.model.other\_models.scdney\_model
 ========================================

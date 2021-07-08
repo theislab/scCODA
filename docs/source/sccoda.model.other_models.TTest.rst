@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L547-L575
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L570-L598
 
 sccoda.model.other\_models.TTest
 ================================

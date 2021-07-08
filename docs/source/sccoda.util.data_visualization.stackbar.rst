@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/util/data_visualization.py#L23-L88
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/util/data_visualization.py#L22-L87
 
 sccoda.util.data\_visualization.stackbar
 ========================================

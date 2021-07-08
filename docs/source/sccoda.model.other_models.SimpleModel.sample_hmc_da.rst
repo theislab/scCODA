@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/model/dirichlet_models.py#L358-L490
+:github_url: https://github.com/theislab/scCODA/tree/master/model/scCODA_model.py#L357-L488
 
 sccoda.model.other\_models.SimpleModel.sample\_hmc\_da
 ======================================================

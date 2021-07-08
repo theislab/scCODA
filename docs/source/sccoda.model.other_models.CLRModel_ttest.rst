@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L578-L609
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L601-L632
 
 sccoda.model.other\_models.CLRModel\_ttest
 ==========================================

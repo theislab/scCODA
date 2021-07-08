@@ -1085,6 +1085,7 @@ class ANCOMBCModel(NonBaysesianModel):
     ):
         """
         Fits ANCOM with bias correction model.
+
         Parameters
         ----------
         method

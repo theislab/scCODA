@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L31-L283
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L31-L282
 
 sccoda.model.other\_models.SimpleModel
 ======================================

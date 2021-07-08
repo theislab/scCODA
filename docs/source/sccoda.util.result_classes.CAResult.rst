@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L47-L533
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L47-L614
 
 sccoda.util.result\_classes.CAResult
 ====================================
@@ -66,6 +66,9 @@ sccoda.util.result\_classes.CAResult
                 ~sccoda.util.result_classes.CAResult.save
                 
                 
+                
+                
+                ~sccoda.util.result_classes.CAResult.set_fdr
                 
                 
                 

@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L103-L179
+:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L108-L212
 
 sccoda.util.result\_classes.CAResult.summary\_prepare
 =====================================================
