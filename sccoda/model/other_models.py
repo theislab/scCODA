@@ -5,7 +5,7 @@ Models for the model comparison benchmark in `scCODA: A Bayesian model for compo
 These models are otherwise not part of scCODA, but make a nice addition for comparison purposes
 and are thus part of the main package.
 
-:authors: Johannes Ostner
+:authors: Johannes Ostner, Maren Büttner
 """
 import numpy as np
 import pandas as pd
@@ -13,7 +13,7 @@ import os
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-# from skbio.stats.composition import ancom
+from skbio.stats.composition import ancom
 from anndata import AnnData
 
 import statsmodels as sm
@@ -396,8 +396,6 @@ class scdney_model:
             """)
 
         r_summary = pd.DataFrame(r_summary)
-
-        print(r_summary)
 
         p_values = r_summary.loc[r_summary["term"].str.contains("condCond_1"), "p.value"].values
 
