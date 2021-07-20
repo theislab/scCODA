@@ -258,7 +258,7 @@ class CAResult(az.InferenceData):
         if self.is_sccoda is True:
             def opt_thresh(result, alpha):
 
-                incs = np.array(effect_df.loc[result["inclusion_prob"] > 0, "inclusion_prob"])
+                incs = np.array(result.loc[result["inclusion_prob"] > 0, "inclusion_prob"])
                 incs[::-1].sort()
 
                 for c in np.unique(incs):
