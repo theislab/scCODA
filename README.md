@@ -20,7 +20,7 @@ For further information on the scCODA package and model, please refer to the
 
 Running the package requires a working Python environment (>=3.7).
 
-This package uses the `tensorflow` (`==2.3.2`) and `tensorflow-probability` (`==0.11.0`) packages.
+This package uses the `tensorflow` (`==2.3.3`) and `tensorflow-probability` (`==0.11.0`) packages.
 The GPU computation features of these packages have not been tested with scCODA and are thus not recommended.
     
 **To install scCODA via pip, call**:
