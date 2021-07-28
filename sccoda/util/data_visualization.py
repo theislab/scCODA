@@ -13,11 +13,10 @@ import seaborn as sns
 from matplotlib import cm, rcParams
 from matplotlib.colors import ListedColormap
 
-sns.set_style("ticks")
-
 from anndata import AnnData
 from typing import Optional, Tuple, Collection, Union, List
 
+sns.set_style("ticks")
 
 
 def stackbar(
@@ -116,7 +115,7 @@ def stacked_barplot(
         The color map for the barplot
     plot_legend
         If True, adds a legend
-    level_orer
+    level_order
         Custom ordering of bars on the x-axis
 
     Returns
@@ -188,6 +187,7 @@ def boxplots(
         dpi: Optional[int] = 100,
         cmap: Optional[str] = "Blues",
         plot_legend: Optional[bool] = True,
+        level_order: List[str] = None
 ) -> Optional[Tuple[plt.Subplot, sns.axisgrid.FacetGrid]]:
     """\
     Grouped boxplot visualization. The cell counts for each cell type are shown as a group of boxplots,
@@ -217,6 +217,8 @@ def boxplots(
         The seaborn color map for the barplot
     plot_legend
         If True, adds a legend
+    level_order
+        Custom ordering of bars on the x-axis
 
     Returns
     -------
@@ -249,6 +251,9 @@ def boxplots(
 
     if plot_facets:
 
+        if level_order is None:
+            level_order = pd.unique(plot_df[feature_name])
+
         K = X.shape[1]
 
         g = sns.FacetGrid(
@@ -264,7 +269,7 @@ def boxplots(
             feature_name,
             value_name,
             palette=cmap,
-            order=pd.unique(plot_df[feature_name]),
+            order=level_order,
             **args_boxplot
         )
 
@@ -281,7 +286,7 @@ def boxplots(
                     feature_name,
                     value_name,
                     color="black",
-                    order=pd.unique(plot_df[feature_name]),
+                    order=level_order,
                     **args_swarmplot
                 ).set_titles("{col_name}")
             else:
@@ -290,13 +295,17 @@ def boxplots(
                     feature_name,
                     value_name,
                     hue,
-                    order=pd.unique(plot_df[feature_name]),
+                    order=level_order,
                     **args_swarmplot
                 ).set_titles("{col_name}")
 
         return g
 
     else:
+
+        if level_order:
+            args_boxplot["hue_order"] = level_order
+            args_swarmplot["hue_order"] = level_order
 
         fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
@@ -373,7 +382,6 @@ def rel_abundance_dispersion_plot(
         a plot
     """
 
-
     fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
     rel_abun = data.X / np.sum(data.X, axis=1, keepdims=True)
@@ -430,4 +438,3 @@ def rel_abundance_dispersion_plot(
 
     plt.tight_layout()
     return ax
-

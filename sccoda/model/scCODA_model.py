@@ -91,7 +91,7 @@ class CompositionalModel:
         # Add pseudocount if zeroes are present.
         if np.count_nonzero(data_matrix) != np.size(data_matrix):
             print("Zero counts encountered in data! Added a pseudocount of 0.5.")
-            data_matrix += 0.5
+            data_matrix[data_matrix == 0] = 0.5
         self.y = tf.convert_to_tensor(data_matrix, dtype)
 
         sample_counts = np.sum(data_matrix, axis=1)
@@ -503,7 +503,7 @@ class CompositionalModel:
 
         - `target_log_prob`: Value of the model's log-probability
 
-        - `leapfros_taken`: Number of leapfrog steps taken by hte integrator
+        - `leapfrogs_taken`: Number of leapfrog steps taken by the integrator
 
         - `diverging`: Marks samples as diverging (NOTE: Handle with care, the spike-and-slab prior of scCODA usually leads to many samples being flagged as diverging)
 

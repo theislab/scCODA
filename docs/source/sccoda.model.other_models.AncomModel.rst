@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L776-L857
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L800-L905
 
 sccoda.model.other\_models.AncomModel
 =====================================

@@ -63,8 +63,8 @@ type needs to be specified in this step.
     :toctree: .
 
     sccoda.util.comp_ana.CompositionalAnalysis
-    sccoda.model.dirichlet_models.CompositionalModel
-    sccoda.model.dirichlet_models.ReferenceModel
+    sccoda.model.scCODA_model.CompositionalModel
+    sccoda.model.scCODA_model.scCODAModel
 
 **Utility functions**
 
@@ -106,3 +106,5 @@ non-compositional tests that can be used for comparison.
     sccoda.model.other_models.ALRModel_wilcoxon
     sccoda.model.other_models.AncomModel
     sccoda.model.other_models.DirichRegModel
+    sccoda.model.other_models.BetaBinomialModel
+    sccoda.model.other_models.ANCOMBCModel

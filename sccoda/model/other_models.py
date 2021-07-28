@@ -5,7 +5,7 @@ Models for the model comparison benchmark in `scCODA: A Bayesian model for compo
 These models are otherwise not part of scCODA, but make a nice addition for comparison purposes
 and are thus part of the main package.
 
-:authors: Johannes Ostner
+:authors: Johannes Ostner, Maren Büttner
 """
 import numpy as np
 import pandas as pd
@@ -21,7 +21,7 @@ from statsmodels.formula.api import glm
 from scipy import stats
 
 from sccoda.util import result_classes as res
-from sccoda.model import dirichlet_models as dm
+from sccoda.model import scCODA_model as dm
 from typing import Optional, Tuple, Collection, Union, List
 
 tfd = tfp.distributions
@@ -79,7 +79,6 @@ class SimpleModel(dm.CompositionalModel):
             beta = tf.concat(axis=1, values=[beta[:, :reference_cell_type],
                                              tf.zeros(shape=[self.D, 1], dtype=dtype),
                                              beta[:, reference_cell_type:]])
-
 
             alpha = yield Root(tfd.Independent(
                 tfd.Normal(
@@ -304,9 +303,10 @@ class scdney_model:
 
         # prepare list generation
         n, k = data.X.shape
+        self.k = k
         x_vec = data.X.flatten()
         cell_types = ["cell_" + x for x in data.var.index.tolist()]
-        cell_types[0] = "cell_" + str(k)
+        # cell_types[0] = "cell_" + str(k)
         conditions = ["Cond_0", "Cond_1"]
 
         # get number of samples for both conditions
@@ -340,8 +340,10 @@ class scdney_model:
 
     def analyze(
             self,
+            ground_truth: np.array = None,
             r_home: str = "",
             r_path: str = r"",
+            alpha: float = 0.05,
     ) -> Tuple[pd.DataFrame, Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
         """
         Analyzes results from R script for SCDC from scdney packege.
@@ -349,10 +351,14 @@ class scdney_model:
 
         Parameters
         ----------
+        ground_truth
+            binary array for comparison to ground truth
         r_home
             path to R installation on your machine, e.g. "C:/Program Files/R/R-4.0.3"
         r_path
             path to R executable on your machine, e.g. "C:/Program Files/R/R-4.0.3/bin/x64"
+        alpha
+            p-value cutoff
 
 
         Returns
@@ -365,6 +371,9 @@ class scdney_model:
 
         os.environ["R_HOME"] = r_home
         os.environ["PATH"] = r_path + ";" + os.environ["PATH"]
+
+        if ground_truth is None:
+            ground_truth = np.zeros(self.k)
 
         import rpy2.robjects as rp
         from rpy2.robjects import numpy2ri, pandas2ri
@@ -381,9 +390,8 @@ class scdney_model:
                                              calCI_method=c("BCa"),
                                              nboot=100)
 
-            glm = fitGLM(clust, {rp.vectors.StrVector(self.scdc_sample_cond).r_repr()}, pairwise=FALSE)
-            sum = summary(glm$pool_res_random)
-            print(sum)
+            glm = fitGLM(clust, {rp.vectors.StrVector(self.scdc_sample_cond).r_repr()}, pairwise=FALSE, subject_effect=FALSE)
+            sum = summary(glm$pool_res_fixed)
             sum
             """)
 
@@ -391,10 +399,14 @@ class scdney_model:
 
         p_values = r_summary.loc[r_summary["term"].str.contains("condCond_1"), "p.value"].values
 
-        tp = np.sum(p_values[-1] < 0.05)
-        fn = np.sum(p_values[-1] >= 0.05)
-        tn = np.sum(p_values[:-1] >= 0.05)
-        fp = np.sum(p_values[:-1] < 0.05)
+        true_indices = np.where(ground_truth == True)[0]
+        false_indices = np.where(ground_truth == False)[0]
+
+        pval = np.nan_to_num(np.array(p_values), nan=1)
+        tp = sum(pval[true_indices] < alpha)
+        fn = sum(pval[true_indices] >= alpha)
+        tn = sum(pval[false_indices] >= alpha)
+        fp = sum(pval[false_indices] < alpha)
 
         return r_summary, (tp, tn, fp, fn)
 
@@ -407,7 +419,7 @@ class NonBaysesianModel:
     def __init__(
             self,
             data: AnnData,
-            covariate_column: Optional[str] = "x_0"
+            covariate_column: Optional[str] = "x_0",
     ):
         """
         Model initialization.
@@ -420,6 +432,7 @@ class NonBaysesianModel:
 
         x = data.obs.loc[:, covariate_column].to_numpy()
         y = data.X
+        y[y == 0] = 1
         self.var = data.var
 
         self.x = x
@@ -440,8 +453,9 @@ class NonBaysesianModel:
 
     def eval_model(
             self,
+            ground_truth: List,
             alpha: float = 0.05,
-            fdr_correct: bool = True
+            fdr_correct: bool = True,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Evaluates array of p-values.
@@ -462,20 +476,22 @@ class NonBaysesianModel:
             Number of True positive, ... effects
         """
 
-        K = self.y.shape[1]
-        ks = list(range(K))[1:]
+        true_indices = np.where(ground_truth == True)[0]
+        false_indices = np.where(ground_truth == False)[0]
 
         if fdr_correct:
-            reject, pvals, _, _ = sm.stats.multitest.multipletests(self.p_val, alpha, method="fdr_bh")
-            tp = sum([reject[0] == True])
-            fn = sum([reject[0] == False])
-            tn = sum([reject[k] == False for k in ks])
-            fp = sum([reject[k] == True for k in ks])
+            pval = np.nan_to_num(np.array(self.p_val), nan=1)
+            reject, pvals, _, _ = sm.stats.multitest.multipletests(pval, alpha, method="fdr_bh")
+            tp = sum(reject[true_indices] == True)
+            fn = sum(reject[true_indices] == False)
+            tn = sum(reject[false_indices] == False)
+            fp = sum(reject[false_indices] == True)
         else:
-            tp = sum([self.p_val[0] < alpha])
-            fn = sum([self.p_val[0] >= alpha])
-            tn = sum([self.p_val[k] >= alpha for k in ks])
-            fp = sum([self.p_val[k] < alpha for k in ks])
+            pval = np.nan_to_num(np.array(self.p_val), nan=1)
+            tp = sum(pval[true_indices] < alpha)
+            fn = sum(pval[true_indices] >= alpha)
+            tn = sum(pval[false_indices] >= alpha)
+            fp = sum(pval[false_indices] < alpha)
 
         return tp, tn, fp, fn
 
@@ -502,7 +518,11 @@ class HaberModel(NonBaysesianModel):
             p_val = [0 for _ in range(K)]
         else:
             for k in range(K):
-                data_ct = pd.DataFrame({"x": self.x[:, 0],
+                if len(self.x.shape) == 1:
+                    x_ = self.x
+                else:
+                    x_ = self.x[:, 0]
+                data_ct = pd.DataFrame({"x": x_,
                                         "y": self.y[:, k]})
 
                 model_ct = glm('y ~ x', data=data_ct,
@@ -798,7 +818,9 @@ class AncomModel():
             Column with the (binary) trait
         """
         x = data.obs.loc[:, covariate_column]
-        y = pd.DataFrame(data.X, index=data.obs.index, columns=data.var.index)
+        y = data.X
+        y[y == 0] = 0.5
+        y = pd.DataFrame(y, index=data.obs.index, columns=data.var.index)
         self.x = x
         self.y = y
         self.n_total = np.sum(y, axis=1)
@@ -816,8 +838,8 @@ class AncomModel():
 
     def fit_model(
             self,
-            alpha=0.05,
-            tau=0.02,
+            alpha: float = 0.05,
+            tau: float = 0.02,
             *args,
             **kwargs,
     ):
@@ -825,6 +847,10 @@ class AncomModel():
 
         Parameters
         ----------
+        alpha
+            FDR level for multiplicity correction
+        tau
+            cutoff parameter
         args
             passed to skbio.stats.composition.ancom
         kwargs
@@ -844,7 +870,10 @@ class AncomModel():
 
         self.ancom_out = ancom_out
 
-    def eval_model(self) -> Tuple[int, int, int, int]:
+    def eval_model(
+            self,
+            ground_truth: List
+    ) -> Tuple[int, int, int, int]:
         """
         Evaluates array of p-values.
         It is assumed that the effect on the first cell type is significant, all others are not.
@@ -863,12 +892,15 @@ class AncomModel():
         else:
             accept = self.ancom_out[0]["Reject null hypothesis"].tolist()
 
-        ks = list(range(K))[1:]
+        true_indices = np.where(ground_truth == True)[0]
+        false_indices = np.where(ground_truth == False)[0]
 
-        tp = sum([accept[0]])
-        fn = sum([accept[0] is False])
-        tn = sum([accept[k] is False for k in ks])
-        fp = sum([accept[k] for k in ks])
+        accept = np.array(accept)
+
+        tp = sum(accept[true_indices] == True)
+        fn = sum(accept[true_indices] == False)
+        tn = sum(accept[false_indices] == False)
+        fp = sum(accept[false_indices] == True)
 
         return tp, tn, fp, fn
 
@@ -924,7 +956,7 @@ class DirichRegModel(NonBaysesianModel):
 
             fit = DirichReg(counts ~ {self.covariate_column}, data)
             if(fit$optimization$convergence > 2L) {{
-            pvals = matrix(c(0,0,0,0,0),nrow = 1)
+            pvals = matrix(rep(0, {K}),nrow = 1)
             }} else {{
             u = summary(fit)
             pvals = u$coef.mat[grep('Intercept', rownames(u$coef.mat), invert=T), 4]
@@ -936,5 +968,194 @@ class DirichRegModel(NonBaysesianModel):
             pvals
             """)
             p_val = p_val[0]
+
+        self.p_val = p_val
+
+
+class BetaBinomialModel(NonBaysesianModel):
+    """
+    Wrapper for using the corncob package for R (Martin et al., 2020)
+    """
+
+    def fit_model(
+            self,
+            r_home: str = "",
+            r_path: str = r"",
+            *args,
+            **kwargs
+    ):
+        """
+        Fits Beta-Binomial model.
+
+        Parameters
+        ----------
+        method
+            method that is used to calculate p-values 
+        r_home
+            path to R installation on your machine, e.g. "C:/Program Files/R/R-4.0.3"
+        r_path
+            path to R executable on your machine, e.g. "C:/Program Files/R/R-4.0.3/bin/x64"
+        args
+            passed to `corncob`
+        kwargs
+            passed to `corncob`
+        Returns
+        -------
+        """
+
+        os.environ["R_HOME"] = r_home
+        os.environ["PATH"] = r_path + ";" + os.environ["PATH"]
+
+        K = self.y.shape[1]
+
+        if self.y.shape[0] == 2:
+            p_val = [0 for _ in range(K)]
+            self.result = None
+        else:
+
+            import rpy2.robjects as rp
+            from rpy2.robjects import numpy2ri, pandas2ri
+            numpy2ri.activate()
+            pandas2ri.activate()
+
+            if self.y.shape[0] == 4:
+                phi = 1
+            else:
+                phi = self.covariate_column
+            
+            p_val = rp.r(f"""
+            library(corncob)
+            library(phyloseq)
+            
+            
+            #prepare phyloseq data format
+            
+            counts = {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.y, columns=self.var.index)).r_repr()}
+            
+            sample = {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.x, columns=[self.covariate_column])).r_repr()}
+            
+            cell_types = colnames(counts)
+            
+            OTU = otu_table(counts, taxa_are_rows = FALSE)
+            
+            #create phyloseq data object
+            data = phyloseq(OTU, sample_data(sample))
+            
+            corncob_out = differentialTest(formula = ~ {self.covariate_column},
+                                  phi.formula = ~ {phi},
+                                  formula_null = ~ 1,
+                                  phi.formula_null = ~ {phi},
+                                  test = "LRT",
+                                  boot = FALSE,
+                                  data = data,
+                                  fdr_cutoff = 0.05
+                                  )
+            
+            # Test functions on a single cell type
+            
+            #    corncob = bbdml(formula = cell_type ~ 1,
+            #                    phi.formula = ~ 1,
+            #                    data = data)
+            #    corncob_DA = bbdml(formula = cell_type ~ {self.covariate_column},
+            #                    phi.formula = ~ {self.covariate_column},
+            #                    data = data)
+            #    p_vals[cell_type] = lrtest(mod_null = corncob, mod = corncob_DA)
+            
+             p_vals = corncob_out$p_fdr 
+            
+             p_vals
+            """)
+
+        self.p_val = p_val
+
+
+class ANCOMBCModel(NonBaysesianModel):
+    """
+    Wrapper for using the ANCOMBC package for R (Lin and Peddada, 2020)
+    """
+
+    def fit_model(
+            self,
+            method: str = "fdr",
+            lib_cut: int = 0,
+            r_home: str = "",
+            r_path: str = r"",
+            *args,
+            **kwargs
+    ):
+        """
+        Fits ANCOM with bias correction model.
+
+        Parameters
+        ----------
+        method
+            method that is used to calculate p-values 
+        lib_cut
+            threshold to filter out classes
+        r_home
+            path to R installation on your machine, e.g. "C:/Program Files/R/R-4.0.3"
+        r_path
+            path to R executable on your machine, e.g. "C:/Program Files/R/R-4.0.3/bin/x64"
+        args
+            passed to `ANCOMBC`
+        kwargs
+            passed to `ANCOMBC`
+        Returns
+        -------
+        """
+
+        os.environ["R_HOME"] = r_home
+        os.environ["PATH"] = r_path + ";" + os.environ["PATH"]
+
+        K = self.y.shape[1]
+
+        if self.y.shape[0] == 2:
+            p_val = [0 for _ in range(K)]
+            self.result = None
+        else:
+
+            import rpy2.robjects as rp
+            from rpy2.robjects import numpy2ri, pandas2ri
+            numpy2ri.activate()
+            pandas2ri.activate()
+            
+            p_val = rp.r(f"""
+            library(ANCOMBC)
+            library(phyloseq)
+            
+            #prepare phyloseq data format
+            
+            counts = {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.y, columns=self.var.index)).r_repr()}
+            
+            sample = {pandas2ri.py2rpy_pandasdataframe(pd.DataFrame(self.x, 
+                                   columns=[self.covariate_column])).r_repr()}
+           
+            cell_types = colnames(counts)
+           
+            OTU = otu_table(t(counts), taxa_are_rows = TRUE)
+            
+            #create phyloseq data object
+            data = phyloseq(OTU, sample_data(sample))
+           
+            ancombc_out = ancombc(phyloseq = data,            
+                                  formula = "{self.covariate_column}",
+                                  p_adj_method = "{method}", 
+                                  zero_cut = 0.90, 
+                                  lib_cut = {lib_cut}, 
+                                  group = "{self.covariate_column}", 
+                                  struc_zero = TRUE, 
+                                  neg_lb = TRUE, tol = 1e-5, 
+                                  max_iter = 100, 
+                                  conserve = TRUE, 
+                                  alpha = 0.05, 
+                                  global = FALSE
+                                  )
+            
+             out = ancombc_out$res
+             #return adjusted p-values
+             p_vals = out$q[,1] 
+            
+             p_vals
+            """)
 
         self.p_val = p_val

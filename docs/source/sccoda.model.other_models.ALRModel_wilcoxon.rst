@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L730-L773
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L754-L797
 
 sccoda.model.other\_models.ALRModel\_wilcoxon
 =============================================

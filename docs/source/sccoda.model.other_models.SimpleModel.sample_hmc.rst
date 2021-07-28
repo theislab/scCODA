@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L112-L225
+:github_url: https://github.com/theislab/scCODA/tree/master/model/other_models.py#L111-L224
 
 sccoda.model.other\_models.SimpleModel.sample\_hmc
 ==================================================

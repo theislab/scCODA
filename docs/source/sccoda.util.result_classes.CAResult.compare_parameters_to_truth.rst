@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L397-L446
+:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L451-L500
 
 sccoda.util.result\_classes.CAResult.compare\_parameters\_to\_truth
 ===================================================================

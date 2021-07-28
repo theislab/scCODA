@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/model/dirichlet_models.py#L169-L225
+:github_url: https://github.com/theislab/scCODA/tree/master/model/scCODA_model.py#L169-L225
 
 sccoda.model.other\_models.SimpleModel.get\_chains\_after\_burnin
 =================================================================

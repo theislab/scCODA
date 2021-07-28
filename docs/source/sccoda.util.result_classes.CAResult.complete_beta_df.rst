@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L181-L256
+:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L214-L309
 
 sccoda.util.result\_classes.CAResult.complete\_beta\_df
 =======================================================
