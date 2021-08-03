@@ -147,7 +147,7 @@ class CompositionalModel:
         """
 
         # HMC sampling function
-        @tf.function
+        @tf.function(experimental_compile=True)
         def sample_mcmc(num_results_, num_burnin_, kernel_, current_state_, trace_fn):
 
             return tfp.mcmc.sample_chain(
@@ -267,16 +267,13 @@ class CompositionalModel:
             Compositional analysis result
         """
 
-        # bijectors (not in use atm, therefore identity)
-        constraining_bijectors = [tfb.Identity() for x in range(len(self.init_params))]
-
         # HMC transition kernel
         hmc_kernel = tfp.mcmc.HamiltonianMonteCarlo(
             target_log_prob_fn=self.target_log_prob_fn,
             step_size=step_size,
             num_leapfrog_steps=num_leapfrog_steps)
         hmc_kernel = tfp.mcmc.TransformedTransitionKernel(
-            inner_kernel=hmc_kernel, bijector=constraining_bijectors)
+            inner_kernel=hmc_kernel, bijector=self.constraining_bijectors)
 
         # Set default value for adaptation steps if none given
         if num_adapt_steps is None:
@@ -284,21 +281,24 @@ class CompositionalModel:
 
         # Add step size adaptation (Andrieu, Thomas - 2008)
         hmc_kernel = tfp.mcmc.SimpleStepSizeAdaptation(
-            inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8)
+            inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.75)
+
+        pbar = tfp.experimental.mcmc.ProgressBarReducer(num_results)
+        hmc_kernel = tfp.experimental.mcmc.WithReductions(hmc_kernel, pbar)
 
         # diagnostics tracing function
         def trace_fn(_, pkr):
             return {
-                'target_log_prob': pkr.inner_results.inner_results.accepted_results.target_log_prob,
-                'diverging': (pkr.inner_results.inner_results.log_accept_ratio < -1000.),
-                'is_accepted': pkr.inner_results.inner_results.is_accepted,
-                'step_size': pkr.inner_results.inner_results.accepted_results.step_size,
+                'target_log_prob': pkr.inner_results.inner_results.inner_results.accepted_results.target_log_prob,
+                'diverging': (pkr.inner_results.inner_results.inner_results.log_accept_ratio < -1000.),
+                'is_accepted': pkr.inner_results.inner_results.inner_results.is_accepted,
+                'step_size': pkr.inner_results.inner_results.inner_results.accepted_results.step_size,
             }
 
         # The actual HMC sampling process
         states, kernel_results, duration = self.sampling(num_results, num_burnin,
                                                          hmc_kernel, self.init_params, trace_fn)
-
+        pbar.bar.close()
         # apply burn-in
         states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, num_burnin,
                                                                              is_nuts=False)
@@ -306,53 +306,12 @@ class CompositionalModel:
         # Calculate posterior predictive
         y_hat = self.get_y_hat(states_burnin, num_results, num_burnin)
 
-        params = dict(zip(self.param_names, states_burnin))
-
-        # Result object generation setup
-        # Get names of cell types that are not the reference
-        if self.reference_cell_type is not None:
-            cell_types_nb = self.cell_types[:self.reference_cell_type] + self.cell_types[self.reference_cell_type+1:]
-        else:
-            cell_types_nb = self.cell_types
-
-        # Result object generation process. Uses arviz's data structure.
-        posterior = {var_name: [var] for var_name, var in params.items() if
-                     "prediction" not in var_name}
-
-        if "prediction" in self.param_names:
-            posterior_predictive = {"prediction": [params["prediction"]]}
-        else:
-            posterior_predictive = {}
-
-        observed_data = {"y": self.y}
-        dims = {"alpha": ["cell_type"],
-                "sigma_d": ["covariate"],
-                "b_offset": ["covariate", "cell_type_nb"],
-                "ind_raw": ["covariate", "cell_type_nb"],
-                "ind": ["covariate", "cell_type_nb"],
-                "b_raw": ["covariate", "cell_type_nb"],
-                "beta": ["covariate", "cell_type"],
-                "concentration": ["sample", "cell_type"],
-                "prediction": ["sample", "cell_type"]
-                }
-        coords = {"cell_type": self.cell_types,
-                  "cell_type_nb": cell_types_nb,
-                  "covariate": self.covariate_names,
-                  "sample": range(self.y.shape[0])
-                  }
-
         sampling_stats = {"chain_length": num_results, "num_burnin": num_burnin,
                           "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
 
-        model_specs = {"reference": self.reference_cell_type, "formula": self.formula}
+        result = self.make_result(states_burnin, sample_stats, sampling_stats)
 
-        return res.CAResultConverter(posterior=posterior,
-                                     posterior_predictive=posterior_predictive,
-                                     observed_data=observed_data,
-                                     dims=dims,
-                                     sample_stats=sample_stats,
-                                     coords=coords).to_result_data(sampling_stats=sampling_stats,
-                                                                   model_specs=model_specs)
+        return result
 
     def sample_hmc_da(
             self,
@@ -403,16 +362,13 @@ class CompositionalModel:
             category=UserWarning
         )
 
-        # bijectors (not in use atm, therefore identity)
-        constraining_bijectors = [tfb.Identity() for x in range(len(self.init_params))]
-
         # HMC transition kernel
         hmc_kernel = tfp.mcmc.HamiltonianMonteCarlo(
             target_log_prob_fn=self.target_log_prob_fn,
             step_size=step_size,
             num_leapfrog_steps=num_leapfrog_steps)
         hmc_kernel = tfp.mcmc.TransformedTransitionKernel(
-            inner_kernel=hmc_kernel, bijector=constraining_bijectors)
+            inner_kernel=hmc_kernel, bijector=self.constraining_bijectors)
 
         # Set default value for adaptation steps if none given
         if num_adapt_steps is None:
@@ -420,72 +376,36 @@ class CompositionalModel:
 
         # Add step size adaptation
         hmc_kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
-            inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8, decay_rate=0.5)
+            inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.85, decay_rate=0.75)
+
+        pbar = tfp.experimental.mcmc.ProgressBarReducer(num_results)
+        hmc_kernel = tfp.experimental.mcmc.WithReductions(hmc_kernel, pbar)
 
         # tracing function
         def trace_fn(_, pkr):
             return {
-                'target_log_prob': pkr.inner_results.inner_results.accepted_results.target_log_prob,
-                'diverging': (pkr.inner_results.inner_results.log_accept_ratio < -1000.),
-                "log_acc_ratio": pkr.inner_results.inner_results.log_accept_ratio,
-                'is_accepted': pkr.inner_results.inner_results.is_accepted,
-                'step_size': tf.exp(pkr.log_averaging_step[0]),
+                'target_log_prob': pkr.inner_results.inner_results.inner_results.accepted_results.target_log_prob,
+                'diverging': (pkr.inner_results.inner_results.inner_results.log_accept_ratio < -1000.),
+                "log_acc_ratio": pkr.inner_results.inner_results.inner_results.log_accept_ratio,
+                'is_accepted': pkr.inner_results.inner_results.inner_results.is_accepted,
+                'step_size': tf.exp(pkr.inner_results.log_averaging_step[0]),
             }
 
         # HMC sampling
-        states, kernel_results, duration = self.sampling(num_results, num_burnin, hmc_kernel, self.init_params, trace_fn)
+        states, kernel_results, duration = self.sampling(num_results, num_burnin, hmc_kernel, self.init_params,
+                                                         trace_fn)
         states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, num_burnin,
                                                                              is_nuts=False)
+        pbar.bar.close()
 
         y_hat = self.get_y_hat(states_burnin, num_results, num_burnin)
 
-        params = dict(zip(self.param_names, states_burnin))
-
-        # Specification of cell types that were not used as the reference
-        if self.reference_cell_type is not None:
-            cell_types_nb = self.cell_types[:self.reference_cell_type] + self.cell_types[self.reference_cell_type+1:]
-        else:
-            cell_types_nb = self.cell_types
-
-        # Result object generation process. Uses arviz's data structure.
-        posterior = {var_name: [var] for var_name, var in params.items() if
-                     "prediction" not in var_name}
-
-        if "prediction" in self.param_names:
-            posterior_predictive = {"prediction": [params["prediction"]]}
-        else:
-            posterior_predictive = {}
-
-        observed_data = {"y": self.y}
-        dims = {"alpha": ["cell_type"],
-                "sigma_d": ["covariate"],
-                "b_offset": ["covariate", "cell_type_nb"],
-                "ind_raw": ["covariate", "cell_type_nb"],
-                "ind": ["covariate", "cell_type_nb"],
-                "b_raw": ["covariate", "cell_type_nb"],
-                "beta": ["covariate", "cell_type"],
-                "concentration": ["sample", "cell_type"],
-                "prediction": ["sample", "cell_type"]
-                }
-        coords = {"cell_type": self.cell_types,
-                  "cell_type_nb": cell_types_nb,
-                  "covariate": self.covariate_names,
-                  "sample": range(self.y.shape[0])
-                  }
-
-        # build dictionary with sampling statistics
         sampling_stats = {"chain_length": num_results, "num_burnin": num_burnin,
                           "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
 
-        model_specs = {"reference": self.reference_cell_type, "formula": self.formula}
+        result = self.make_result(states_burnin, sample_stats, sampling_stats)
 
-        return res.CAResultConverter(posterior=posterior,
-                                     posterior_predictive=posterior_predictive,
-                                     observed_data=observed_data,
-                                     dims=dims,
-                                     sample_stats=sample_stats,
-                                     coords=coords).to_result_data(sampling_stats=sampling_stats,
-                                                                   model_specs=model_specs)
+        return result
 
     def sample_nuts(
             self,
@@ -543,17 +463,14 @@ class CompositionalModel:
             category=UserWarning
         )
 
-        # bijectors (not in use atm, therefore identity)
-        constraining_bijectors = [tfb.Identity() for x in range(len(self.init_params))]
-
         # NUTS transition kernel
         nuts_kernel = tfp.mcmc.NoUTurnSampler(
             target_log_prob_fn=self.target_log_prob_fn,
-            step_size=step_size,
+            step_size=tf.cast(step_size, tf.float64),
             max_tree_depth=max_tree_depth)
         nuts_kernel = tfp.mcmc.TransformedTransitionKernel(
             inner_kernel=nuts_kernel,
-            bijector=constraining_bijectors
+            bijector=self.constraining_bijectors
         )
 
         # Set default value for adaptation steps
@@ -562,7 +479,10 @@ class CompositionalModel:
 
         # Step size adaptation (Nesterov, 2009)
         nuts_kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
-            inner_kernel=nuts_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.8,
+            inner_kernel=nuts_kernel,
+            num_adaptation_steps=num_adapt_steps,
+            target_accept_prob=tf.cast(0.75, tf.float64),
+            decay_rate=0.75,
             step_size_setter_fn=lambda pkr, new_step_size: pkr._replace(
                 inner_results=pkr.inner_results._replace(step_size=new_step_size)
             ),
@@ -570,25 +490,39 @@ class CompositionalModel:
             log_accept_prob_getter_fn=lambda pkr: pkr.inner_results.log_accept_ratio,
         )
 
+        pbar = tfp.experimental.mcmc.ProgressBarReducer(num_results)
+        nuts_kernel = tfp.experimental.mcmc.WithReductions(nuts_kernel, pbar)
+
         # trace function
         def trace_fn(_, pkr):
             return {
-                "target_log_prob": pkr.inner_results.inner_results.target_log_prob,
-                "leapfrogs_taken": pkr.inner_results.inner_results.leapfrogs_taken,
-                "diverging": pkr.inner_results.inner_results.has_divergence,
-                "energy": pkr.inner_results.inner_results.energy,
-                "log_accept_ratio": pkr.inner_results.inner_results.log_accept_ratio,
-                "step_size": pkr.inner_results.inner_results.step_size[0],
-                "reach_max_depth": pkr.inner_results.inner_results.reach_max_depth,
-                "is_accepted": pkr.inner_results.inner_results.is_accepted,
+                "target_log_prob": pkr.inner_results.inner_results.inner_results.target_log_prob,
+                "leapfrogs_taken": pkr.inner_results.inner_results.inner_results.leapfrogs_taken,
+                "diverging": pkr.inner_results.inner_results.inner_results.has_divergence,
+                "energy": pkr.inner_results.inner_results.inner_results.energy,
+                "log_accept_ratio": pkr.inner_results.inner_results.inner_results.log_accept_ratio,
+                "step_size": pkr.inner_results.inner_results.inner_results.step_size[0],
+                "reach_max_depth": pkr.inner_results.inner_results.inner_results.reach_max_depth,
+                "is_accepted": pkr.inner_results.inner_results.inner_results.is_accepted,
             }
 
         # HMC sampling
         states, kernel_results, duration = self.sampling(num_results, num_burnin, nuts_kernel, self.init_params, trace_fn)
         states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, num_burnin,
                                                                              is_nuts=True)
+        pbar.bar.close()
+
 
         y_hat = self.get_y_hat(states_burnin, num_results, num_burnin)
+
+        sampling_stats = {"chain_length": num_results, "num_burnin": num_burnin,
+                          "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
+
+        result = self.make_result(states_burnin, sample_stats, sampling_stats)
+
+        return result
+
+    def make_result(self, states_burnin, sample_stats, sampling_stats):
 
         params = dict(zip(self.param_names, states_burnin))
 
@@ -623,9 +557,6 @@ class CompositionalModel:
                   "covariate": self.covariate_names,
                   "sample": range(self.y.shape[0])
                   }
-
-        sampling_stats = {"chain_length": num_results, "num_burnin": num_burnin,
-                          "acc_rate": acc_rate, "duration": duration, "y_hat": y_hat}
 
         model_specs = {"reference": self.reference_cell_type, "formula": self.formula}
 
@@ -754,8 +685,11 @@ class scCODAModel(CompositionalModel):
         self.model_struct = tfd.JointDistributionCoroutine(model)
 
         # Joint posterior distribution
-        self.target_log_prob_fn = lambda *args:\
-            self.model_struct.log_prob(list(args) + [tf.cast(self.y, dtype)])
+        @tf.function(experimental_compile=True)
+        def target_log_prob_fn(*args):
+            return self.model_struct.log_prob(list(args) + [tf.cast(self.y, dtype)])
+
+        self.target_log_prob_fn = target_log_prob_fn
 
         # MCMC starting values
         self.init_params = [
@@ -764,6 +698,8 @@ class scCODAModel(CompositionalModel):
             tf.zeros(beta_nobl_size, name='init_ind_raw', dtype=dtype),
             tf.random.normal(alpha_size, 0, 1, name='init_alpha', dtype=dtype)
         ]
+
+        self.constraining_bijectors = [tfb.Identity() for x in range(len(self.init_params))]
 
     # Calculate predicted cell counts (for analysis purposes)
     def get_y_hat(
