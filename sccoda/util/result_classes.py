@@ -537,7 +537,7 @@ class CAResult(az.InferenceData):
 
     def credible_effects(
             self,
-            inc_prob_threshold: float = None
+            est_fdr=None
     ) -> pd.Series:
 
         """
@@ -545,8 +545,8 @@ class CAResult(az.InferenceData):
 
         Parameters
         ----------
-        inc_prob_threshold
-            Inclusion probability threshold value. Must be between 0 and 1. Per default, the value depends on the number of cell types.
+        est_fdr
+            Estimated false discovery rate. Must be between 0 and 1
 
         Returns
         -------
@@ -556,13 +556,15 @@ class CAResult(az.InferenceData):
             Boolean values whether effects are credible under inc_prob_threshold
         """
 
-        if inc_prob_threshold is None:
-            beta_raw = np.array(self.posterior["beta"])[0]
-            inc_prob_threshold = 1 - (0.77 / (beta_raw.shape[2] ** 0.29))
-        elif inc_prob_threshold < 0 or inc_prob_threshold > 1:
-            raise ValueError("inc_prob_threshold must be between 0 and 1!")
+        if type(est_fdr) == float:
+            if est_fdr < 0 or est_fdr > 1:
+                raise ValueError("est_fdr must be between 0 and 1!")
+            else:
+                _, eff_df = self.summary_prepare(est_fdr=est_fdr)
+        else:
+            eff_df = self.effect_df
 
-        out = self.effect_df["Inclusion probability"] > inc_prob_threshold
+        out = eff_df["Final Parameter"] != 0
         out.rename("credible change")
 
         return out
