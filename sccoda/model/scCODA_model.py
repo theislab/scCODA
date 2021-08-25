@@ -357,11 +357,6 @@ class CompositionalModel:
             Compositional analysis result
         """
 
-        warnings.warn(
-            "This feature is untested and might yield different results than expected. Please use sample_hmc().",
-            category=UserWarning
-        )
-
         # HMC transition kernel
         hmc_kernel = tfp.mcmc.HamiltonianMonteCarlo(
             target_log_prob_fn=self.target_log_prob_fn,
@@ -457,11 +452,6 @@ class CompositionalModel:
         result
             Compositional analysis result
         """
-
-        warnings.warn(
-            "This feature is untested and might yield different results than expected. Please use sample_hmc().",
-            category=UserWarning
-        )
 
         # NUTS transition kernel
         nuts_kernel = tfp.mcmc.NoUTurnSampler(
