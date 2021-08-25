@@ -1080,6 +1080,7 @@ class ANCOMBCModel(NonBaysesianModel):
             lib_cut: int = 0,
             r_home: str = "",
             r_path: str = r"",
+            alpha: float=0.05,
             *args,
             **kwargs
     ):
@@ -1147,15 +1148,15 @@ class ANCOMBCModel(NonBaysesianModel):
                                   neg_lb = TRUE, tol = 1e-5, 
                                   max_iter = 100, 
                                   conserve = TRUE, 
-                                  alpha = 0.05, 
+                                  alpha = {alpha}, 
                                   global = FALSE
                                   )
             
-             out = ancombc_out$res
-             #return adjusted p-values
-             p_vals = out$q[,1] 
+            out = ancombc_out$res
+            #return adjusted p-values
+            p_vals = out$q[,1] 
             
-             p_vals
+            p_vals
             """)
 
         self.p_val = p_val
