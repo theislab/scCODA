@@ -181,6 +181,7 @@ def boxplots(
         y_scale: str = "relative",
         plot_facets: bool = False,
         add_dots: bool = False,
+        cell_types: Optional[list] = None,
         args_boxplot: Optional[dict] = {},
         args_swarmplot: Optional[dict] = {},
         figsize: Optional[Tuple[int, int]] = None,
@@ -207,6 +208,8 @@ def boxplots(
         If False, plot cell types on the x-axis. If True, plot as facets
     add_dots
         If True, overlay a scatterplot with one dot for each data point
+    cell_types
+        Subset of cell types that should be plotted
     args_boxplot
         Arguments passed to sns.boxplot
     args_swarmplot
@@ -248,6 +251,8 @@ def boxplots(
     count_df = pd.DataFrame(X, columns=data.var.index, index=data.obs.index).\
         merge(data.obs[feature_name], left_index=True, right_index=True)
     plot_df = pd.melt(count_df, id_vars=feature_name, var_name="Cell type", value_name=value_name)
+    if cell_types is not None:
+        plot_df = plot_df[plot_df["Cell type"].isin(cell_types)]
 
     if plot_facets:
 

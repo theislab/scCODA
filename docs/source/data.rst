@@ -17,7 +17,7 @@ vectors as the rows of a matrix of dimension *NxK*, the so-called **cell count m
 need to be normalized, as scCODA works on the integer count data.
 In addition to the cell counts, scCODA also requires covariates that contain information about each sample.
 These can be indicators for e.g. diseases, or continuous variables, such as age or BMI. The *D* covariates for an
-scCODA dataset are described by the (*NxK* dimensional) **covariate matrix** *X*.
+scCODA dataset are described by the (*NxD* dimensional) **covariate matrix** *X*.
 
 scCODA uses the `anndata <https://anndata.readthedocs.io/en/latest/index.html>`_ format to store compositional datasets.
 Hereby, ``data.X`` represents the cell count matrix, and ``data.obs`` the covariates (The actual covariate or design matrix is generated when calling a model).
