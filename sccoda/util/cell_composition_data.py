@@ -222,19 +222,23 @@ def from_scanpy(
 
     """
 
-    if covariate_key is not None:
-        covariate_df = pd.DataFrame(adata.uns[covariate_key])
-    elif covariate_df is None:
-        print("No covariate information specified!")
-        return
-
     groups = adata.obs.value_counts([sample_identifier, cell_type_identifier])
     count_data = groups.unstack(level=cell_type_identifier)
     count_data = count_data.fillna(0)
 
+    if covariate_key is not None:
+        covariate_df = pd.DataFrame(adata.uns[covariate_key])
+    elif covariate_df is None:
+        print("No covariate information specified!")
+        covariate_df = pd.DataFrame(index=count_data.index)
+
+    if set(covariate_df.index) != set(count_data.index):
+        raise ValueError("anndata sample names and covariate_df index do not have the same elements!")
+    covs_ord = covariate_df.reindex(count_data.index)
+
     return ad.AnnData(X=count_data.values,
                       var=count_data.sum(axis=0).rename("n_cells").to_frame(),
-                      obs=covariate_df)
+                      obs=covs_ord)
 
 
 def from_pandas(
