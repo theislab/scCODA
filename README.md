@@ -49,7 +49,7 @@ The GPU computation features of these packages have not been tested with scCODA 
 
 **Docker container**:
 
-We povide a Docker container image for scCODA (https://hub.docker.com/repository/docker/wollmilchsau/scanpy_sccoda).
+We provide a Docker container image for scCODA (https://hub.docker.com/repository/docker/wollmilchsau/scanpy_sccoda).
 
 ## Usage
 
