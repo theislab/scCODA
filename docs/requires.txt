@@ -1,5 +1,5 @@
 -r ../requirements.txt
-sphinx
+sphinx==4.0
 sphinx_autodoc_typehints
 sphinx_rtd_theme
 docutils
