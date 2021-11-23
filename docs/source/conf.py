@@ -137,6 +137,24 @@ html_show_sphinx = False
 htmlhelp_basename = "scCODAdoc"
 title_doc = f"{project} documentation"
 
+latex_elements = {
+'preamble': r'''
+\usepackage[utf8]{inputenc}
+
+\newcommand{\block}[1]{%
+  \raisebox{\dimexpr(\fontcharht\font`X-1em)/2}{\rule{1em}{#1\dimexpr1em/8}}%
+}
+\DeclareUnicodeCharacter{2581}{\block{1}}
+\DeclareUnicodeCharacter{2582}{\block{2}}
+\DeclareUnicodeCharacter{2583}{\block{3}}
+\DeclareUnicodeCharacter{2584}{\block{4}}
+\DeclareUnicodeCharacter{2585}{\block{5}}
+\DeclareUnicodeCharacter{2586}{\block{6}}
+\DeclareUnicodeCharacter{2587}{\block{7}}
+\DeclareUnicodeCharacter{2588}{\block{8}}
+'''
+}
+
 latex_documents = [(master_doc, f"{project}.tex", title_doc, author, "manual")]
 man_pages = [(master_doc, project, title_doc, [author], 1)]
 texinfo_documents = [
