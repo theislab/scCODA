@@ -137,6 +137,7 @@ html_show_sphinx = False
 htmlhelp_basename = "scCODAdoc"
 title_doc = f"{project} documentation"
 
+latex_engine = 'xelatex'
 latex_documents = [(master_doc, f"{project}.tex", title_doc, author, "manual")]
 man_pages = [(master_doc, project, title_doc, [author], 1)]
 texinfo_documents = [
