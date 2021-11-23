@@ -199,6 +199,7 @@ def from_scanpy(
     and one column that specifies the grouping into samples.
     Covariates can either be specified via a key in adata.uns, or as a separate DataFrame.
 
+    NOTE: The order of samples in the returned dataset is determined by the first occurence of cells from each sample in `adata`
 
     Parameters
     ----------

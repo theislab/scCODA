@@ -14,26 +14,25 @@ Model structure
 The model is based on a Dirichlet-multinomial model, in which each cell type is described by the covariates through a log-linear linkage.
 The intercepts :math:`\alpha` are modeled via a normal prior.
 For the effect (:math:`\beta`) of a covariate on a cell type, scCODA performs model selection via a spike-and-slab prior (Continuous approximation via a Logit-normal prior).
-The underlying prior for significant effects is a noncentered parametrization of a Normal distribution.
+The underlying prior for significant effects is normal with a covariate-specific scaling factor.
 The only exception are the effects of the reference cell type :math:`\hat{k}`, which are always set to 0.
 
 .. math::
-         y|x &\sim DirMult(a(x), \bar{y}) \\
-         \log(a(x)) &= \alpha + x \beta \\
+         y|x &\sim DirMult(\phi, \bar{y}) \\
+         \log(\phi) &= \alpha + x \beta \\
          \alpha_k &\sim N(0, 5) \quad &\forall k \in [K] \\
-         \beta_{d, \hat{k}} &= 0 &\forall d \in [D]\\
-         \beta_{d, k} &= \tau_{d, k} \tilde{\beta}_{d, k} \quad &\forall d \in [D], k \in \{[K] \smallsetminus \hat{k}\} \\
-         \tau_{d, k} &= \frac{\exp(t_{d, k})}{1+ \exp(t_{d, k})} \quad &\forall d \in [D], k \in \{[K] \smallsetminus \hat{k}\} \\
-         \frac{t_{d, k}}{50} &\sim N(0, 1) \quad &\forall d \in [D], k \in \{[K] \smallsetminus \hat{k}\} \\
-         \tilde{\beta}_{d, k} &= (\tilde{\mu} + \tilde{\sigma}^2) \cdot \tilde{\gamma}_{d, k} \quad &\forall d \in [D], k \in \{[K] \smallsetminus \hat{k}\} \\
-         \tilde{\mu} &\sim N(0, 1) \\
-         \tilde{\sigma}^2 &\sim HC(0, 1) \\
-         \tilde{\gamma}_{d, k} &\sim N(0,1) \quad &\forall d \in [D], k \in \{[K] \smallsetminus \hat{k}\} \\
+         \beta_{m, \hat{k}} &= 0 &\forall m \in [M]\\
+         \beta_{m, k} &= \tau_{m, k} \tilde{\beta}_{m, k} \quad &\forall m \in [M], k \in \{[K] \smallsetminus \hat{k}\} \\
+         \tau_{m, k} &= \frac{\exp(t_{m, k})}{1+ \exp(t_{m, k})} \quad &\forall m \in [M], k \in \{[K] \smallsetminus \hat{k}\} \\
+         \frac{t_{m, k}}{50} &\sim N(0, 1) \quad &\forall m \in [M], k \in \{[K] \smallsetminus \hat{k}\} \\
+         \tilde{\beta}_{m, k} &= \sigma_m^2 \cdot \gamma_{m, k} \quad &\forall m \in [M], k \in \{[K] \smallsetminus \hat{k}\} \\
+         \sigma_m^2 &\sim HC(0, 1) \quad &\forall m \in [M] \\
+         \gamma_{m, k} &\sim N(0,1) \quad &\forall m \in [M], k \in \{[K] \smallsetminus \hat{k}\} \\
 
 
 For further information regarding the model structure, please refer to:
 
-Büttner, Ostner *et al.* (2020), scCODA: A Bayesian model for compositional single-cell data analysis
+Büttner, Ostner *et al.* (2021), scCODA is a Bayesian model for compositional single-cell data analysis
 `BioRxiv <https://www.biorxiv.org/content/10.1101/2020.12.14.422688v1>`_.
 
 Inference
@@ -53,5 +52,5 @@ To see which effects were found to be significant, call ``summary()`` on the res
 The ``Final Parameter`` column of the effects data frame shows the significances.
 If the value is 0, the effect is not found to be statistically credible, otherwise it is.
 The sign of the effect indicates a decrease or increase in abundance (relative to the reference cell type).
-However, the numerical value of these effects should not be used for analysis, as it depends on multiple things.
+However, the numerical value of these effects should not be used for analysis, as it depends on multiple parameters.
 Please refer to the tutorials for more information on how to evaluate scCODA's results.

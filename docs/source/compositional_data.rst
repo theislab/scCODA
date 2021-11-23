@@ -20,21 +20,22 @@ compositional data also has to be interpreted in terms of ratios, e.g. with resp
 Features of scCODA
 ^^^^^^^^^^^^^^^^^^
 
-The scCODA model (`Büttner, Ostner et al. (2020) <https://www.biorxiv.org/content/10.1101/2020.12.14.422688v2>`_)
-is the first model that was specifically designed to perform compositional data analysis in scRNA-seq.
+The scCODA model (`Büttner, Ostner et al. (2021) <https://www.biorxiv.org/content/10.1101/2020.12.14.422688v2>`_)
+is a model that was specifically designed to perform compositional data analysis in scRNA-seq.
 Apart from the compositionality of cell population data, there are some other challenges in comparing scRNA-seq
-populations, which scCODA addresses. It allows the user to select any reference cell type in order to see the effects
+populations, which scCODA addresses, including very small sample sizes and multiple comparisons.
+It allows the user to select any reference cell type in order to see the effects
 of biological factors from different perspectives.
 
-Because each sample contains up to thousands of cells, performing scRNA-seq on a large number of samples is expensive
+Because each sample in scRNA-seq usually contains thousands of cells, performing scRNA-seq on a large number of samples is expensive
 and time-consuming. Thus, there are often very few biological replicates available, and frequentist tests will
-therefore result in highly uncertain estimates with large confidence intervals. scCODA uses Bayesian
-modeling with its possibility to include prior beliefs to obtain accurate results even in a low-sample setting.
+result in highly uncertain estimates with large confidence intervals. scCODA uses Bayesian
+modeling and its possibility to include prior beliefs to obtain accurate results even in a low-sample setting.
 
 Also, most biological factors only effect a fraction of the total cell population. It is therefore important to
 determine the most important changes during the analysis. Since Bayesian analysis does not support the concept
 of p-values, scCODA instead uses spike-and-slab priors to automatically determine statistically credible effects.
 
 For more detailed information on the scCODA model, see
-`Büttner, Ostner et al. (2020) <https://www.biorxiv.org/content/10.1101/2020.12.14.422688v2>`_.
+`Büttner, Ostner et al. (2021) <https://www.biorxiv.org/content/10.1101/2020.12.14.422688v2>`_.
 

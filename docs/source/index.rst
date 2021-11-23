@@ -2,7 +2,7 @@
 Welcome to scCODA's documentation!
 =============================================
 
-.. image:: ../../.github/Figures/Fig1_v10.png
+.. image:: ../../.github/Figures/Figure1.png
    :width: 500px
    :align: right
 
@@ -56,7 +56,7 @@ implementations of other statistical models that can be used as comparisons.
 Reference
 ^^^^^^^^^^
 
-Büttner, Ostner *et al.* (2020), scCODA: A Bayesian model for compositional single-cell data analysis
+Büttner, Ostner *et al.* (2021), scCODA is a Bayesian model for compositional single-cell data analysis
 `BioRxiv <https://www.biorxiv.org/content/10.1101/2020.12.14.422688v1>`_.
 |dim|
 

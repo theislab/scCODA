@@ -22,9 +22,20 @@ VERSION = "0.1.6"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "numpy", "scipy", "tensorflow>=2.4.0", "tensorflow-probability>=0.12.0",
-    "arviz>=0.10", "seaborn", "pandas>=1.0", "matplotlib", "scanpy", "anndata",
-    "patsy", "sklearn", "statsmodels", "rpy2",
+    "numpy>=1.19",
+    "scipy",
+    "tensorflow>=2.4.0,<2.6",
+    "tensorflow-probability==0.12.0",
+    "arviz>=0.10",
+    "seaborn",
+    "pandas>=1.0",
+    "matplotlib>=3.0",
+    "scanpy",
+    "anndata",
+    "patsy",
+    "sklearn",
+    "statsmodels",
+    "rpy2",
 ]
 
 # What packages are optional?

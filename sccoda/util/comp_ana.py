@@ -52,7 +52,7 @@ class CompositionalAnalysis:
             To set a different level as the base category for a categorical covariate, use "C(<CovariateName>, Treatment('<ReferenceLevelName>'))"
         reference_cell_type
             Column index that sets the reference cell type. Can either reference the name of a column or the n-th column (indexed at 0).
-                    If "automatic", the cell type with the lowest dispersion in relative abundance that is present in at least 90% of samlpes will be chosen.
+            If "automatic", the cell type with the lowest dispersion in relative abundance that is present in at least 90% of samlpes will be chosen.
         automatic_reference_absence_threshold
             If using reference_cell_type = "automatic", determine what the maximum fraction of zero entries for a cell type is to be considered as a possible reference cell type
 

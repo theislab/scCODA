@@ -83,6 +83,8 @@ class CompositionalModel:
             Cell type names
         covariate_names
             Covariate names
+        formula
+            Formula (R-style)
         """
 
         dtype = tf.float64
@@ -512,7 +514,32 @@ class CompositionalModel:
 
         return result
 
-    def make_result(self, states_burnin, sample_stats, sampling_stats):
+    def make_result(
+            self,
+            states_burnin,
+            sample_stats: dict,
+            sampling_stats: dict
+    ):
+
+        """
+        Result object generating function. Transforms chain states to result object.
+
+        Parameters
+        ----------
+        states_burnin
+            MCMC chain states after burn-in removal
+        sample_stats
+            Dict with information about the MCMC samples
+        sampling_stats
+            Dict with information about the sampling process
+
+        Returns
+        -------
+        result object
+
+        result
+            Compositional analysis result
+        """
 
         params = dict(zip(self.param_names, states_burnin))
 
@@ -567,17 +594,16 @@ class scCODAModel(CompositionalModel):
     The hierarchical formulation of the model for one sample is:
 
     .. math::
-         y|x &\\sim DirMult(a(x), \\bar{y}) \\\\
-         \\log(a(x)) &= \\alpha + x \\beta \\\\
+         y|x &\\sim DirMult(\\phi, \\bar{y}) \\\\
+         \\log(\\phi) &= \\alpha + x \\beta \\\\
          \\alpha_k &\\sim N(0, 5) \\quad &\\forall k \\in [K] \\\\
-         \\beta_{d, \\hat{k}} &= 0 &\\forall d \\in [D]\\\\
-         \\beta_{d, k} &= \\tau_{d, k} \\tilde{\\beta}_{d, k} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
-         \\tau_{d, k} &= \\frac{\\exp(t_{d, k})}{1+ \\exp(t_{d, k})} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
-         \\frac{t_{d, k}}{50} &\\sim N(0, 1) \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
-         \\tilde{\\beta}_{d, k} &= (\\tilde{\\mu} + \\tilde{\\sigma}^2) \\cdot \\tilde{\\gamma}_{d, k} \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
-         \\tilde{\\mu} &\\sim N(0, 1) \\\\
-         \\tilde{\\sigma}^2 &\\sim HC(0, 1) \\\\
-         \\tilde{\\gamma}_{d, k} &\\sim N(0,1) \\quad &\\forall d \\in [D], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+         \\beta_{m, \\hat{k}} &= 0 &\\forall m \\in [M]\\\\
+         \\beta_{m, k} &= \\tau_{m, k} \\tilde{\\beta}_{m, k} \\quad &\\forall m \\in [M], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+         \\tau_{m, k} &= \\frac{\\exp(t_{m, k})}{1+ \\exp(t_{m, k})} \\quad &\\forall m \\in [M], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+         \\frac{t_{m, k}}{50} &\\sim N(0, 1) \\quad &\\forall m \\in [M], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+         \\tilde{\\beta}_{m, k} &= \\sigma_m^2 \\cdot \\gamma_{m, k} \\quad &\\forall m \\in [M], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
+         \\sigma_m^2 &\\sim HC(0, 1) \\quad &\\forall m \\in [M] \\\\
+         \\gamma_{m, k} &\\sim N(0,1) \\quad &\\forall m \\in [M], k \\in \\{[K] \\smallsetminus \\hat{k}\\} \\\\
 
     with y being the cell counts and x the covariates.
 

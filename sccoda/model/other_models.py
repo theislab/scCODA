@@ -299,6 +299,8 @@ class scdney_model:
         ----------
         data
             scCODA data object
+        covariate_column: str
+            Name of the covariate column in `data.obs`
         """
 
         # prepare list generation
@@ -428,6 +430,8 @@ class NonBaysesianModel:
         ----------
         data
             CompositionalData object
+        covariate_column
+            Name of the covariate column in `data.obs`
         """
 
         x = data.obs.loc[:, covariate_column].to_numpy()
@@ -458,11 +462,12 @@ class NonBaysesianModel:
             fdr_correct: bool = True,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
-        Evaluates array of p-values.
-        It is assumed that the effect on the first cell type is significant, all others are not.
+        Evaluates array of p-values compared to a ground truth via binary classification.
 
         Parameters
         ----------
+        ground_truth
+            List (boolean, length same as number of cell types) indicating differential abundance for each cell type
         alpha
             p-value (or q-value if using FDR correction) threshold
         fdr_correct
@@ -875,8 +880,13 @@ class AncomModel():
             ground_truth: List
     ) -> Tuple[int, int, int, int]:
         """
-        Evaluates array of p-values.
-        It is assumed that the effect on the first cell type is significant, all others are not.
+        Evaluates array of results for ancom compared to a ground tuth via binary classification.
+
+        Parameters
+        ----------
+
+        ground_truth
+            List (boolean, length same as number of cell types) indicating differential abundance for each cell type
 
         Returns
         -------
@@ -981,8 +991,6 @@ class BetaBinomialModel(NonBaysesianModel):
             self,
             r_home: str = "",
             r_path: str = r"",
-            *args,
-            **kwargs
     ):
         """
         Fits Beta-Binomial model.
@@ -995,10 +1003,6 @@ class BetaBinomialModel(NonBaysesianModel):
             path to R installation on your machine, e.g. "C:/Program Files/R/R-4.0.3"
         r_path
             path to R executable on your machine, e.g. "C:/Program Files/R/R-4.0.3/bin/x64"
-        args
-            passed to `corncob`
-        kwargs
-            passed to `corncob`
         Returns
         -------
         """
@@ -1051,16 +1055,6 @@ class BetaBinomialModel(NonBaysesianModel):
                                   fdr_cutoff = 0.05
                                   )
             
-            # Test functions on a single cell type
-            
-            #    corncob = bbdml(formula = cell_type ~ 1,
-            #                    phi.formula = ~ 1,
-            #                    data = data)
-            #    corncob_DA = bbdml(formula = cell_type ~ {self.covariate_column},
-            #                    phi.formula = ~ {self.covariate_column},
-            #                    data = data)
-            #    p_vals[cell_type] = lrtest(mod_null = corncob, mod = corncob_DA)
-            
              p_vals = corncob_out$p_fdr 
             
              p_vals
@@ -1080,9 +1074,8 @@ class ANCOMBCModel(NonBaysesianModel):
             lib_cut: int = 0,
             r_home: str = "",
             r_path: str = r"",
-            alpha: float=0.05,
-            *args,
-            **kwargs
+            alpha: float = 0.05,
+            zero_cut: float = 0.9,
     ):
         """
         Fits ANCOM with bias correction model.
@@ -1097,10 +1090,11 @@ class ANCOMBCModel(NonBaysesianModel):
             path to R installation on your machine, e.g. "C:/Program Files/R/R-4.0.3"
         r_path
             path to R executable on your machine, e.g. "C:/Program Files/R/R-4.0.3/bin/x64"
-        args
-            passed to `ANCOMBC`
-        kwargs
-            passed to `ANCOMBC`
+        alpha
+            Nominal FDR value
+        zero_cut
+            Prevalence cutoff for cell types (cell types with higher percentage of zero entries are dropped)
+
         Returns
         -------
         """
@@ -1141,7 +1135,7 @@ class ANCOMBCModel(NonBaysesianModel):
             ancombc_out = ancombc(phyloseq = data,            
                                   formula = "{self.covariate_column}",
                                   p_adj_method = "{method}", 
-                                  zero_cut = 0.90, 
+                                  zero_cut = {zero_cut}, 
                                   lib_cut = {lib_cut}, 
                                   group = "{self.covariate_column}", 
                                   struc_zero = TRUE, 

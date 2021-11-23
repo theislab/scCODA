@@ -3,7 +3,7 @@ scCODA allows for identification of compositional changes in high-throughput seq
 It also provides a framework for integration of cell-type annotated data directly from [scanpy](https://scanpy.readthedocs.io/en/stable/) and other sources.
 Aside from the scCODA model (Büttner, Ostner *et al* (2020)), the package also allows the easy application of other differential testing methods.
 
-![scCODA](.github/Figures/Fig1_v10.png)
+![scCODA](.github/Figures/Figure1.png)
 
 The statistical methodology and benchmarking performance are described in:
  

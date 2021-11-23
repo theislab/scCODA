@@ -214,6 +214,8 @@ def boxplots(
         Arguments passed to sns.boxplot
     args_swarmplot
             Arguments passed to sns.swarmplot
+    figsize
+        figure size
     dpi
         dpi setting
     cmap
