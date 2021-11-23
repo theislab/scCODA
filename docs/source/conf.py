@@ -137,13 +137,13 @@ html_show_sphinx = False
 htmlhelp_basename = "scCODAdoc"
 title_doc = f"{project} documentation"
 
+# latex_engine = "xelatex"
 latex_elements = {
 'preamble': r'''
 \usepackage[utf8]{inputenc}
 
-\newcommand{\block}[1]{%
-  \raisebox{\dimexpr(\fontcharht\font`X-1em)/2}{\rule{1em}{#1\dimexpr1em/8}}%
-}
+\newcommand{\block}[1]{\raisebox{\dimexpr(\fontcharht\font`X-1em)/2}{\rule{1em}{#1\dimexpr1em/8}}}
+
 \DeclareUnicodeCharacter{2581}{\block{1}}
 \DeclareUnicodeCharacter{2582}{\block{2}}
 \DeclareUnicodeCharacter{2583}{\block{3}}
