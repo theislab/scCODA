@@ -47,6 +47,9 @@ The GPU computation features of these packages have not been tested with scCODA 
 
     `python setup.py install`
 
+**Docker container**:
+
+We provide a Docker container image for scCODA (https://hub.docker.com/repository/docker/wollmilchsau/scanpy_sccoda).
 
 ## Usage
 
