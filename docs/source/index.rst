@@ -9,7 +9,7 @@ Welcome to scCODA's documentation!
 scCODA is a toolbox for statistical models to analyze changes in compositional data,
 especially from single-cell RNA-seq experiments.
 Its main purpose is to provide a platform and implementation for the *scCODA* model, which is described by
-`Büttner, Ostner et al. <https://doi.org/10.1101/2020.12.14.422688>`_.
+`Büttner, Ostner et al. <https://www.nature.com/articles/s41467-021-27150-6>`_.
 
 The package is available on `github <https://github.com/theislab/scCODA>`_.
 
@@ -57,7 +57,7 @@ Reference
 ^^^^^^^^^^
 
 Büttner, Ostner *et al.* (2021), scCODA is a Bayesian model for compositional single-cell data analysis
-`BioRxiv <https://www.biorxiv.org/content/10.1101/2020.12.14.422688v1>`_.
+`NatComms <https://www.nature.com/articles/s41467-021-27150-6>`_.
 |dim|
 
 Indices and tables

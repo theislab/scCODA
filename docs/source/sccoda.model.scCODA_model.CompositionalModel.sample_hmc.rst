@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/model/scCODA_model.py#L227-L355
+:github_url: https://github.com/theislab/scCODA/tree/master/model/scCODA_model.py#L227-L314
 
 sccoda.model.scCODA\_model.CompositionalModel.sample\_hmc
 =========================================================

@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/scCODA_model.py#L641-L836
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/scCODA_model.py#L562-L762
 
 sccoda.model.scCODA\_model.scCODAModel
 ======================================
@@ -27,6 +27,9 @@ sccoda.model.scCODA\_model.scCODAModel
                 
                 
                 ~sccoda.model.scCODA_model.scCODAModel.get_y_hat
+                
+                
+                ~sccoda.model.scCODA_model.scCODAModel.make_result
                 
                 
                 ~sccoda.model.scCODA_model.scCODAModel.sample_hmc

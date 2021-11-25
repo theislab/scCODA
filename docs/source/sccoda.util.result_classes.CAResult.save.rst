@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L570-L587
+:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L572-L589
 
 sccoda.util.result\_classes.CAResult.save
 =========================================

@@ -33,7 +33,7 @@ The only exception are the effects of the reference cell type :math:`\hat{k}`, w
 For further information regarding the model structure, please refer to:
 
 Büttner, Ostner *et al.* (2021), scCODA is a Bayesian model for compositional single-cell data analysis
-`BioRxiv <https://www.biorxiv.org/content/10.1101/2020.12.14.422688v1>`_.
+`NatComms <https://www.nature.com/articles/s41467-021-27150-6>`_.
 
 Inference
 ^^^^^^^^^

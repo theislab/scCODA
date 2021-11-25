@@ -1,4 +1,4 @@
-:github_url: https://github.com/theislab/scCODA/tree/master/model/scCODA_model.py#L357-L488
+:github_url: https://github.com/theislab/scCODA/tree/master/model/scCODA_model.py#L316-L403
 
 sccoda.model.scCODA\_model.scCODAModel.sample\_hmc\_da
 ======================================================

@@ -29,6 +29,9 @@ sccoda.model.other\_models.SimpleModel
                 ~sccoda.model.other_models.SimpleModel.get_y_hat
                 
                 
+                ~sccoda.model.other_models.SimpleModel.make_result
+                
+                
                 ~sccoda.model.other_models.SimpleModel.sample_hmc
                 
                 

@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/scCODA_model.py#L23-L638
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/model/scCODA_model.py#L23-L559
 
 sccoda.model.scCODA\_model.CompositionalModel
 =============================================
@@ -24,6 +24,9 @@ sccoda.model.scCODA\_model.CompositionalModel
                 
                 
                 ~sccoda.model.scCODA_model.CompositionalModel.get_chains_after_burnin
+                
+                
+                ~sccoda.model.scCODA_model.CompositionalModel.make_result
                 
                 
                 ~sccoda.model.scCODA_model.CompositionalModel.sample_hmc

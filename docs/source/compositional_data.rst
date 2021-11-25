@@ -20,7 +20,7 @@ compositional data also has to be interpreted in terms of ratios, e.g. with resp
 Features of scCODA
 ^^^^^^^^^^^^^^^^^^
 
-The scCODA model (`Büttner, Ostner et al. (2021) <https://www.biorxiv.org/content/10.1101/2020.12.14.422688v2>`_)
+The scCODA model (`Büttner, Ostner et al. (2021) <https://www.nature.com/articles/s41467-021-27150-6>`_)
 is a model that was specifically designed to perform compositional data analysis in scRNA-seq.
 Apart from the compositionality of cell population data, there are some other challenges in comparing scRNA-seq
 populations, which scCODA addresses, including very small sample sizes and multiple comparisons.
@@ -37,5 +37,5 @@ determine the most important changes during the analysis. Since Bayesian analysi
 of p-values, scCODA instead uses spike-and-slab priors to automatically determine statistically credible effects.
 
 For more detailed information on the scCODA model, see
-`Büttner, Ostner et al. (2021) <https://www.biorxiv.org/content/10.1101/2020.12.14.422688v2>`_.
+`Büttner, Ostner et al. (2021) <https://www.nature.com/articles/s41467-021-27150-6>`_.
 

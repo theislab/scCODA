@@ -1,4 +1,4 @@
-﻿:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L47-L614
+﻿:github_url: https://github.com/theislab/scCODA/tree/master/util/result_classes.py#L47-L616
 
 sccoda.util.result\_classes.CAResult
 ====================================
@@ -37,11 +37,15 @@ sccoda.util.result\_classes.CAResult
                 
                 
                 
+                
                 ~sccoda.util.result_classes.CAResult.credible_effects
                 
                 
                 
                 ~sccoda.util.result_classes.CAResult.distance_to_truth
+                
+                
+                
                 
                 
                 
@@ -82,6 +86,8 @@ sccoda.util.result\_classes.CAResult
                 
                 
                 ~sccoda.util.result_classes.CAResult.summary_prepare
+                
+                
                 
                 
                 
