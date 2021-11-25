@@ -7,8 +7,8 @@ Aside from the scCODA model (Büttner, Ostner *et al* (2020)), the package also 
 
 The statistical methodology and benchmarking performance are described in:
  
-Büttner, Ostner *et al* (2021). **scCODA: A Bayesian model for compositional single-cell data analysis**
-([*NatComms*](https://www.nature.com/articles/s41467-021-27150-6))
+Büttner, Ostner *et al* (2021). **scCODA is A Bayesian model for compositional single-cell data analysis**
+([*Nature Communications*](https://www.nature.com/articles/s41467-021-27150-6))
 
 Code for reproducing the analysis from the paper is available [here](https://github.com/theislab/scCODA_reproducibility).
 
