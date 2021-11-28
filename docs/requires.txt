@@ -8,6 +8,6 @@ importlib_metadata
 setuptools
 setuptools_scm
 ipykernel
-nbsphinx
+nbsphinx==0.8.0
 scanpydoc
 git+git://github.com/theislab/scCODA@master
