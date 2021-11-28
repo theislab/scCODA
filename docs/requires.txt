@@ -1,12 +1,12 @@
 -r ../requirements.txt
 sphinx==3.4.3
-sphinx_autodoc_typehints
-sphinx_rtd_theme
-docutils
-typing_extensions
-importlib_metadata
-setuptools
-setuptools_scm
+sphinx_autodoc_typehints==1.11.1
+sphinx_rtd_theme==0.5.1
+docutils==0.16
+typing_extensions==3.7.4.3
+importlib_metadata==3.3.0
+setuptools==51.0.0
+setuptools_scm==5.0.1
 ipykernel==5.4.2
 nbsphinx==0.8.0
 scanpydoc==0.5.5
