@@ -16,6 +16,6 @@ def haber() -> pd.DataFrame:
   data matrix as pandas data frame.
     
   """
-  filename = HERE / haber_counts.csv
+  filename = HERE / 'haber_counts.csv'
   
   return pd.read_csv(filename)
