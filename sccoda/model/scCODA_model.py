@@ -615,6 +615,7 @@ class scCODAModel(CompositionalModel):
     def __init__(
             self,
             reference_cell_type: int,
+            seed: Optional[int] = None,
             *args,
             **kwargs):
         """
@@ -708,6 +709,9 @@ class scCODAModel(CompositionalModel):
         self.target_log_prob_fn = target_log_prob_fn
 
         # MCMC starting values
+        if seed is not None:
+            tf.random.set_seed(seed)
+
         self.init_params = [
             tf.ones(sigma_size, name="init_sigma_d", dtype=dtype),
             tf.random.normal(beta_nobl_size, 0, 1, name='init_b_offset', dtype=dtype),
