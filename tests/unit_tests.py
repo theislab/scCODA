@@ -19,8 +19,6 @@ from sccoda.util import data_generation as gen
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
 
-#%%
-
 
 class TestDataGeneration(unittest.TestCase):
     """
@@ -70,8 +68,8 @@ class TestDataGeneration(unittest.TestCase):
         if not np.array_equal(data.X, np.array([[74., 926.], [58., 942.], [32., 968.], [53., 947.]])):
             print("X is not correct!")
             test = False
-        if not np.array_equal(data.uns["b_true"], np.array([-1.8508832,  0.7326526], dtype=np.float64)) & \
-           np.array_equal(data.uns["w_true"], np.array([[0., 0.]])):
+        if any(data.uns["b_true"] - np.array([-1.8508832,  0.7326526], dtype=np.float64) > 1e-5) or \
+           not np.array_equal(data.uns["w_true"], np.array([[0., 0.]])):
             print("uns is not correct!")
             test = False
 
@@ -115,7 +113,7 @@ class TestDataImport(unittest.TestCase):
 
     def test_from_pandas(self):
         # Get Haber Salmonella data
-        data_raw = pd.read_csv(os.path.abspath("../../data/haber_counts.csv"))
+        data_raw = pd.read_csv(os.path.abspath("sccoda/datasets/haber_counts.csv"))
 
         salm_indices = [0, 1, 2, 3, 8, 9]
         salm_df = data_raw.iloc[salm_indices, :]
@@ -132,9 +130,11 @@ class TestDataImport(unittest.TestCase):
     def test_from_scanpy(self):
         # Get scanpy example data, add covariates, read in three times
         adata_ref = sc.datasets.pbmc3k_processed()
-        adata_ref.uns["cov"] = {"x1": 0, "x2": 1}
+        adata_ref.uns["cov"] = {"x_0": 0, "x_1": 1}
+        adata_ref_1 = adata_ref.copy()
+        adata_ref_1.uns["cov"] = {"x_0": 1, "x_1": 1}
 
-        data = dat.from_scanpy_list([adata_ref, adata_ref, adata_ref],
+        data = dat.from_scanpy_list([adata_ref, adata_ref, adata_ref_1],
                                     cell_type_identifier="louvain",
                                     covariate_key="cov")
 
@@ -152,7 +152,7 @@ class TestModels(unittest.TestCase):
     def setUp(self):
 
         # Get Haber count data
-        data_raw = pd.read_csv(os.path.abspath("../../data/haber_counts.csv"))
+        data_raw = pd.read_csv(os.path.abspath("sccoda/datasets/haber_counts.csv"))
 
         salm_indices = [0, 1, 2, 3, 8, 9]
         salm_df = data_raw.iloc[salm_indices, :]
@@ -161,31 +161,7 @@ class TestModels(unittest.TestCase):
         data_salm.obs["Condition"] = data_salm.obs["Mouse"].str.replace(r"_[0-9]", "")
         self.data = data_salm
 
-    def test_no_reference(self):
-        np.random.seed(1234)
-        tf.random.set_seed(5678)
-
-        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", reference_cell_type=None)
-
-        # Run MCMC
-        sim_results = model_salm.sample_hmc(num_results=20000, num_burnin=5000)
-        alpha_df, beta_df = sim_results.summary_prepare()
-
-        # Mean cell counts for both groups
-        alphas_true = np.round(np.mean(self.data.X[:4], 0), 0)
-        betas_true = np.round(np.mean(self.data.X[4:], 0), 0)
-
-        # Mean cell counts for simulated data
-        final_alphas = np.round(alpha_df.loc[:, "Expected Sample"].tolist(), 0)
-        final_betas = np.round(beta_df.loc[:, "Expected Sample"].tolist(), 0)
-
-        # Check if model approximately predicts ground truth
-        differing_alphas = any(np.abs(alphas_true - final_alphas) > 30)
-        differing_betas = any(np.abs(betas_true - final_betas) > 30)
-
-        self.assertTrue((not differing_alphas) & (not differing_betas))
-
-    def test_reference(self):
+    def test_hmc(self):
         np.random.seed(1234)
         tf.random.set_seed(5678)
 
@@ -193,6 +169,7 @@ class TestModels(unittest.TestCase):
 
         # Run MCMC
         sim_results = model_salm.sample_hmc(num_results=20000, num_burnin=5000)
+        self.sim_results = sim_results
         alpha_df, beta_df = sim_results.summary_prepare()
 
         # Mean cell counts for both groups
@@ -209,8 +186,56 @@ class TestModels(unittest.TestCase):
 
         self.assertTrue((not differing_alphas) & (not differing_betas))
 
+    def test_hmc_da(self):
+        np.random.seed(1234)
+        tf.random.set_seed(5678)
 
-#%%
+        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", reference_cell_type=5)
+
+        # Run MCMC
+        sim_results = model_salm.sample_hmc_da(num_results=20000, num_burnin=5000)
+        self.sim_results = sim_results
+        alpha_df, beta_df = sim_results.summary_prepare()
+
+        # Mean cell counts for both groups
+        alphas_true = np.round(np.mean(self.data.X[:4], 0), 0)
+        betas_true = np.round(np.mean(self.data.X[4:], 0), 0)
+
+        # Mean cell counts for simulated data
+        final_alphas = np.round(alpha_df.loc[:, "Expected Sample"].tolist(), 0)
+        final_betas = np.round(beta_df.loc[:, "Expected Sample"].tolist(), 0)
+
+        # Check if model approximately predicts ground truth
+        differing_alphas = any(np.abs(alphas_true - final_alphas) > 30)
+        differing_betas = any(np.abs(betas_true - final_betas) > 30)
+
+        self.assertTrue((not differing_alphas) & (not differing_betas))
+
+    def test_nuts(self):
+        np.random.seed(1234)
+        tf.random.set_seed(5678)
+
+        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition", reference_cell_type=5)
+
+        # Run MCMC
+        sim_results = model_salm.sample_nuts(num_results=2000, num_burnin=500)
+        self.sim_results = sim_results
+        alpha_df, beta_df = sim_results.summary_prepare()
+
+        # Mean cell counts for both groups
+        alphas_true = np.round(np.mean(self.data.X[:4], 0), 0)
+        betas_true = np.round(np.mean(self.data.X[4:], 0), 0)
+
+        # Mean cell counts for simulated data
+        final_alphas = np.round(alpha_df.loc[:, "Expected Sample"].tolist(), 0)
+        final_betas = np.round(beta_df.loc[:, "Expected Sample"].tolist(), 0)
+
+        # Check if model approximately predicts ground truth
+        differing_alphas = any(np.abs(alphas_true - final_alphas) > 30)
+        differing_betas = any(np.abs(betas_true - final_betas) > 30)
+
+        self.assertTrue((not differing_alphas) & (not differing_betas))
+
 
 if __name__ == '__main__':
     unittest.main()

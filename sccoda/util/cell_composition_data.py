@@ -101,12 +101,14 @@ def from_scanpy_list(
         for s in samples:
 
             cell_counts, covs = read_anndata_one_sample(s, cell_type_identifier, covariate_key)
-            count_data = count_data.append(cell_counts, ignore_index=True)
-            covariate_data = covariate_data.append(pd.Series(covs), ignore_index=True)
+            cell_counts = pd.DataFrame(cell_counts).T
+            count_data = pd.concat([count_data, cell_counts])
+            covariate_data = pd.concat([covariate_data, pd.Series(covs).to_frame().T], ignore_index=True)
     elif covariate_df is not None:
         for s in samples:
             cell_counts = read_anndata_one_sample(s, cell_type_identifier)
-            count_data = count_data.append(cell_counts, ignore_index=True)
+            cell_counts = pd.DataFrame(cell_counts).T
+            count_data = pd.concat([count_data, cell_counts])
             covariate_data = covariate_df
     else:
         print("No covariate information specified!")
@@ -163,14 +165,16 @@ def from_scanpy_dir(
             adata = ad.read_h5ad(f)
 
             cell_counts, covs = read_anndata_one_sample(adata, cell_type_identifier, covariate_key)
-            count_data = count_data.append(cell_counts, ignore_index=True)
-            covariate_data = covariate_data.append(pd.Series(covs), ignore_index=True)
+            cell_counts = pd.DataFrame(cell_counts).T
+            count_data = pd.concat([count_data, cell_counts])
+            covariate_data = pd.concat([covariate_data, pd.Series(covs).to_frame().T], ignore_index=True)
     elif covariate_df is not None:
         for f in filenames:
             adata = ad.read_h5ad(f)
 
             cell_counts = read_anndata_one_sample(adata, cell_type_identifier)
-            count_data = count_data.append(cell_counts, ignore_index=True)
+            cell_counts = pd.DataFrame(cell_counts).T
+            count_data = pd.concat([count_data, cell_counts])
             covariate_data = covariate_df
     else:
         print("No covariate information specified!")

@@ -186,7 +186,7 @@ class CAResult(az.InferenceData):
             n_cell_types = len(self.posterior.coords["cell_type"])
 
             def insert_row(idx, df, df_insert):
-                return df.iloc[:idx, ].append(df_insert).append(df.iloc[idx:, ]).reset_index(drop=True)
+                return pd.concat([df.iloc[:idx, ], df_insert, df.iloc[idx:, ]]).reset_index(drop=True)
 
             for i in range(n_conditions):
                 summary_sel = insert_row((i*n_cell_types) + ref_index, summary_sel,

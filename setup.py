@@ -22,11 +22,11 @@ VERSION = "0.1.6"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    "numpy>=1.19",
+    "numpy>=1.21",
     "scipy",
-    "tensorflow>=2.4.0,<2.6",
-    "tensorflow-probability==0.12.0",
-    "arviz>=0.10",
+    "tensorflow>=2.8",
+    "tensorflow-probability>=0.16.0",
+    "arviz>=0.11",
     "seaborn",
     "pandas>=1.0",
     "matplotlib>=3.0",
