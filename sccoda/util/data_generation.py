@@ -114,6 +114,7 @@ def generate_case_control(
 
     x_names = ["x_" + str(n) for n in range(x.shape[1])]
     x_df = pd.DataFrame(x, columns=x_names)
+    x_df.index = x_df.index.astype(str)
 
     data = ad.AnnData(X=y, obs=x_df, uns={"b_true": b_true, "w_true": w_true})
 

@@ -116,9 +116,13 @@ def from_scanpy_list(
 
     # Replace NaNs
     count_data = count_data.fillna(0)
+    covariate_data.index = covariate_data.index.astype(str)
+
+    var_dat = count_data.sum(axis=0).rename("n_cells").to_frame()
+    var_dat.index = var_dat.index.astype(str)
 
     return ad.AnnData(X=count_data.values,
-                      var=count_data.sum(axis=0).rename("n_cells").to_frame(),
+                      var=var_dat,
                       obs=covariate_data)
 
 
@@ -182,9 +186,13 @@ def from_scanpy_dir(
 
     # Replace NaNs
     count_data = count_data.fillna(0)
+    covariate_data.index = covariate_data.index.astype(str)
+
+    var_dat = count_data.sum(axis=0).rename("n_cells").to_frame()
+    var_dat.index = var_dat.index.astype(str)
 
     return ad.AnnData(X=count_data.values,
-                      var=count_data.sum(axis=0).rename("n_cells").to_frame(),
+                      var=var_dat,
                       obs=covariate_data)
 
 
@@ -240,9 +248,13 @@ def from_scanpy(
     if set(covariate_df.index) != set(count_data.index):
         raise ValueError("anndata sample names and covariate_df index do not have the same elements!")
     covs_ord = covariate_df.reindex(count_data.index)
+    covs_ord.index = covs_ord.index.astype(str)
+
+    var_dat = count_data.sum(axis=0).rename("n_cells").to_frame()
+    var_dat.index = var_dat.index.astype(str)
 
     return ad.AnnData(X=count_data.values,
-                      var=count_data.sum(axis=0).rename("n_cells").to_frame(),
+                      var=var_dat,
                       obs=covs_ord)
 
 
@@ -275,6 +287,7 @@ def from_pandas(
     """
 
     covariate_data = df.loc[:, covariate_columns]
+    covariate_data.index = covariate_data.index.astype(str)
     count_data = df.loc[:, ~df.columns.isin(covariate_data)]
     celltypes = pd.DataFrame(index=count_data.columns)
 
