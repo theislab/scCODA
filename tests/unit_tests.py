@@ -236,6 +236,36 @@ class TestModels(unittest.TestCase):
 
         self.assertTrue((not differing_alphas) & (not differing_betas))
 
+    def test_multi_cond(self):
+        np.random.seed(1234)
+        tf.random.set_seed(5678)
+
+        self.data.obs["Condition2"] = np.random.randint(0, 2, len(self.data.obs))
+
+        model_salm = mod.CompositionalAnalysis(self.data, formula="Condition+Condition2", reference_cell_type=5)
+
+        # Run MCMC
+        sim_results = model_salm.sample_hmc(num_results=20000, num_burnin=5000)
+        self.sim_results = sim_results
+        alpha_df, beta_df = sim_results.summary_prepare()
+
+        self.sim_results.summary_extended()
+
+        # Mean cell counts for both groups
+        alphas_true = np.round(np.mean(self.data.X[:4], 0), 0)
+        betas_true = np.round(np.mean(self.data.X[4:], 0), 0)
+
+        # Mean cell counts for simulated data
+        final_alphas = np.round(alpha_df.loc[:, "Expected Sample"].tolist(), 0)
+        final_betas = np.round(beta_df.loc[("Condition[T.Salm]",), "Expected Sample"].tolist(), 0)
+
+        # Check if model approximately predicts ground truth
+        differing_alphas = any(np.abs(alphas_true - final_alphas) > 30)
+        differing_betas = any(np.abs(betas_true - final_betas) > 30)
+        differing_rand = any(beta_df.loc[("Condition2",), "Final Parameter"] != 0)
+
+        self.assertTrue((not differing_alphas) & (not differing_betas) & (not differing_rand))
+
 
 if __name__ == '__main__':
     unittest.main()
