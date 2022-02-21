@@ -186,7 +186,7 @@ class CAResult(az.InferenceData):
             n_cell_types = len(self.posterior.coords["cell_type"])
 
             def insert_row(idx, df, df_insert):
-                return df.iloc[:idx, ].append(df_insert).append(df.iloc[idx:, ]).reset_index(drop=True)
+                return pd.concat([df.iloc[:idx, ], df_insert, df.iloc[idx:, ]]).reset_index(drop=True)
 
             for i in range(n_conditions):
                 summary_sel = insert_row((i*n_cell_types) + ref_index, summary_sel,
@@ -249,7 +249,10 @@ class CAResult(az.InferenceData):
                 beta_i_raw_nonzero = np.where(np.abs(beta_i_raw) > 1e-3)[0]
                 prob = beta_i_raw_nonzero.shape[0] / beta_i_raw.shape[0]
                 beta_inc_prob.append(prob)
-                beta_nonzero_mean.append(beta_i_raw[beta_i_raw_nonzero].mean())
+                if len(beta_i_raw[beta_i_raw_nonzero]) > 0:
+                    beta_nonzero_mean.append(beta_i_raw[beta_i_raw_nonzero].mean())
+                else:
+                    beta_nonzero_mean.append(0)
 
         effect_df.loc[:, "inclusion_prob"] = beta_inc_prob
         effect_df.loc[:, "mean_nonzero"] = beta_nonzero_mean
