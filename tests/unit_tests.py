@@ -249,8 +249,6 @@ class TestModels(unittest.TestCase):
         self.sim_results = sim_results
         alpha_df, beta_df = sim_results.summary_prepare()
 
-        self.sim_results.summary_extended()
-
         # Mean cell counts for both groups
         alphas_true = np.round(np.mean(self.data.X[:4], 0), 0)
         betas_true = np.round(np.mean(self.data.X[4:], 0), 0)

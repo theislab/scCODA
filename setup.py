@@ -18,7 +18,7 @@ URL = 'https://github.com/theislab/scCODA'
 EMAIL = 'johannes.ostner@helmholtz-muenchen.de'
 AUTHOR = 'Johannes Ostner, Benjamin Schubert'
 REQUIRES_PYTHON = '>=3.7.0'
-VERSION = "0.1.6"
+VERSION = "0.1.7"
 
 # What packages are required for this module to be executed?
 REQUIRED = [

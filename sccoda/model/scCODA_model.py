@@ -702,8 +702,8 @@ class scCODAModel(CompositionalModel):
 
         # Joint posterior distribution
         @tf.function(experimental_compile=True)
-        def target_log_prob_fn(*args):
-            return self.model_struct.log_prob(list(args) + [tf.cast(self.y, dtype)])
+        def target_log_prob_fn(*argsl):
+            return self.model_struct.log_prob(list(argsl) + [tf.cast(self.y, dtype)])
 
         self.target_log_prob_fn = target_log_prob_fn
 
