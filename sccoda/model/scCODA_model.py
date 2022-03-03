@@ -373,7 +373,7 @@ class CompositionalModel:
 
         # Add step size adaptation
         hmc_kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
-            inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.85, decay_rate=0.75)
+            inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.75, decay_rate=0.75)
 
         pbar = tfp.experimental.mcmc.ProgressBarReducer(num_results)
         hmc_kernel = tfp.experimental.mcmc.WithReductions(hmc_kernel, pbar)
@@ -493,7 +493,7 @@ class CompositionalModel:
                 "diverging": pkr.inner_results.inner_results.inner_results.has_divergence,
                 "energy": pkr.inner_results.inner_results.inner_results.energy,
                 "log_accept_ratio": pkr.inner_results.inner_results.inner_results.log_accept_ratio,
-                "step_size": pkr.inner_results.inner_results.inner_results.step_size[0],
+                "step_size": pkr.inner_results.inner_results.inner_results.step_size,
                 "reach_max_depth": pkr.inner_results.inner_results.inner_results.reach_max_depth,
                 "is_accepted": pkr.inner_results.inner_results.inner_results.is_accepted,
             }
@@ -703,8 +703,8 @@ class scCODAModel(CompositionalModel):
 
         # Joint posterior distribution
         @tf.function(experimental_compile=True)
-        def target_log_prob_fn(*args):
-            return self.model_struct.log_prob(list(args) + [tf.cast(self.y, dtype)])
+        def target_log_prob_fn(*argsl):
+            return self.model_struct.log_prob(list(argsl) + [tf.cast(self.y, dtype)])
 
         self.target_log_prob_fn = target_log_prob_fn
 
