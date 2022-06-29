@@ -13,7 +13,7 @@ import os
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from skbio.stats.composition import ancom
+# from skbio.stats.composition import ancom
 from anndata import AnnData
 
 import statsmodels as sm

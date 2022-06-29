@@ -232,7 +232,8 @@ class CompositionalModel:
             num_burnin: int = int(5e3),
             num_adapt_steps: Optional[int] = None,
             num_leapfrog_steps: Optional[int] = 10,
-            step_size: float = 0.01
+            step_size: float = 0.01,
+            verbose: bool = True
     ) -> res.CAResult:
 
         """
@@ -260,6 +261,8 @@ class CompositionalModel:
             HMC leapfrog steps (default 10)
         step_size
             Initial step size (default 0.01)
+        verbose
+            If true, a progress bar is printed during MCMC sampling
 
         Returns
         -------
@@ -285,22 +288,35 @@ class CompositionalModel:
         hmc_kernel = tfp.mcmc.SimpleStepSizeAdaptation(
             inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.75)
 
-        pbar = tfp.experimental.mcmc.ProgressBarReducer(num_results)
-        hmc_kernel = tfp.experimental.mcmc.WithReductions(hmc_kernel, pbar)
+        if verbose:
+            pbar = tfp.experimental.mcmc.ProgressBarReducer(num_results)
+            hmc_kernel = tfp.experimental.mcmc.WithReductions(hmc_kernel, pbar)
 
-        # diagnostics tracing function
-        def trace_fn(_, pkr):
-            return {
-                'target_log_prob': pkr.inner_results.inner_results.inner_results.accepted_results.target_log_prob,
-                'diverging': (pkr.inner_results.inner_results.inner_results.log_accept_ratio < -1000.),
-                'is_accepted': pkr.inner_results.inner_results.inner_results.is_accepted,
-                'step_size': pkr.inner_results.inner_results.inner_results.accepted_results.step_size,
-            }
+            # diagnostics tracing function
+            def trace_fn(_, pkr):
+                return {
+                    'target_log_prob': pkr.inner_results.inner_results.inner_results.accepted_results.target_log_prob,
+                    'diverging': (pkr.inner_results.inner_results.inner_results.log_accept_ratio < -1000.),
+                    'is_accepted': pkr.inner_results.inner_results.inner_results.is_accepted,
+                    'step_size': pkr.inner_results.inner_results.inner_results.accepted_results.step_size,
+                }
+        else:
+            # diagnostics tracing function
+            def trace_fn(_, pkr):
+                return {
+                    'target_log_prob': pkr.inner_results.inner_results.accepted_results.target_log_prob,
+                    'diverging': (pkr.inner_results.inner_results.log_accept_ratio < -1000.),
+                    'is_accepted': pkr.inner_results.inner_results.is_accepted,
+                    'step_size': pkr.inner_results.inner_results.accepted_results.step_size,
+                }
 
         # The actual HMC sampling process
         states, kernel_results, duration = self.sampling(num_results, num_burnin,
                                                          hmc_kernel, self.init_params, trace_fn)
-        pbar.bar.close()
+
+        if verbose:
+            pbar.bar.close()
+
         # apply burn-in
         states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, num_burnin,
                                                                              is_nuts=False)
@@ -321,7 +337,8 @@ class CompositionalModel:
             num_burnin: int = int(5e3),
             num_adapt_steps: Optional[int] = None,
             num_leapfrog_steps: Optional[int] = 10,
-            step_size: float = 0.01
+            step_size: float = 0.01,
+            verbose: bool = True
     ) -> res.CAResult:
         """
         HMC sampling with dual-averaging step size adaptation (Nesterov, 2009)
@@ -350,6 +367,8 @@ class CompositionalModel:
             HMC leapfrog steps (default 10)
         step_size
             Initial step size (default 0.01)
+        verbose
+            If true, a progress bar is printed during MCMC sampling
 
         Returns
         -------
@@ -375,25 +394,39 @@ class CompositionalModel:
         hmc_kernel = tfp.mcmc.DualAveragingStepSizeAdaptation(
             inner_kernel=hmc_kernel, num_adaptation_steps=num_adapt_steps, target_accept_prob=0.75, decay_rate=0.75)
 
-        pbar = tfp.experimental.mcmc.ProgressBarReducer(num_results)
-        hmc_kernel = tfp.experimental.mcmc.WithReductions(hmc_kernel, pbar)
+        if verbose:
+            pbar = tfp.experimental.mcmc.ProgressBarReducer(num_results)
+            hmc_kernel = tfp.experimental.mcmc.WithReductions(hmc_kernel, pbar)
 
-        # tracing function
-        def trace_fn(_, pkr):
-            return {
-                'target_log_prob': pkr.inner_results.inner_results.inner_results.accepted_results.target_log_prob,
-                'diverging': (pkr.inner_results.inner_results.inner_results.log_accept_ratio < -1000.),
-                "log_acc_ratio": pkr.inner_results.inner_results.inner_results.log_accept_ratio,
-                'is_accepted': pkr.inner_results.inner_results.inner_results.is_accepted,
-                'step_size': tf.exp(pkr.inner_results.log_averaging_step[0]),
-            }
+            # tracing function
+            def trace_fn(_, pkr):
+                return {
+                    'target_log_prob': pkr.inner_results.inner_results.inner_results.accepted_results.target_log_prob,
+                    'diverging': (pkr.inner_results.inner_results.inner_results.log_accept_ratio < -1000.),
+                    "log_acc_ratio": pkr.inner_results.inner_results.inner_results.log_accept_ratio,
+                    'is_accepted': pkr.inner_results.inner_results.inner_results.is_accepted,
+                    'step_size': tf.exp(pkr.inner_results.log_averaging_step[0]),
+                }
+
+        else:
+            # tracing function
+            def trace_fn(_, pkr):
+                return {
+                    'target_log_prob': pkr.inner_results.inner_results.accepted_results.target_log_prob,
+                    'diverging': (pkr.inner_results.inner_results.log_accept_ratio < -1000.),
+                    "log_acc_ratio": pkr.inner_results.inner_results.log_accept_ratio,
+                    'is_accepted': pkr.inner_results.inner_results.is_accepted,
+                    'step_size': tf.exp(pkr.log_averaging_step[0]),
+                }
 
         # HMC sampling
         states, kernel_results, duration = self.sampling(num_results, num_burnin, hmc_kernel, self.init_params,
                                                          trace_fn)
         states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, num_burnin,
                                                                              is_nuts=False)
-        pbar.bar.close()
+
+        if verbose:
+            pbar.bar.close()
 
         y_hat = self.get_y_hat(states_burnin, num_results, num_burnin)
 
@@ -410,7 +443,8 @@ class CompositionalModel:
             num_burnin: int = int(5e3),
             num_adapt_steps: Optional[int] = None,
             max_tree_depth: int = 10,
-            step_size: float = 0.01
+            step_size: float = 0.01,
+            verbose: float = True
     ) -> res.CAResult:
         """
         HMC with No-U-turn (NUTS) sampling.
@@ -446,6 +480,8 @@ class CompositionalModel:
             Maximum tree depth (default 10)
         step_size
             Initial step size (default 0.01)
+        verbose
+            If true, a progress bar is printed during MCMC sampling
 
         Returns
         -------
@@ -482,28 +518,44 @@ class CompositionalModel:
             log_accept_prob_getter_fn=lambda pkr: pkr.inner_results.log_accept_ratio,
         )
 
-        pbar = tfp.experimental.mcmc.ProgressBarReducer(num_results)
-        nuts_kernel = tfp.experimental.mcmc.WithReductions(nuts_kernel, pbar)
+        if verbose:
+            pbar = tfp.experimental.mcmc.ProgressBarReducer(num_results)
+            nuts_kernel = tfp.experimental.mcmc.WithReductions(nuts_kernel, pbar)
 
-        # trace function
-        def trace_fn(_, pkr):
-            return {
-                "target_log_prob": pkr.inner_results.inner_results.inner_results.target_log_prob,
-                "leapfrogs_taken": pkr.inner_results.inner_results.inner_results.leapfrogs_taken,
-                "diverging": pkr.inner_results.inner_results.inner_results.has_divergence,
-                "energy": pkr.inner_results.inner_results.inner_results.energy,
-                "log_accept_ratio": pkr.inner_results.inner_results.inner_results.log_accept_ratio,
-                "step_size": pkr.inner_results.inner_results.inner_results.step_size,
-                "reach_max_depth": pkr.inner_results.inner_results.inner_results.reach_max_depth,
-                "is_accepted": pkr.inner_results.inner_results.inner_results.is_accepted,
-            }
+            # trace function
+            def trace_fn(_, pkr):
+                return {
+                    "target_log_prob": pkr.inner_results.inner_results.inner_results.target_log_prob,
+                    "leapfrogs_taken": pkr.inner_results.inner_results.inner_results.leapfrogs_taken,
+                    "diverging": pkr.inner_results.inner_results.inner_results.has_divergence,
+                    "energy": pkr.inner_results.inner_results.inner_results.energy,
+                    "log_accept_ratio": pkr.inner_results.inner_results.inner_results.log_accept_ratio,
+                    "step_size": pkr.inner_results.inner_results.inner_results.step_size,
+                    "reach_max_depth": pkr.inner_results.inner_results.inner_results.reach_max_depth,
+                    "is_accepted": pkr.inner_results.inner_results.inner_results.is_accepted,
+                }
+
+        else:
+            # trace function
+            def trace_fn(_, pkr):
+                return {
+                    "target_log_prob": pkr.inner_results.inner_results.target_log_prob,
+                    "leapfrogs_taken": pkr.inner_results.inner_results.leapfrogs_taken,
+                    "diverging": pkr.inner_results.inner_results.has_divergence,
+                    "energy": pkr.inner_results.inner_results.energy,
+                    "log_accept_ratio": pkr.inner_results.inner_results.log_accept_ratio,
+                    "step_size": pkr.inner_results.inner_results.step_size,
+                    "reach_max_depth": pkr.inner_results.inner_results.reach_max_depth,
+                    "is_accepted": pkr.inner_results.inner_results.is_accepted,
+                }
 
         # HMC sampling
         states, kernel_results, duration = self.sampling(num_results, num_burnin, nuts_kernel, self.init_params, trace_fn)
         states_burnin, sample_stats, acc_rate = self.get_chains_after_burnin(states, kernel_results, num_burnin,
                                                                              is_nuts=True)
-        pbar.bar.close()
 
+        if verbose:
+            pbar.bar.close()
 
         y_hat = self.get_y_hat(states_burnin, num_results, num_burnin)
 

@@ -267,7 +267,7 @@ def boxplots(
             plot_df,
             col="Cell type",
             sharey=False,
-            col_wrap=np.floor(np.sqrt(K)),
+            col_wrap=int(np.floor(np.sqrt(K))),
             height=5,
             aspect=2,
         )
