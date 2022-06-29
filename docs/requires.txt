@@ -9,5 +9,6 @@ setuptools==51.0.0
 setuptools_scm==5.0.1
 ipykernel==5.4.2
 nbsphinx==0.8.0
+jinja2==2.11.2
 scanpydoc==0.5.5
 git+https://github.com/theislab/scCODA.git@master
