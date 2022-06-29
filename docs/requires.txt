@@ -10,4 +10,4 @@ setuptools_scm==5.0.1
 ipykernel==5.4.2
 nbsphinx==0.8.0
 scanpydoc==0.5.5
-sccoda
+git+https://github.com/theislab/scCODA.git@master
