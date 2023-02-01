@@ -8,7 +8,6 @@ arviz>=0.11
 scipy
 anndata
 patsy
-sklearn
 scanpy
 statsmodels
 rpy2

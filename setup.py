@@ -18,7 +18,7 @@ URL = 'https://github.com/theislab/scCODA'
 EMAIL = 'johannes.ostner@helmholtz-muenchen.de'
 AUTHOR = 'Johannes Ostner, Benjamin Schubert'
 REQUIRES_PYTHON = '>=3.7.0'
-VERSION = "0.1.8"
+VERSION = "0.1.9"
 
 # What packages are required for this module to be executed?
 REQUIRED = [
@@ -33,7 +33,6 @@ REQUIRED = [
     "scanpy",
     "anndata",
     "patsy",
-    "sklearn",
     "statsmodels",
     "rpy2",
 ]
