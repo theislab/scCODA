@@ -1,4 +1,10 @@
-# scCODA - Single-cell differential composition analysis 
+# scCODA - Single-cell differential composition analysis
+
+> **Note**
+> This implementation is no longer maintained. A new version in Jax is available in [pertpy](https://pertpy.readthedocs.io/en/latest).
+>
+> For more information and contribution guidelines please visit the associated Github repository: https://github.com/theislab/pertpy
+
 scCODA allows for identification of compositional changes in high-throughput sequencing count data, especially cell compositions from scRNA-seq.
 It also provides a framework for integration of cell-type annotated data directly from [scanpy](https://scanpy.readthedocs.io/en/stable/) and other sources.
 Aside from the scCODA model (Büttner, Ostner *et al* (2021)), the package also allows the easy application of other differential testing methods.
