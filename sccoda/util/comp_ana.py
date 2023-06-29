@@ -36,6 +36,7 @@ class CompositionalAnalysis:
             formula: str,
             reference_cell_type: Union[str, int] = "automatic",
             automatic_reference_absence_threshold: float = 0.05,
+            seed: Optional[int] = None,
     ) -> dm.scCODAModel:
         """
         Builds count and covariate matrix, returns a CompositionalModel object
@@ -100,6 +101,7 @@ class CompositionalAnalysis:
                 covariate_names=covariate_names,
                 reference_cell_type=ref_index,
                 formula=formula,
+                seed=seed,
             )
 
         # Column name as reference cell type
@@ -112,6 +114,7 @@ class CompositionalAnalysis:
                 covariate_names=covariate_names,
                 reference_cell_type=num_index,
                 formula=formula,
+                seed=seed,
             )
 
         # Numeric reference cell type
@@ -123,6 +126,7 @@ class CompositionalAnalysis:
                 covariate_names=covariate_names,
                 reference_cell_type=reference_cell_type,
                 formula=formula,
+                seed=seed,
             )
 
         # None of the above: Throw error
