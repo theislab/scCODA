@@ -33,6 +33,16 @@ The GPU computation features of these packages have not been tested with scCODA 
 
     pip install sccoda
 
+**To enable R functionality in scCODA**:
+
+The scCODA package also provides wrappers to other methods for compositional data analysis, which are written in R.
+Here we use `conda` to create a new environment called `scCODA` and install `r-base` and `r-essentials` before installing scCODA with `pip`: 
+```
+conda create -n scCODA python=3.9 -y
+conda activate scCODA
+conda install -c conda-forge r-base r-essentials -y
+pip install sccoda
+```
 
 **To install scCODA from source**:
 
