@@ -46,6 +46,11 @@ pip install sccoda
 
 **To install scCODA from source**:
 
+```
+conda create -n scCODA python=3.9 -y
+conda activate scCODA
+```
+
 - Navigate to the directory that you want to install scCODA in
 - Clone the repository from Github (https://github.com/theislab/scCODA):
 
@@ -58,10 +63,13 @@ pip install sccoda
 - Install dependencies::
 
     `pip install -r requirements.txt`
+    `pip install -U tf-keras`
+    `conda install -c conda-forge --override-channels "scipy==1.10.1" "arviz==0.15.1" -y`
+    
 
 - Install the package:
 
-    `python setup.py install`
+    `pip install .`
 
 **Docker container**:
 
